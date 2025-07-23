@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -52,6 +56,14 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+.link {
+  @apply hover:text-[#0066b2] dark:hover:text-[#89CFF0] transition-colors;
+}
+
+.footer-title {
+  @apply font-bold text-[#002D62] dark:text-white mb-2;
 }
 
 @media (prefers-color-scheme: light) {
