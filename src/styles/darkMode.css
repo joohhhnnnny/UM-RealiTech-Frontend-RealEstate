@@ -1,0 +1,28 @@
+// Ddefault darkmode styles
+:root {
+  --bg-primary: #ffffff;
+  --text-primary: #1a1a1a;
+  --nav-bg: rgba(255, 255, 255, 0.85);
+  --border-color: #e5e7eb;
+  --card-bg: #ffffff;
+  --card-hover: #f3f4f6;
+  --text-secondary: #4b5563;
+  --section-bg: #f9fafb;
+}
+
+[data-theme='dark'] {
+  --bg-primary: #1a1a1a;
+  --text-primary: #ffffff;
+  --nav-bg: rgba(26, 26, 26, 0.85);
+  --border-color: #374151;
+  --card-bg: #2d2d2d;
+  --card-hover: #333333;
+  --text-secondary: #9ca3af;
+  --section-bg: #111111;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.3s ease-in-out;
+}
