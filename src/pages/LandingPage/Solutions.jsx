@@ -28,16 +28,14 @@ function Solutions() {
         }
     ];
 
+
     return (
-        <section className="py-16 transition-colors duration-300"
-            style={{ backgroundColor: 'var(--section-bg)' }}>
+        <section id="solutions" className="py-16 transition-colors duration-300 bg-base-100">
             <div className="mb-16 text-center">
-                <h2 className="text-4xl font-bold mb-4"
-                    style={{ color: 'var(--text-primary)' }}>
+                <h2 className="text-4xl font-bold mb-4 text-base-content">
                     Streamline Your Real Estate Experience
                 </h2>
-                <p className="text-lg mx-auto max-w-2xl"
-                    style={{ color: 'var(--text-secondary)' }}>
+                <p className="text-lg mx-auto max-w-2xl text-base-content/70">
                     Say goodbye to paperwork. Say hello to smart real estate.
                 </p>
             </div>
@@ -46,23 +44,27 @@ function Solutions() {
                 {solutions.map((solution, index) => (
                     <div
                         key={index}
-                        className="group relative overflow-hidden rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-                        style={{ backgroundColor: 'var(--card-bg)' }}
+                        className="group relative overflow-hidden rounded-xl shadow-lg hover:shadow-xl 
+                                 transition-all duration-300 transform hover:-translate-y-1 bg-base-100"
                     >
                         <div className={`${solution.bgColor} p-6 h-full`}>
                             <div className="flex justify-center mb-6">
                                 <solution.icon className="w-14 h-14 text-white/90" />
                             </div>
-                            <h3 className="text-2xl font-bold text-white mb-3">{solution.title}</h3>
+                            <h3 className="text-2xl font-bold text-white mb-3">
+                                {solution.title}
+                            </h3>
                             <p className="text-white/80 text-sm leading-relaxed">
                                 {solution.description}
                             </p>
                         </div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent 
+                                      opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </div>
                 ))}
             </div>
         </section>
+        
     );
 }
 

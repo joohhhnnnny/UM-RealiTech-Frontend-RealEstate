@@ -1,6 +1,25 @@
+import { useNavigate, useLocation } from "react-router-dom";
+
 function Footer(){
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const handleNotImplemented = (e) => {
+        e.preventDefault();
+        navigate('/error', {
+            state: {
+                from: {
+                    pathname: location.pathname,
+                    hash: '#footer'
+                }
+            }
+        }); 
+    }
+    
+
     return(
-        <footer className="bg-gradient-to-b from-gray-900 to-gray-950 text-white px-6 py-12">
+        
+        <footer id="footer" className="bg-gradient-to-b from-gray-900 to-gray-950 text-white px-6 py-12">
             <div className="max-w-7xl mx-auto">
                 {/* Main Footer Content */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12">
@@ -38,32 +57,21 @@ function Footer(){
                     <div className="space-y-4">
                         <h4 className="text-lg font-semibold text-white">Our Solutions</h4>
                         <ul className="space-y-3">
-                            <li>
-                                <a href="#" className="text-gray-300 hover:text-blue-400 transition-colors duration-300 flex items-center gap-2">
-                                    <span className="h-1 w-1 bg-blue-400 rounded-full"></span>
-                                    DevTrackr
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#" className="text-gray-300 hover:text-blue-400 transition-colors duration-300 flex items-center gap-2">
-                                    <span className="h-1 w-1 bg-blue-400 rounded-full"></span>
-                                    BuySmart PH
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#" className="text-gray-300 hover:text-blue-400 transition-colors duration-300 flex items-center gap-2">
-                                    <span className="h-1 w-1 bg-blue-400 rounded-full"></span>
-                                    RealtyConnect
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#" className="text-gray-300 hover:text-blue-400 transition-colors duration-300 flex items-center gap-2">
-                                    <span className="h-1 w-1 bg-blue-400 rounded-full"></span>
-                                    PropGuard
-                                </a>
-                            </li>
+                            {['DevTrackr', 'BuySmart PH', 'RealtyConnect', 'PropGuard'].map((solution) => (
+                                <li key={solution}>
+                                    <a 
+                                        href="#" 
+                                        onClick={handleNotImplemented}
+                                        className="text-gray-300 hover:text-blue-400 transition-colors duration-300 flex items-center gap-2"
+                                    >
+                                        <span className="h-1 w-1 bg-blue-400 rounded-full"></span>
+                                        {solution}
+                                    </a>
+                                </li>
+                            ))}
                         </ul>
                     </div>
+
 
                     {/* Column 3: Social Media */}
                     <div className="space-y-4">
@@ -96,6 +104,8 @@ function Footer(){
                 </div>
             </div>
         </footer>
+        
+
     )
 }
 
