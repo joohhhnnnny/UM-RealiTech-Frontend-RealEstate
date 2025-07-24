@@ -73,7 +73,7 @@ function DevTrackr() {
                 Transparent development progress tracking for real estate projects
               </p>
               <div className="mt-6">
-                <button className="btn btn-ghost btn-lg text-primary-content border-primary-content/20">
+                <button className="btn btn-ghost btn-lg text-primary-content border-primary-content/20 hover:bg-transparent hover:text-primary-content hover:border-primary-content">
                   View Projects
                 </button>
               </div>

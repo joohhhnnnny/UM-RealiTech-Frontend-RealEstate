@@ -20,7 +20,7 @@
   --card-hover: #f3f4f6;
   --text-secondary: #4b5563;
   --section-bg: #f9fafb;
-  --color-base-100: #ffffff; /* Your desired light background */
+  --color-base-100: #ffffff; /* For light background */
 
 }
 
@@ -31,7 +31,7 @@
   --color-primary: #00539C;
   --color-secondary: #FFD700;
   --color-accent: #89CFF0;
-  --bg-primary: #111111;  /* Your desired dark background */
+  --bg-primary: #111111;  /* For dark background */
   --text-primary: #ffffff;
   --nav-bg: rgba(17, 17, 17, 0.85);
   --border-color: #374151;
