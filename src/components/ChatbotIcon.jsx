@@ -17,12 +17,12 @@ function ChatbotIcon() {
                         className="fixed bottom-24 right-8 w-80 bg-white rounded-lg shadow-xl z-50 border border-gray-200"
                     >
                         {/* Chat Header */}
-                        <div className="p-4 border-b border-gray-200 bg-blue-600 rounded-t-lg">
+                        <div className="p-4 border-b border-gray-200 bg-primary rounded-t-lg">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-semibold text-white">RealiTech Support</h3>
                                 <button 
                                     onClick={() => setIsOpen(false)}
-                                    className="text-white hover:bg-blue-700 rounded-full p-1"
+                                    className="btn btn-primary rounded-full p-1"
                                 >
                                     <XMarkIcon className="w-5 h-5" />
                                 </button>
@@ -48,9 +48,9 @@ function ChatbotIcon() {
                                 <input
                                     type="text"
                                     placeholder="Type your message..."
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:border-blue-500"
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:border-primary transition-colors"
                                 />
-                                <button className="bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors">
+                                <button className="btn btn-primary px-4 py-2 rounded-full transition-colors">
                                     Send
                                 </button>
                             </div>
@@ -83,7 +83,7 @@ function ChatbotIcon() {
                     )}
                 </button>
             </motion.div>
-            
+
         </>
     );
 }

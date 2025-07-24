@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import { RiUserLine } from "react-icons/ri";
 import { SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 import { useState, useEffect } from 'react';
+import lightLogo from '/src/assets/logo/logo-for-light.png';
+import darkLogo from '/src/assets/logo/logo-for-dark.png';
 
 function Navbar() {
   const [isDark, setIsDark] = useState(false);
@@ -44,7 +46,7 @@ function Navbar() {
               transition={{ type: "spring", stiffness: 300 }}
             >
               <img 
-                src="/src/assets/logo/2-Photoroom (1).png" 
+                src={isDark ? darkLogo : lightLogo}
                 alt="RealiTech Logo" 
                 className='w-[150px] h-[48px] object-contain'
               />
@@ -53,7 +55,7 @@ function Navbar() {
 
 
           {/* links center */}
-          
+
           <div className="hidden lg:flex flex-[2] justify-center">
             <ul className="flex items-center space-x-8">
               {navItems.map((item) => (

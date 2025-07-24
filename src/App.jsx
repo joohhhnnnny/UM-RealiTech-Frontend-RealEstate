@@ -20,8 +20,10 @@ function App() {
                 <Route path="/dashboard/buyer" element={<BuyerDashboard />} />
                 <Route path="/dashboard/agent" element={<AgentDashboard />} />
                 <Route path="/dashboard/developer" element={<DeveloperDashboard />} />
+
             </Routes>
             <ChatbotIcon />
+            
         </>
     );
 }
