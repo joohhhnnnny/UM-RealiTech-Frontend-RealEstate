@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useState, useEffect } from 'react';

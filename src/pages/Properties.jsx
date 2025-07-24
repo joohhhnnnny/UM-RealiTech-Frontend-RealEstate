@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import Navbar from '/src/components/Navbar.jsx';
 import Footer from '/src/components/Footer.jsx';
@@ -8,8 +7,8 @@ function Properties() {
         <>
             <Navbar />
             
-            <section>
-                
+            <section>   
+
                 <motion.section 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -33,9 +32,13 @@ function Properties() {
                             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
                         >
                             {/* Property cards will be mapped here */}
+
+
+
                         </motion.div>
                     </div>
                 </motion.section>
+                
             </section>
            
             <Footer />
