@@ -1,145 +1,197 @@
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   RiUserLine, RiLogoutBoxLine, RiNotification3Line,
-  RiMessage2Line, RiDashboardLine, RiVerifiedBadgeFill
+  RiMessage2Line, RiDashboardLine, RiVerifiedBadgeFill,
+  RiMenuFoldLine, RiMenuUnfoldLine
 } from 'react-icons/ri';
+import { BuildingOffice2Icon, UserGroupIcon, SparklesIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 
 function DashboardNavbar({ userRole }) {
-  // Add avatar URLs using DiceBear API
-  const michaelAvatar = "https://api.dicebear.com/7.x/avataaars/svg?seed=Michael&backgroundColor=b6e3f4";
-  const johnAvatar = "https://api.dicebear.com/7.x/avataaars/svg?seed=John&backgroundColor=d1d4f9";
+  const [isOpen, setIsOpen] = useState(true);
+
+  // Add user data based on role
+  const userData = {
+    buyer: {
+      name: "Michael Anderson",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Michael&backgroundColor=b6e3f4",
+      email: "michael@realitech.com"
+    },
+    agent: {
+      name: "Sarah Garcia",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&backgroundColor=b6e3f4",
+      email: "sarah@realitech.com"
+    },
+    developer: {
+      name: "Alex Martinez",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex&backgroundColor=c8f7d4",
+      email: "alex@realitech.com"
+    }
+  };
+
+  // Get current user data based on role
+  const currentUser = userData[userRole];
+
+  const solutions = [
+    {
+      title: "DevTrackr",
+      path: "/dashboard/devtrackr",
+      icon: BuildingOffice2Icon,
+      color: "text-blue-500 hover:text-blue-600",
+      tooltip: "Transparency Platform",
+      allowedRoles: ["buyer", "agent", "developer"]
+    },
+    {
+      title: "RealtyConnect",
+      path: "/dashboard/realtyconnect",
+      icon: UserGroupIcon,
+      color: "text-purple-500 hover:text-purple-600",
+      tooltip: "Agent System",
+      allowedRoles: ["agent", "developer"] // Only agents and developers see this
+    },
+    {
+      title: "BuySmart PH",
+      path: "/dashboard/buysmartph",
+      icon: SparklesIcon,
+      color: "text-teal-500 hover:text-teal-600",
+      tooltip: "AI Property Guide",
+      allowedRoles: ["buyer", "agent", "developer"]
+    },
+    {
+      title: "PropGuard",
+      path: "/dashboard/propguard",
+      icon: ShieldCheckIcon,
+      color: "text-rose-500 hover:text-rose-600",
+      tooltip: "Fraud Detection",
+      allowedRoles: ["buyer", "agent", "developer"]
+    }
+  ];
+
+  // Filter solutions based on user role
+  const filteredSolutions = solutions.filter(solution => 
+    solution.allowedRoles.includes(userRole)
+  );
 
   return (
-    <div className="navbar h-16 bg-base-100/95 backdrop-blur-md shadow-lg sticky top-0 z-50 border-b border-base-200">
-      <div className="container mx-auto px-4 flex justify-between items-center w-full">
-        
-        {/* LEFT - Logo */}
-        <Link to="/" className="flex-1">
-          <motion.div 
-            whileHover={{ scale: 1.05 }}
-            transition={{ type: "spring", stiffness: 300 }}
-          >
-            <img 
-              src="/src/assets/logo/2-Photoroom (1).png" 
-              alt="RealiTech Logo" 
-              className='w-[150px] h-[48px] object-contain'
-            />
-          </motion.div>
-        </Link>
-
-        {/* CENTER - Navigation */}
-        <div className="hidden lg:flex">
-          <Link to="/dashboard" className="btn btn-ghost btn-sm gap-2 text-base font-medium">
-            <RiDashboardLine className="w-5 h-5" />
-            Overview
-          </Link>
+    <motion.div 
+      className={`fixed left-0 top-0 h-screen bg-base-100 border-r border-base-200 shadow-lg z-50
+        ${isOpen ? 'w-64' : 'w-20'} transition-all duration-300`}
+      initial={{ x: -100 }}
+      animate={{ x: 0 }}
+    >
+      <div className="flex flex-col h-full">
+        {/* TOP - Logo & Toggle */}
+        <div className="p-4 border-b border-base-200">
+          <div className="flex items-center justify-between">
+            {isOpen ? (
+              <Link to="/" className="flex-1">
+                <motion.img 
+                  src="/src/assets/logo/2-Photoroom (1).png" 
+                  alt="RealiTech Logo" 
+                  className="h-12 w-auto"
+                  whileHover={{ scale: 1.05 }}
+                />
+              </Link>
+            ) : (
+              <Link to="/" className="flex-1">
+                <motion.img 
+                  src="/src/assets/logo/favicon.png" 
+                  alt="RealiTech Icon" 
+                  className="h-10 w-10"
+                  whileHover={{ scale: 1.1 }}
+                />
+              </Link>
+            )}
+            <button 
+              onClick={() => setIsOpen(!isOpen)}
+              className="btn btn-ghost btn-sm btn-circle"
+            >
+              {isOpen ? (
+                <RiMenuFoldLine className="w-5 h-5" />
+              ) : (
+                <RiMenuUnfoldLine className="w-5 h-5" />
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* RIGHT - Notifications, Messages, Profile */}
-        <div className="flex items-center gap-4">
-
-          {/* Notifications */}
-          <div className="dropdown dropdown-end">
-            <label tabIndex={0} className="btn btn-ghost btn-circle">
-              <div className="indicator">
-                <RiNotification3Line className="h-5 w-5" />
-                <span className="badge badge-xs badge-primary indicator-item">2</span>
-              </div>
-            </label>
-            <div tabIndex={0} className="mt-3 z-[1] card card-compact dropdown-content w-80 bg-base-100 shadow-xl border border-base-200">
-              <div className="card-body">
-                <h3 className="font-bold text-lg mb-2">Notifications</h3>
-                <ul className="space-y-2">
-                  <li className="p-3 hover:bg-base-200 rounded-lg cursor-pointer transition">
-                    <p className="font-medium">New message from agent</p>
-                    <span className="text-xs text-base-content/60">2 minutes ago</span>
-                  </li>
-                  <li className="p-3 hover:bg-base-200 rounded-lg cursor-pointer transition">
-                    <p className="font-medium">Property update</p>
-                    <span className="text-xs text-base-content/60">1 hour ago</span>
-                  </li>
-                </ul>
-                <button className="btn btn-primary btn-sm mt-3 w-full">View All</button>
-              </div>
-            </div>
+        {/* CENTER - Navigation */}
+        <div className="flex-1 overflow-y-auto py-4">
+          <div className="px-4 space-y-2">
+            {filteredSolutions.map((solution) => (
+              <Link
+                key={solution.title}
+                to={solution.path}
+                state={{ userRole }} // Pass userRole through navigation
+                className="group flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors"
+                data-tip={!isOpen ? solution.tooltip : ''}
+                data-tip-position="right"
+              >
+                <solution.icon className={`w-6 h-6 ${solution.color}`} />
+                {isOpen && (
+                  <span className="text-sm font-medium text-base-content/70 group-hover:text-base-content">
+                    {solution.title}
+                  </span>
+                )}
+              </Link>
+            ))}
           </div>
+        </div>
+
+        {/* BOTTOM - User Actions */}
+        <div className="p-4 border-t border-base-200 space-y-2">
+          {/* Notifications */}
+          <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors">
+            <div className="indicator">
+              <RiNotification3Line className="w-6 h-6" />
+              <span className="badge badge-xs badge-primary indicator-item">2</span>
+            </div>
+            {isOpen && <span className="text-sm font-medium">Notifications</span>}
+          </button>
 
           {/* Messages */}
-          <div className="dropdown dropdown-end">
-            <label tabIndex={0} className="btn btn-ghost btn-circle">
-              <div className="indicator">
-                <RiMessage2Line className="h-5 w-5" />
-                <span className="badge badge-xs badge-primary indicator-item">3</span>
-              </div>
-            </label>
-            <div tabIndex={0} className="mt-3 z-[1] card card-compact dropdown-content w-80 bg-base-100 shadow-xl border border-base-200">
-              <div className="card-body">
-                <h3 className="font-bold text-lg mb-2">Messages</h3>
-                <ul className="space-y-2">
-                  {/* Update Messages avatar */}
-                  <li className="p-3 hover:bg-base-200 rounded-lg cursor-pointer transition">
-                    <div className="flex items-center gap-3">
-                      <div className="avatar">
-                        <div className="w-10 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
-                          <img src={johnAvatar} alt="John Doe" />
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">John Doe</p>
-                        <span className="text-xs text-base-content/60">Hey, is the property still...</span>
-                      </div>
-                    </div>
-                  </li>
-                </ul>
-                <button className="btn btn-primary btn-sm mt-3 w-full">Open Messages</button>
-              </div>
+          <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors">
+            <div className="indicator">
+              <RiMessage2Line className="w-6 h-6" />
+              <span className="badge badge-xs badge-primary indicator-item">3</span>
             </div>
-          </div>
+            {isOpen && <span className="text-sm font-medium">Messages</span>}
+          </button>
 
           {/* Profile */}
-          <div className="dropdown dropdown-end">
-            <label tabIndex={0} className="btn btn-ghost px-3 py-1 rounded-full flex items-center gap-3 cursor-pointer">
-              <div className="flex flex-col items-end">
-                <div className="flex items-center gap-1">
-                  <span className="text-sm font-semibold">Michael Anderson</span>
-                  <RiVerifiedBadgeFill className="text-primary w-4 h-4" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="badge badge-primary badge-sm capitalize">{userRole}</span>
-                  <span className="text-xs text-base-content/70">• Online</span>
-                </div>
-              </div>
-              {/* Update Profile avatar */}
+          <div className="dropdown dropdown-top w-full">
+            <label tabIndex={0} className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors cursor-pointer">
               <div className="avatar">
-                <div className="w-10 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
-                  <img src={michaelAvatar} alt="Michael Anderson" />
+                <div className="w-8 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
+                  <img src={currentUser.avatar} alt={currentUser.name} />
                 </div>
               </div>
-            </label>
-            <ul tabIndex={0} className="dropdown-content menu menu-sm mt-4 w-64 p-2 shadow-xl bg-base-100 rounded-box border border-base-200">
-              {/* Update Profile dropdown avatar */}
-              <div className="px-4 py-3 border-b border-base-200 flex items-center gap-3">
-                <div className="avatar">
-                  <div className="w-8 rounded-full ring ring-primary ring-offset-base-100 ring-offset-1">
-                    <img src={michaelAvatar} alt="Michael Anderson" />
+              {isOpen && (
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{currentUser.name}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="badge badge-primary badge-sm capitalize">{userRole}</span>
+                    <span className="text-xs text-base-content/70">• Online</span>
                   </div>
                 </div>
-                <div>
-                  <p className="font-semibold">Michael Anderson</p>
-                  <p className="text-sm text-base-content/70">{userRole}@realitech.com</p>
-                </div>
+              )}
+            </label>
+            <ul tabIndex={0} className="dropdown-content menu menu-sm w-64 p-2 shadow-xl bg-base-100 rounded-box border border-base-200">
+              <div className="px-4 py-3 border-b border-base-200">
+                <p className="font-semibold">{currentUser.name}</p>
+                <p className="text-sm text-base-content/70">{currentUser.email}</p>
               </div>
               <li>
-                <Link to="/dashboard/settings" className="flex items-center gap-2 py-3 hover:bg-base-200">
+                <Link to="/dashboard/settings" className="flex items-center gap-2 py-3">
                   <RiUserLine className="w-4 h-4" />
                   Profile Settings
                 </Link>
               </li>
               <div className="divider my-0"></div>
               <li>
-                <Link to="/" className="flex items-center gap-2 py-3 text-error hover:bg-error/10">
+                <Link to="/" className="flex items-center gap-2 py-3 text-error">
                   <RiLogoutBoxLine className="w-4 h-4" />
                   Logout
                 </Link>
@@ -148,7 +200,7 @@ function DashboardNavbar({ userRole }) {
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
