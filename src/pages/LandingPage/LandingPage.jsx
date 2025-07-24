@@ -1,6 +1,6 @@
 import Navbar from '/src/components/Navbar.jsx';
 import Homepage from './Homepage.jsx';
-import Solutions from './Solutions';
+import Solutions from './Solutions.jsx';
 import Footer from '/src/components/Footer.jsx'
 
 function LandingPage(){

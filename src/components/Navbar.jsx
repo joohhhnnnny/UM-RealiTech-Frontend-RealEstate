@@ -91,18 +91,43 @@ function Navbar() {
               ) : (
                 <MoonIcon className="w-5 h-5" />
               )}
-
             </motion.button>
 
-            <motion.div  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Link
-                to="/login"
-                className="btn btn-primary rounded-full"
+            <div className="dropdown dropdown-end">
+              <motion.div 
+                whileHover={{ scale: 1.05 }} 
+                whileTap={{ scale: 0.95 }}
               >
-                <RiUserLine className="w-5 h-5" />
-                <span>Profile</span>
-              </Link>
-            </motion.div>
+                <label
+                  tabIndex={0}
+                  className="btn btn-primary rounded-full cursor-pointer"
+                >
+                  <RiUserLine className="w-5 h-5" />
+                  <span>Profile</span>
+                </label>
+              </motion.div>
+              
+              <ul tabIndex={0} className="dropdown-content menu mt-3 z-[1] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-200">
+                <li>
+                  <Link to="/dashboard/buyer" className="flex items-center gap-2 text-base-content hover:bg-base-200 rounded-lg">
+                    <i className="fas fa-user-tie"></i>
+                    Buyer
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/dashboard/agent" className="flex items-center gap-2 text-base-content hover:bg-base-200 rounded-lg">
+                    <i className="fas fa-house-user"></i>
+                    Agent
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/dashboard/developer" className="flex items-center gap-2 text-base-content hover:bg-base-200 rounded-lg">
+                    <i className="fas fa-building"></i>
+                    Developer
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
 
 
