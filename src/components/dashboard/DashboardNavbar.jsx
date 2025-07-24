@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect, use } from 'react';
 import { Link } from 'react-router-dom';
 import {
   RiUserLine, RiLogoutBoxLine, RiNotification3Line,
@@ -32,6 +32,21 @@ function DashboardNavbar({ userRole, isOpen, setIsOpen }) {
     document.documentElement.setAttribute('data-theme', savedTheme);
   }, []);
 
+
+  useLayoutEffect(() => {
+    const savedSidebarState = localStorage.getItem('sidebarState');
+    if (savedSidebarState !== null) {
+      setIsOpen(JSON.parse(savedSidebarState));
+    }
+
+  }, [setIsOpen]);
+
+  const handleSidebarToggle = () => {
+    const newState = !isOpen;
+    setIsOpen(newState);
+    localStorage.setItem('sidebarState', JSON.stringify(newState));
+
+  };
  
   const userData = {
     buyer: {
@@ -128,7 +143,7 @@ function DashboardNavbar({ userRole, isOpen, setIsOpen }) {
 
               {/* Menu Toggle Button */}
               <button 
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={handleSidebarToggle}
                 className="btn btn-ghost btn-sm btn-circle"
               >
                 {isOpen ? (
@@ -139,7 +154,7 @@ function DashboardNavbar({ userRole, isOpen, setIsOpen }) {
               </button>
             </div>
             
-            
+
 
             {/* Theme Toggle Button */}
             <div className="flex justify-center">
