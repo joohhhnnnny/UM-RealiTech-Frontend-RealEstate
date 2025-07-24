@@ -48,6 +48,7 @@ function DashboardNavbar({ userRole, isOpen, setIsOpen }) {
       name: "Alex Martinez",
       avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex&backgroundColor=c8f7d4",
       email: "alex@realitech.com"
+
     }
   };
 
@@ -137,6 +138,7 @@ function DashboardNavbar({ userRole, isOpen, setIsOpen }) {
                 )}
               </button>
             </div>
+            
             
 
             {/* Theme Toggle Button */}

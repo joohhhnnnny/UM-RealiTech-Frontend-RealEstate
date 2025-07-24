@@ -1,4 +1,3 @@
-// DashboardLayout.jsx
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import DashboardNavbar from '../components/dashboard/DashboardNavbar';

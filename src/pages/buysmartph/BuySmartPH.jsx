@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
@@ -66,7 +65,7 @@ function BuySmartPH() {
           <motion.div 
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="card bg-gradient-to-r from-primary/90 to-primary shadow-lg overflow-hidden backdrop-blur-xl mb-8"
+            className="card bg-gradient-to-br from-teal-500 to-teal-600 shadow-lg overflow-hidden backdrop-blur-xl mb-8"
           >
             <div className="card-body p-8">
               <div className="flex items-center gap-4 mb-4">
