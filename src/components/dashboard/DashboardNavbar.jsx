@@ -4,7 +4,10 @@ import { Link } from 'react-router-dom';
 import {
   RiUserLine, RiLogoutBoxLine, RiNotification3Line,
   RiMessage2Line, RiDashboardLine, RiVerifiedBadgeFill,
-  RiMenuFoldLine, RiMenuUnfoldLine
+  RiMenuFoldLine, RiMenuUnfoldLine,
+  RiMoreLine,
+  RiHistoryLine,
+  RiSettings4Line
 } from 'react-icons/ri';
 import { BuildingOffice2Icon, UserGroupIcon, SparklesIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { MoonIcon, SunIcon } from '@heroicons/react/24/outline';
@@ -209,29 +212,65 @@ function DashboardNavbar({ userRole, isOpen, setIsOpen }) {
 
         {/* BOTTOM - User Actions */}
         <div className="p-4 border-t border-base-200 space-y-2">
-          {/* Notifications */}
-          <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors">
-            <div className="indicator">
-              <RiNotification3Line className="w-6 h-6" />
-              <span className="badge badge-xs badge-primary indicator-item">2</span>
-            </div>
-            {isOpen && <span className="text-sm font-medium">Notifications</span>}
-          </button>
+          {/* Dashboard Quick Access */}
+          <Link 
+            to={`/dashboard/${userRole}`} 
+            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors"
+          >
+            <RiDashboardLine className="w-6 h-6 text-primary" />
+            {isOpen && <span className="text-sm font-medium">Dashboard</span>}
+          </Link>
 
+          {/* Actions Dropdown */}
+          <div className="dropdown dropdown-top w-full">
+            <label 
+              tabIndex={0} 
+              className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors cursor-pointer"
+            >
+              <RiMoreLine className="w-6 h-6" />
+              {isOpen && <span className="text-sm font-medium">Quick Actions</span>}
+            </label>
+            <ul 
+              tabIndex={0} className={`dropdown-content menu menu-sm ${isOpen ? 'w-50 translate-x-3' : 'w-13 translate-x-10'} p-2 shadow-xl bg-base-100 rounded-box border border-base-200`}
+            >
+              <li>
+                <Link to="/dashboard/notifications" className="flex items-center gap-2 py-3">
+                  <RiNotification3Line className="w-4 h-4" />
+                  {isOpen && (
+                    <>
+                      <span>Notifications</span>
+                      <span className="badge badge-primary badge-sm ml-auto">2</span>
+                    </>
+                  )}
+                </Link>
+              </li>
+              <li>
+                <Link to="/dashboard/messages" className="flex items-center gap-2 py-3">
+                  <RiMessage2Line className="w-4 h-4" />
+                  {isOpen && (
+                    <>
+                      <span>Messages</span>
+                      <span className="badge badge-primary badge-sm ml-auto">3</span>
+                    </>
+                  )}
+                </Link>
+              </li>
+              <li>
+                <Link to="/dashboard/settings" className="flex items-center gap-2 py-3">
+                  <RiSettings4Line className="w-4 h-4" />
+                  {isOpen && <span>Settings</span>}
+                </Link>
+              </li>
+              <li>
+                <Link to="/dashboard/audit-log" className="flex items-center gap-2 py-3">
+                  <RiHistoryLine className="w-4 h-4" />
+                  {isOpen && <span>Audit Log</span>}
+                </Link>
+              </li>
+            </ul>
+          </div>
 
-
-          {/* Messages */}
-          <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors">
-            <div className="indicator">
-              <RiMessage2Line className="w-6 h-6" />
-              <span className="badge badge-xs badge-primary indicator-item">3</span>
-            </div>
-            {isOpen && <span className="text-sm font-medium">Messages</span>}
-          </button>
-
-
-
-          {/* Profile */}
+          {/* Profile - Keep existing profile dropdown code */}
           <div className="dropdown dropdown-top w-full">
             <label tabIndex={0} className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors cursor-pointer">
               <div className="avatar">
