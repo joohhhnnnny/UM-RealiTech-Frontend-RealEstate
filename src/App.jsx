@@ -13,6 +13,7 @@ import PropGuard from './pages/propguard/PropGuard';
 import DevTrackr from './pages/devtrackr/DevTrackr';
 import Notif from './pages/quickactions/Notif';
 import Msg from './pages/quickactions/Msg';
+import Settings from './pages/quickactions/Settings';
 
 function App() {
     return (
@@ -32,7 +33,7 @@ function App() {
                 <Route path="/dashboard/devtrackr" element={<DevTrackr />} />
                 <Route path="/dashboard/notifications" element={<Notif />} />
                 <Route path="/dashboard/messages" element={<Msg />} />
-                
+                <Route path="/settings" element={<Settings />} />
             </Routes>
             <ChatbotIcon />
             

@@ -33,7 +33,64 @@ const Msg = () => {
         { id: 4, text: "Is the property still available?", sender: "them", time: "10:33 AM" },
       ]
     },
-    // Add more conversations as needed
+    {
+      id: 2,
+      name: "Sarah Johnson",
+      avatar: "https://ui-avatars.com/api/?name=Sarah+Johnson",
+      lastMessage: "Great, I'll schedule a viewing",
+      time: "1h ago",
+      unread: 0,
+      isOnline: true,
+      messages: [
+        { id: 1, text: "Hello, I saw your listing in BGC", sender: "them", time: "09:15 AM" },
+        { id: 2, text: "Yes, it's a great location!", sender: "me", time: "09:20 AM" },
+        { id: 3, text: "Can I schedule a viewing?", sender: "them", time: "09:22 AM" },
+        { id: 4, text: "Great, I'll schedule a viewing", sender: "them", time: "09:25 AM" },
+      ]
+    },
+    {
+      id: 3,
+      name: "Mike Chen",
+      avatar: "https://ui-avatars.com/api/?name=Mike+Chen",
+      lastMessage: "What's the final price?",
+      time: "3h ago",
+      unread: 1,
+      isOnline: false,
+      messages: [
+        { id: 1, text: "Is there room for negotiation?", sender: "them", time: "08:00 AM" },
+        { id: 2, text: "We can discuss the terms", sender: "me", time: "08:30 AM" },
+        { id: 3, text: "What's the final price?", sender: "them", time: "08:45 AM" },
+      ]
+    },
+    {
+      id: 4,
+      name: "Emma Garcia",
+      avatar: "https://ui-avatars.com/api/?name=Emma+Garcia",
+      lastMessage: "Thanks for the information",
+      time: "1d ago",
+      unread: 0,
+      isOnline: false,
+      messages: [
+        { id: 1, text: "Can you tell me about the amenities?", sender: "them", time: "Yesterday" },
+        { id: 2, text: "The property includes a pool and gym", sender: "me", time: "Yesterday" },
+        { id: 3, text: "Thanks for the information", sender: "them", time: "Yesterday" },
+      ]
+    },
+    {
+      id: 5,
+      name: "David Kim",
+      avatar: "https://ui-avatars.com/api/?name=David+Kim",
+      lastMessage: "Looking forward to the open house",
+      time: "2d ago",
+      unread: 3,
+      isOnline: true,
+      messages: [
+        { id: 1, text: "When is the open house?", sender: "them", time: "2 days ago" },
+        { id: 2, text: "This Saturday at 2 PM", sender: "me", time: "2 days ago" },
+        { id: 3, text: "Perfect timing", sender: "them", time: "2 days ago" },
+        { id: 4, text: "Looking forward to the open house", sender: "them", time: "2 days ago" },
+      ]
+    }
   ];
 
   const handleSendMessage = (e) => {

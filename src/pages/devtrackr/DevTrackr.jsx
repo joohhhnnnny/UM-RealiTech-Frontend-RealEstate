@@ -6,7 +6,11 @@ import {
   RiTimeLine,
   RiBarChartBoxLine,
   RiMapPinTimeLine,
-  RiCheckboxCircleLine
+  RiCheckboxCircleLine,
+  RiArrowRightLine,
+  RiCalendarLine,
+  RiImageLine,
+  RiFileTextLine
 } from 'react-icons/ri';
 import { useLocation } from 'react-router-dom';
 
@@ -49,6 +53,49 @@ function DevTrackr() {
       bgGradient: "from-amber-500/20 to-amber-500/5"
     }
   ];
+
+  const projectUpdates = [
+  {
+    id: 1,
+    projectName: "Horizon Residences",
+    date: "July 25, 2025",
+    type: "Construction Update",
+    description: "Foundation work completed ahead of schedule. Starting structural framework next week.",
+    progress: 76,
+    image: "https://pueblodeoro.com/wp-content/uploads/2017/12/Sakura-1.jpg", // use one of the carousel URLs
+    tags: ["Construction", "On Schedule"]
+  },
+  {
+    id: 2,
+    projectName: "Sky Gardens Tower",
+    date: "July 24, 2025",
+    type: "Milestone Achieved",
+    description: "Completed installation of eco-friendly solar panels across all residential units.",
+    progress: 92,
+    image: "https://abu-dhabi.realestate/wp-content/uploads/2021/08/Sky-Gardens-013.jpg", // placeholder until actual image sourced
+    tags: ["Green Energy", "Milestone"]
+  },
+  {
+    id: 3,
+    projectName: "Marina Bay Complex",
+    date: "July 23, 2025",
+    type: "Infrastructure Update",
+    description: "Underground parking facility construction is 65% complete. Beginning electrical installations.",
+    progress: 65,
+    image: "https://jamiechancetravels.com/wp-content/uploads/2022/09/DSCF0435.jpg", // placeholder
+    tags: ["Infrastructure", "In Progress"]
+  },
+  {
+    id: 4,
+    projectName: "Urban Square Mall",
+    date: "July 22, 2025",
+    type: "Design Update",
+    description: "Final interior design plans approved. Starting material procurement for retail spaces.",
+    progress: 71,
+    image: "https://lh3.googleusercontent.com/p/AF1QipPsD3jAihaCXdtvsUnWNbQaiA_j-_bu2SVIYW2e=s680-w680-h510-rw", // placeholder
+    tags: ["Design", "Procurement"]
+  }
+];
 
   return (
     <DashboardLayout userRole={userRole}>
@@ -140,6 +187,69 @@ function DevTrackr() {
               </div>
             </div>
           </motion.div>
+
+          {/* Project Updates Section */}
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold mb-4">Project Updates</h2>
+            {/* Project Updates Feed */}
+            <motion.div 
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8"
+            >
+              {projectUpdates.map((update) => (
+                <motion.div
+                  key={update.id}
+                  initial={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.01 }}
+                  className="card bg-base-100 shadow-lg border border-base-200 overflow-hidden"
+                >
+                  <figure className="relative h-48">
+                    <img 
+                      src={update.image} 
+                      alt={update.projectName}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    <div className="absolute bottom-0 left-0 p-4">
+                      <h3 className="text-xl font-bold text-white mb-1">{update.projectName}</h3>
+                      <div className="flex items-center gap-2 text-white/90">
+                        <RiCalendarLine className="w-4 h-4" />
+                        <span className="text-sm">{update.date}</span>
+                      </div>
+                    </div>
+                  </figure>
+                  <div className="card-body p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="badge badge-primary">{update.type}</span>
+                      {update.tags.map((tag, index) => (
+                        <span key={index} className="badge badge-ghost">{tag}</span>
+                      ))}
+                    </div>
+                    <p className="text-base-content/80 mb-4">{update.description}</p>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-base-content/70">Progress</span>
+                        <span className="font-medium">{update.progress}%</span>
+                      </div>
+                      <div className="w-full bg-base-200 rounded-full h-2">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${update.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="card-actions justify-end mt-4">
+                      <button className="btn btn-ghost btn-sm gap-2">
+                        View Details
+                        <RiArrowRightLine className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
         </div>
       </motion.div>
     </DashboardLayout>

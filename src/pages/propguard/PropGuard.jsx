@@ -1,3 +1,4 @@
+import React from 'react';
 import { motion } from "framer-motion";
 import { useState } from "react";
 import DashboardLayout from "../../layouts/DashboardLayout";
@@ -6,7 +7,13 @@ import {
   RiFileShieldLine,
   RiAlertLine,
   RiFingerprint2Line,
-  RiCheckboxCircleLine
+  RiCheckboxCircleLine,
+  RiUploadCloud2Line,
+  RiSearchEyeLine,
+  RiShieldUserLine,
+  RiFileWarningLine,
+  RiPieChartLine,
+  RiLockPasswordLine
 } from 'react-icons/ri';
 import { useLocation } from 'react-router-dom';
 
@@ -49,6 +56,101 @@ function PropGuard() {
       bgGradient: "from-emerald-500/20 to-emerald-500/5"
     }
   ];
+
+  const securityTools = {
+    "1": { // Fraud Detection
+      title: "Fraud Detection Scanner",
+      description: "AI-powered system to detect potential real estate fraud patterns",
+      icon: RiShieldKeyholeLine,
+      color: "rose",
+      actions: [
+        {
+          icon: RiSearchEyeLine,
+          label: "Scan Property Listing",
+          description: "Check property listing details for suspicious patterns"
+        },
+        {
+          icon: RiShieldUserLine,
+          label: "Verify Seller Identity",
+          description: "Validate seller credentials and history"
+        },
+        {
+          icon: RiFileWarningLine,
+          label: "Price Analysis",
+          description: "Compare with market rates to detect anomalies"
+        }
+      ]
+    },
+    "2": { // Document Verification
+      title: "Document Authentication System",
+      description: "Verify the authenticity of property documents and certificates",
+      icon: RiFileShieldLine,
+      color: "blue",
+      actions: [
+        {
+          icon: RiUploadCloud2Line,
+          label: "Upload Documents",
+          description: "Submit property documents for verification"
+        },
+        {
+          icon: RiFileShieldLine,
+          label: "Certificate Check",
+          description: "Validate property certificates and permits"
+        },
+        {
+          icon: RiLockPasswordLine,
+          label: "Digital Signature",
+          description: "Verify document signatures and seals"
+        }
+      ]
+    },
+    "3": { // Risk Assessment
+      title: "Risk Assessment Tool",
+      description: "Evaluate potential risks in property transactions",
+      icon: RiAlertLine,
+      color: "amber",
+      actions: [
+        {
+          icon: RiPieChartLine,
+          label: "Risk Analysis",
+          description: "Generate comprehensive risk report"
+        },
+        {
+          icon: RiSearchEyeLine,
+          label: "Market Research",
+          description: "Analyze market trends and patterns"
+        },
+        {
+          icon: RiFileWarningLine,
+          label: "History Check",
+          description: "Review property transaction history"
+        }
+      ]
+    },
+    "4": { // Secure Authentication
+      title: "Multi-Factor Authentication",
+      description: "Secure verification process for property transactions",
+      icon: RiFingerprint2Line,
+      color: "emerald",
+      actions: [
+        {
+          icon: RiLockPasswordLine,
+          label: "2FA Setup",
+          description: "Configure two-factor authentication"
+        },
+        {
+          icon: RiShieldUserLine,
+          label: "Identity Verification",
+          description: "Verify user identity through multiple channels"
+        },
+        {
+          icon: RiFileShieldLine,
+          label: "Access Control",
+          description: "Manage authentication permissions"
+        }
+      ]
+    }
+  };
 
   return (
     <DashboardLayout userRole={userRole}>
@@ -113,28 +215,51 @@ function PropGuard() {
             ))}
           </div>
 
-          {/* Security Scanner */}
+          {/* Dynamic Security Tool */}
           <motion.div 
+            key={activeFeature}
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             className="card bg-base-100 shadow-lg border border-base-200"
           >
             <div className="card-body p-6">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-full bg-rose-500/10 flex items-center justify-center">
-                  <RiShieldKeyholeLine className="w-6 h-6 text-rose-500" />
+                <div className={`w-12 h-12 rounded-full bg-${securityTools[String(activeFeature)].color}-500/10`}>
+                  {/* Fix: Use proper JSX syntax for dynamic component rendering */}
+                  {React.createElement(securityTools[String(activeFeature)].icon, {
+                    className: `w-6 h-6 text-${securityTools[String(activeFeature)].color}-500`
+                  })}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold">Property Verification Scanner</h2>
+                  <h2 className="text-xl font-bold">{securityTools[activeFeature].title}</h2>
                   <p className="text-base-content/60">
-                    Upload documents or enter property details for verification
+                    {securityTools[activeFeature].description}
                   </p>
                 </div>
               </div>
-              <div className="bg-base-200/50 rounded-lg p-8 text-center">
-                <button className="btn btn-outline btn-lg gap-2">
-                  <RiFileShieldLine className="w-6 h-6" />
-                  Upload Documents
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {securityTools[activeFeature].actions.map((action, index) => (
+                  <motion.button
+                    key={index}
+                    initial={{ scale: 0.95 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`btn btn-outline btn-lg flex-col h-auto gap-3 p-6 border-2 hover:bg-${securityTools[activeFeature].color}-500/10 hover:border-${securityTools[activeFeature].color}-500`}
+                  >
+                    <action.icon className={`w-8 h-8 text-${securityTools[activeFeature].color}-500`} />
+                    <div className="text-center">
+                      <div className="font-semibold mb-1">{action.label}</div>
+                      <div className="text-xs text-base-content/60">{action.description}</div>
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button className={`btn btn-${securityTools[activeFeature].color} gap-2`}>
+                  <RiShieldKeyholeLine className="w-5 h-5" />
+                  Run Security Check
                 </button>
               </div>
             </div>

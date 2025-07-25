@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useState, useEffect, useLayoutEffect, use } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   RiUserLine, RiLogoutBoxLine, RiNotification3Line,
   RiMessage2Line, RiDashboardLine, RiVerifiedBadgeFill,
@@ -15,10 +15,12 @@ import lightLogo from '/src/assets/logo/logo-for-light.png';
 import darkLogo from '/src/assets/logo/logo-for-dark.png';
 import lightIcon from '/src/assets/logo/icon-light.png';
 import darkIcon from '/src/assets/logo/icon-dark.png';
+import PropTypes from 'prop-types';
 
-function DashboardNavbar({ userRole, isOpen, setIsOpen }) {
+function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
   
   const [isDark, setIsDark] = useState(false);
+  const location = useLocation();
 
   // Theme dark and light toggle function I put it below of the Logo/Icon
   const toggleTheme = () => {
@@ -71,7 +73,8 @@ function DashboardNavbar({ userRole, isOpen, setIsOpen }) {
   };
 
 
-  const currentUser = userData[userRole];
+  // Add validation check
+  const currentUser = userData[userRole] || userData.buyer; // Fallback to buyer if invalid role
 
   const solutions = [
     {
@@ -112,6 +115,51 @@ function DashboardNavbar({ userRole, isOpen, setIsOpen }) {
   const filteredSolutions = solutions.filter(solution => 
     solution.allowedRoles.includes(userRole)
   );
+
+  // Add error handling for the profile section
+  const renderProfileSection = () => {
+    if (!currentUser) return null;
+
+    return (
+      <div className="dropdown dropdown-top w-full">
+        <label tabIndex={0} className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors cursor-pointer">
+          <div className="avatar">
+            <div className="w-8 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
+              <img src={currentUser.avatar} alt={currentUser.name} />
+            </div>
+          </div>
+          {isOpen && (
+            <div className="flex-1">
+              <p className="text-sm font-medium">{currentUser.name}</p>
+              <div className="flex items-center gap-2">
+                <span className="badge badge-primary badge-sm capitalize">{userRole}</span>
+                <span className="text-xs text-base-content/70">• Online</span>
+              </div>
+            </div>
+          )}
+        </label>
+        <ul tabIndex={0} className="dropdown-content menu menu-sm w-64 p-2 shadow-xl bg-base-100 rounded-box border border-base-200">
+          <div className="px-4 py-3 border-b border-base-200">
+            <p className="font-semibold">{currentUser.name}</p>
+            <p className="text-sm text-base-content/70">{currentUser.email}</p>
+          </div>
+          <li>
+            <Link to="/dashboard/settings" className="flex items-center gap-2 py-3">
+              <RiUserLine className="w-4 h-4" />
+              Profile Settings
+            </Link>
+          </li>
+          <div className="divider my-0"></div>
+          <li>
+            <Link to="/" className="flex items-center gap-2 py-3 text-error">
+              <RiLogoutBoxLine className="w-4 h-4" />
+              Logout
+            </Link>
+          </li>
+        </ul>
+      </div>
+    );
+  };
 
   return (
     <motion.div className={`fixed left-0 top-0 h-screen bg-base-100 border-r border-base-200 shadow-lg z-50
@@ -256,8 +304,13 @@ function DashboardNavbar({ userRole, isOpen, setIsOpen }) {
                 </Link>
               </li>
               <li>
-                <Link to="/dashboard/settings" className="flex items-center gap-2 py-3">
-                  <RiSettings4Line className="w-4 h-4" />
+                <Link
+                  to="/settings"
+                  className={`flex items-center gap-3 p-2 hover:bg-base-200 rounded-lg ${
+                    location.pathname === '/settings' ? 'bg-base-200' : ''
+                  }`}
+                >
+                  <RiSettings4Line className="w-5 h-5" />
                   {isOpen && <span>Settings</span>}
                 </Link>
               </li>
@@ -271,47 +324,17 @@ function DashboardNavbar({ userRole, isOpen, setIsOpen }) {
           </div>
 
           {/* Profile - Keep existing profile dropdown code */}
-          <div className="dropdown dropdown-top w-full">
-            <label tabIndex={0} className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors cursor-pointer">
-              <div className="avatar">
-                <div className="w-8 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
-                  <img src={currentUser.avatar} alt={currentUser.name} />
-                </div>
-              </div>
-              {isOpen && (
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{currentUser.name}</p>
-                  <div className="flex items-center gap-2">
-                    <span className="badge badge-primary badge-sm capitalize">{userRole}</span>
-                    <span className="text-xs text-base-content/70">• Online</span>
-                  </div>
-                </div>
-              )}
-            </label>
-            <ul tabIndex={0} className="dropdown-content menu menu-sm w-64 p-2 shadow-xl bg-base-100 rounded-box border border-base-200">
-              <div className="px-4 py-3 border-b border-base-200">
-                <p className="font-semibold">{currentUser.name}</p>
-                <p className="text-sm text-base-content/70">{currentUser.email}</p>
-              </div>
-              <li>
-                <Link to="/dashboard/settings" className="flex items-center gap-2 py-3">
-                  <RiUserLine className="w-4 h-4" />
-                  Profile Settings
-                </Link>
-              </li>
-              <div className="divider my-0"></div>
-              <li>
-                <Link to="/" className="flex items-center gap-2 py-3 text-error">
-                  <RiLogoutBoxLine className="w-4 h-4" />
-                  Logout
-                </Link>
-              </li>
-            </ul>
-          </div>
+          {renderProfileSection()}
         </div>
       </div>
     </motion.div>
   );
 }
+
+DashboardNavbar.propTypes = {
+  userRole: PropTypes.oneOf(['buyer', 'agent', 'developer']),
+  isOpen: PropTypes.bool.isRequired,
+  setIsOpen: PropTypes.func.isRequired
+};
 
 export default DashboardNavbar;
