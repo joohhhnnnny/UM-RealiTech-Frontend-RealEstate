@@ -88,8 +88,8 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
       path: "/dashboard/realtyconnect",
       icon: UserGroupIcon,
       color: "text-purple-500 hover:text-purple-600",
-      tooltip: "Agent System",
-      allowedRoles: ["agent", "developer"]
+      tooltip: "Connect with Agents",
+      allowedRoles: ["buyer", "agent", "developer"]
     },
     {
       title: "BuySmart PH",
