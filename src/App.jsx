@@ -10,6 +10,7 @@ import DeveloperDashboard from './pages/dashboards/DeveloperDashboard';
 import BuySmartPH from './pages/buysmartph/BuySmartPH';
 import RealtyConnect from './pages/realtyconnect/RealtyConnect';
 import PropGuard from './pages/propguard/PropGuard';
+import ChatBot from './pages/propguard/ChatBot.jsx';
 import DevTrackr from './pages/devtrackr/DevTrackr';
 import Notif from './pages/quickactions/Notif';
 import Msg from './pages/quickactions/Msg';
@@ -30,6 +31,7 @@ function App() {
                 <Route path="/dashboard/buysmartph" element={<BuySmartPH />} />
                 <Route path="/dashboard/realtyconnect" element={<RealtyConnect />} />
                 <Route path="/dashboard/propguard" element={<PropGuard />} />
+                <Route path="/dashboard/chatbot" element={<ChatBot />} />
                 <Route path="/dashboard/devtrackr" element={<DevTrackr />} />
                 <Route path="/dashboard/notifications" element={<Notif />} />
                 <Route path="/dashboard/messages" element={<Msg />} />
