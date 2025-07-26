@@ -189,7 +189,7 @@ function DevTrackr() {
           </motion.div>
 
           {/* Project Updates Section */}
-          <div className="mb-12">
+          <div className="my-12">
             <h2 className="text-2xl font-bold mb-4">Project Updates</h2>
             {/* Project Updates Feed */}
             <motion.div 

@@ -28,6 +28,7 @@ function ChatbotIcon() {
                             </div>
                         </div>
 
+
                         {/* Chat Messages */}
                         <div className="h-80 overflow-y-auto p-4 bg-gray-50">
                             <div className="space-y-4">
@@ -42,7 +43,7 @@ function ChatbotIcon() {
                         </div>
 
                         {/* Chat Input */}
-                        <div className="p-4 border-t border-gray-200">
+                        <div className="p-4 border-t border-gray-200 ">
                             <div className="flex items-center gap-2">
                                 <input
                                     type="text"
