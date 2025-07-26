@@ -65,7 +65,8 @@ function Home(){
                         Revolutionizing Real Estate
                     </h2>
                     <p className="text-lg md:text-xl max-w-2xl mx-auto text-base-content/70">
-                        Tech-driven solutions to simplify property management and enhance the home buying process in the Philippines
+                        Protecting buyers. Empowering agents. Regulating developers.
+ Together, we make every real estate journey transparent, fair, and safe.
                     </p>
                 </div>
 

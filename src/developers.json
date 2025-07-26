@@ -1,0 +1,37 @@
+[
+  {
+    "id": "33fb650e-bfa2-4060-a6d0-20ba1e9afb05",
+    "name": "Metro Builders Inc.",
+    "email": "contact@metrobuildersinc..com",
+    "phone": "+63 2 472b5fd",
+    "website": "https://www.metrobuildersinc..com"
+  },
+  {
+    "id": "7715ffca-da8d-4ac9-85db-2aee44f836f4",
+    "name": "Sunrise Developers",
+    "email": "contact@sunrisedevelopers.com",
+    "phone": "+63 2 f143ab7",
+    "website": "https://www.sunrisedevelopers.com"
+  },
+  {
+    "id": "c50e8d2d-541c-4ab1-85a8-c04d0c7670a7",
+    "name": "Prime Estates Co.",
+    "email": "contact@primeestatesco..com",
+    "phone": "+63 2 9ef3b6c",
+    "website": "https://www.primeestatesco..com"
+  },
+  {
+    "id": "967a2610-8ead-48ec-a2c9-9c888be48fca",
+    "name": "Skyline Ventures",
+    "email": "contact@skylineventures.com",
+    "phone": "+63 2 2b79fdc",
+    "website": "https://www.skylineventures.com"
+  },
+  {
+    "id": "a14e8e14-bcec-433c-bc23-94338c016ffe",
+    "name": "Greenfield Holdings",
+    "email": "contact@greenfieldholdings.com",
+    "phone": "+63 2 7e5f355",
+    "website": "https://www.greenfieldholdings.com"
+  }
+]

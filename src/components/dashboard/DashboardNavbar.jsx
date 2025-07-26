@@ -13,8 +13,6 @@ import { BuildingOffice2Icon, UserGroupIcon, SparklesIcon, ShieldCheckIcon } fro
 import { MoonIcon, SunIcon } from '@heroicons/react/24/outline';
 import lightLogo from '/src/assets/logo/logo-for-light.png';
 import darkLogo from '/src/assets/logo/logo-for-dark.png';
-import lightIcon from '/src/assets/logo/icon-light.png';
-import darkIcon from '/src/assets/logo/icon-dark.png';
 import PropTypes from 'prop-types';
 
 function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
@@ -169,10 +167,11 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
         {/* TOP - Logo & Toggle */}
         <div className="p-4 border-b border-base-200">
           <div className="flex flex-col space-y-4">
-            {/* Logo */}
-            <div className="flex justify-between items-center">
-              {isOpen ? (
-                <Link to="/" className="flex-1">
+            {/* Logo and Toggle Button Container */}
+            <div className="flex items-center">
+              {/* Only show logo when sidebar is open */}
+              {isOpen && (
+                <Link to="/" className="flex-1 mr-2">
                   <motion.img 
                     src={isDark ? darkLogo : lightLogo}
                     alt="RealiTech Logo" 
@@ -180,22 +179,12 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
                     whileHover={{ scale: 1.05 }}
                   />
                 </Link>
-              ) : (
-                <Link to="/" className="flex-1">
-                  <motion.img 
-                    src={isDark ? darkIcon : lightIcon}
-                    alt="RealiTech Icon" 
-                    className="w-10 h-10 object-contain"
-                    whileHover={{ scale: 1.1 }}
-                  />
-                </Link>
               )}
 
-
-              {/* Menu Toggle Button */}
+              {/* Menu Toggle Button - centered when closed */}
               <button 
                 onClick={handleSidebarToggle}
-                className="btn btn-ghost btn-sm btn-circle"
+                className={`btn btn-ghost btn-sm btn-circle ${!isOpen ? 'mx-auto' : ''}`}
               >
                 {isOpen ? (
                   <RiMenuFoldLine className="w-5 h-5" />
