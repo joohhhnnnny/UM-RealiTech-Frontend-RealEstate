@@ -4,7 +4,8 @@ import {
   RiBuildingLine,
   RiHome4Line,
   RiTimeLine,
-  RiTeamLine
+  RiTeamLine,
+  RiAlertLine
 } from 'react-icons/ri';
 
 function DeveloperDashboard() {

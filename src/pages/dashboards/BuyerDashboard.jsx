@@ -15,11 +15,11 @@ function BuyerDashboard() {
   // Dummy data for statistics
   const stats = [
     {
-      title: "Active Listings",
-      value: "2,847",
-      subtitle: "Properties available",
+      title: "Active Projects",
+      value: "124",
+      subtitle: "Ongoing developments",
       icon: RiHomeSmileLine,
-      trend: "+12% from last month",
+      trend: "+8% from last month",
       color: "text-blue-500",
       bgGradient: "from-blue-500/20 to-blue-500/5"
     },
@@ -52,14 +52,14 @@ function BuyerDashboard() {
     }
   ];
 
-  const myProperties = [
+  const myProjects = [
     {
       id: 1,
       title: "Modern Townhouse in Makati",
       price: "₱8,500,000",
       location: "Makati City, Metro Manila",
       image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2075&q=80",
-      status: "processing",
+      status: "In Progress",
       progress: 65,
       steps: [
         { title: "Initial Payment", status: "completed", date: "July 15, 2025" },
@@ -157,26 +157,34 @@ function BuyerDashboard() {
           </div>
 
 
-          {/* My Properties Section */}
+          {/* My Projects Section */}
           <div className="mt-8">
-            <h2 className="text-2xl font-bold mb-6">My Properties</h2>
-            {myProperties.map((property) => (
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Property Listings</h2>
+              <button 
+                onClick={() => {/* Add your create listing handler */}} 
+                className="btn btn-primary"
+              >
+                Create Listing
+              </button>
+            </div>
+            {myProjects.map((project) => (
               <motion.div
-                key={property.id}
+                key={project.id}
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 className="card bg-base-100 shadow-lg overflow-hidden"
               >
                 <div className="flex flex-col lg:flex-row">
-                  {/* Property Image */}
+                  {/* Project Image */}
                   <div className="lg:w-1/3 h-[200px] lg:h-auto relative">
                     <img 
-                      src={property.image} 
-                      alt={property.title}
+                      src={project.image} 
+                      alt={project.title}
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute top-4 left-4">
-                      <span className="badge badge-primary">In Progress</span>
+                      <span className="badge badge-primary">{project.status}</span>
                     </div>
                   </div>
 
@@ -184,20 +192,20 @@ function BuyerDashboard() {
                   <div className="lg:w-2/3 p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h3 className="text-xl font-bold">{property.title}</h3>
-                        <p className="text-base-content/60">{property.location}</p>
-                        <p className="text-lg font-semibold text-primary mt-2">{property.price}</p>
+                        <h3 className="text-xl font-bold">{project.title}</h3>
+                        <p className="text-base-content/60">{project.location}</p>
+                        <p className="text-lg font-semibold text-primary mt-2">{project.price}</p>
                       </div>
                       <div className="text-right">
                         <div className="flex items-center gap-2">
                           <img 
-                            src={property.agent.avatar} 
-                            alt={property.agent.name}
+                            src={project.agent.avatar} 
+                            alt={project.agent.name}
                             className="w-8 h-8 rounded-full"
                           />
                           <div>
-                            <p className="text-sm font-medium">{property.agent.name}</p>
-                            <p className="text-xs text-base-content/60">Agent • ⭐ {property.agent.rating}</p>
+                            <p className="text-sm font-medium">{project.agent.name}</p>
+                            <p className="text-xs text-base-content/60">Agent • ⭐ {project.agent.rating}</p>
                           </div>
                         </div>
                       </div>
@@ -207,13 +215,13 @@ function BuyerDashboard() {
                     <div className="w-full bg-base-200 rounded-full h-2 mb-4">
                       <div 
                         className="bg-primary h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${property.progress}%` }}
+                        style={{ width: `${project.progress}%` }}
                       />
                     </div>
 
                     {/* Progress Steps */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {property.steps.map((step, index) => (
+                      {project.steps.map((step, index) => (
                         <div 
                           key={index}
                           className="flex items-start gap-3"

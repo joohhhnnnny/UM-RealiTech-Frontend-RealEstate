@@ -3,6 +3,12 @@ import { BuildingOffice2Icon, UserGroupIcon, SparklesIcon, ShieldCheckIcon } fro
 function Solutions() {
     const solutions = [
         {
+            title: "BuySmart PH",
+            description: "AI-Powered Home Buying Process",
+            icon: SparklesIcon,
+            bgColor: "bg-gradient-to-br from-teal-500 to-teal-600",
+        },
+        {
             title: "DevTrackr",
             description: "Transparency Platform for Developers",
             icon: BuildingOffice2Icon,
@@ -15,12 +21,6 @@ function Solutions() {
             bgColor: "bg-gradient-to-br from-purple-500 to-purple-600",
         },
         {
-            title: "BuySmart PH",
-            description: "AI-Powered Home Buying Process",
-            icon: SparklesIcon,
-            bgColor: "bg-gradient-to-br from-teal-500 to-teal-600",
-        },
-        {
             title: "PropGuard",
             description: "Property Fraud Detection and Verification Tool",
             icon: ShieldCheckIcon,
@@ -30,7 +30,7 @@ function Solutions() {
 
 
     return (
-        <section id="solutions" className="py-16 transition-colors duration-300 bg-base-100">
+        <section id="solutions" className="scroll-mt-28 pb-16 transition-colors duration-300 bg-base-100">
             <div className="mb-16 text-center">
                 <h2 className="text-4xl font-bold mb-4 text-base-content">
                     Streamline Your Real Estate Experience

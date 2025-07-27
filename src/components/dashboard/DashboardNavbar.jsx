@@ -13,8 +13,6 @@ import { BuildingOffice2Icon, UserGroupIcon, SparklesIcon, ShieldCheckIcon } fro
 import { MoonIcon, SunIcon } from '@heroicons/react/24/outline';
 import lightLogo from '/src/assets/logo/logo-for-light.png';
 import darkLogo from '/src/assets/logo/logo-for-dark.png';
-import lightIcon from '/src/assets/logo/icon-light.png';
-import darkIcon from '/src/assets/logo/icon-dark.png';
 import PropTypes from 'prop-types';
 
 function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
@@ -77,12 +75,22 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
   const currentUser = userData[userRole] || userData.buyer; // Fallback to buyer if invalid role
 
   const solutions = [
+
+    {
+      title: "BuySmart PH",
+      path: "/dashboard/buysmartph",
+      icon: SparklesIcon,
+      color: "text-teal-500 hover:text-teal-600",
+      tooltip: "BuySmart PH",
+      allowedRoles: ["buyer", "agent", "developer"]
+    },
     {
       title: "DevTrackr",
       path: "/dashboard/devtrackr",
+      state: { userRole: userRole },
       icon: BuildingOffice2Icon,
       color: "text-blue-500 hover:text-blue-600",
-      tooltip: "Transparency Platform",
+      tooltip: "DevTrackr",
       allowedRoles: ["buyer", "agent", "developer"]
     },
     {
@@ -90,23 +98,16 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
       path: "/dashboard/realtyconnect",
       icon: UserGroupIcon,
       color: "text-purple-500 hover:text-purple-600",
-      tooltip: "Agent System",
-      allowedRoles: ["agent", "developer"]
-    },
-    {
-      title: "BuySmart PH",
-      path: "/dashboard/buysmartph",
-      icon: SparklesIcon,
-      color: "text-teal-500 hover:text-teal-600",
-      tooltip: "AI Property Guide",
+      tooltip: "RealtyConnect",
       allowedRoles: ["buyer", "agent", "developer"]
     },
+   
     {
       title: "PropGuard",
       path: "/dashboard/propguard",
       icon: ShieldCheckIcon,
       color: "text-rose-500 hover:text-rose-600",
-      tooltip: "Fraud Detection",
+      tooltip: "PropGuard",
       allowedRoles: ["buyer", "agent", "developer"]
     }
   ];
@@ -122,7 +123,13 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
 
     return (
       <div className="dropdown dropdown-top w-full">
-        <label tabIndex={0} className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors cursor-pointer">
+        <label 
+          tabIndex={0} 
+          className={`w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors cursor-pointer ${
+            !isOpen ? 'tooltip tooltip-right font-semibold' : ''
+          }`}
+          data-tip={!isOpen ? `${currentUser.name} (${userRole})` : ''}
+        >
           <div className="avatar">
             <div className="w-8 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
               <img src={currentUser.avatar} alt={currentUser.name} />
@@ -163,16 +170,17 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
 
   return (
     <motion.div className={`fixed left-0 top-0 h-screen bg-base-100 border-r border-base-200 shadow-lg z-50
-      ${isOpen ? 'w-64' : 'w-20'} transition-all duration-300`}>
+  ${isOpen ? 'w-64' : 'w-20'} transition-all duration-300 overflow-visible`} >
       <div className="flex flex-col h-full">
 
         {/* TOP - Logo & Toggle */}
         <div className="p-4 border-b border-base-200">
           <div className="flex flex-col space-y-4">
-            {/* Logo */}
-            <div className="flex justify-between items-center">
-              {isOpen ? (
-                <Link to="/" className="flex-1">
+            {/* Logo and Toggle Button Container */}
+            <div className="flex items-center">
+              {/* Only show logo when sidebar is open */}
+              {isOpen && (
+                <Link to="/" className="flex-1 mr-2">
                   <motion.img 
                     src={isDark ? darkLogo : lightLogo}
                     alt="RealiTech Logo" 
@@ -180,22 +188,14 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
                     whileHover={{ scale: 1.05 }}
                   />
                 </Link>
-              ) : (
-                <Link to="/" className="flex-1">
-                  <motion.img 
-                    src={isDark ? darkIcon : lightIcon}
-                    alt="RealiTech Icon" 
-                    className="w-10 h-10 object-contain"
-                    whileHover={{ scale: 1.1 }}
-                  />
-                </Link>
               )}
 
-
-              {/* Menu Toggle Button */}
+              {/* Menu Toggle Button - centered when closed */}
               <button 
                 onClick={handleSidebarToggle}
-                className="btn btn-ghost btn-sm btn-circle"
+                className={`btn btn-ghost btn-sm btn-circle ${!isOpen ? 'mx-auto tooltip tooltip-right' : ''}`}
+                data-tip={!isOpen ? (isOpen ? 'Collapse Sidebar' : 'Expand Sidebar') : ''}
+                
               >
                 {isOpen ? (
                   <RiMenuFoldLine className="w-5 h-5" />
@@ -211,10 +211,11 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
             <div className="flex justify-center">
               <button
                 onClick={toggleTheme}
-                className="btn btn-ghost btn-sm gap-2 w-full"
+                className="btn btn-ghost btn-sm gap-2 w-full tooltip tooltip-right"
                 data-tip={!isOpen ? (isDark ? 'Light Mode' : 'Dark Mode') : ''}
                 data-tip-position="right"
               >
+
                 {isDark ? (
                   <>
                     <SunIcon className="w-5 h-5 text-amber-500" />
@@ -226,6 +227,7 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
                     {isOpen && <span>Dark Mode</span>}
                   </>
                 )}
+
               </button>
             </div>
           </div>
@@ -234,16 +236,17 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
 
 
         {/* CENTER - Navigation */}
-        <div className="flex-1 overflow-y-auto py-4">
-          <div className="px-4 space-y-2">
+        <div className="flex-1 overflow-visible py-4 relative z-[60]">
+          <div className="px-4 space-y-2 overflow-visible">
             {filteredSolutions.map((solution) => (
               <Link
                 key={solution.title}
                 to={solution.path}
                 state={{ userRole }}
-                className="group flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors"
+                className={`group flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors ${
+                  !isOpen ? 'tooltip tooltip-right font-semibold' : ''
+                }`}
                 data-tip={!isOpen ? solution.tooltip : ''}
-                data-tip-position="right"
               >
                 <solution.icon className={`w-6 h-6 ${solution.color}`} />
                 {isOpen && (
@@ -258,22 +261,26 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
 
 
 
+
+
         {/* BOTTOM - User Actions */}
         <div className="p-4 border-t border-base-200 space-y-2">
           {/* Dashboard Quick Access */}
           <Link 
             to={`/dashboard/${userRole}`} 
-            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors"
+            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors tooltip tooltip-right font-semibold"
+            data-tip={!isOpen ? 'Dashboard': ''}
           >
             <RiDashboardLine className="w-6 h-6 text-primary" />
             {isOpen && <span className="text-sm font-medium">Dashboard</span>}
           </Link>
 
           {/* Actions Dropdown */}
-          <div className="dropdown dropdown-top w-full">
+          <div className="dropdown dropdown-top w-full overflow-visible">
             <label 
               tabIndex={0} 
-              className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors cursor-pointer"
+              className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors cursor-pointer tooltip tooltip-right font-semibold"
+              data-tip={!isOpen ? 'Quick Actions' : ''}
             >
               <RiMoreLine className="w-6 h-6" />
               {isOpen && <span className="text-sm font-medium">Quick Actions</span>}
