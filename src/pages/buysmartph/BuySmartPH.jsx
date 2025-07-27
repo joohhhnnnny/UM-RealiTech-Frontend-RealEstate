@@ -25,6 +25,7 @@ function BuySmartPH() {
     <DashboardLayout userRole={userRole}>
       <div className="min-h-screen bg-base-100">
         <div className="container mx-auto max-w-[1400px] px-4 py-8">
+
           {/* Hero Section */}
           <div className="card bg-gradient-to-r from-teal-500/90 to-teal-600 shadow-lg overflow-hidden backdrop-blur-xl mb-8">
             <div className="card-body p-8">
@@ -40,6 +41,7 @@ function BuySmartPH() {
 
           {/* Dynamic Component */}
           {renderContent()}
+          
         </div>
       </div>
     </DashboardLayout>

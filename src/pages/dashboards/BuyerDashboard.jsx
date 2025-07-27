@@ -5,7 +5,8 @@ import {
   RiEarthLine, 
   RiBankLine, 
   RiHome6Line,  
-  RiTimeLine, 
+  RiTimeLine,
+  RiAddLine, 
   RiCheckboxCircleLine, 
   RiErrorWarningLine 
 } from 'react-icons/ri';
@@ -160,11 +161,12 @@ function BuyerDashboard() {
           {/* My Projects Section */}
           <div className="mt-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Property Listings</h2>
+              <h2 className="text-2xl font-bold">My Properties</h2>
               <button 
                 onClick={() => {/* Add your create listing handler */}} 
                 className="btn btn-primary"
               >
+                
                 Create Listing
               </button>
             </div>

@@ -24,7 +24,37 @@ function AgentDevTrackr() {
       image: "https://pueblodeoro.com/wp-content/uploads/2017/12/Sakura-1.jpg",
       nextAction: "Schedule site visit",
       commission: "₱480,000",
-      commissionStatus: "50% paid"
+      commissionStatus: "50% paid",
+      developerUpdates: [
+        {
+          date: "July 25, 2025",
+          type: "construction",
+          message: "Building facade completion at 85%",
+          impact: "On schedule"
+        },
+        {
+          date: "July 23, 2025",
+          type: "amenity",
+          message: "Swimming pool tiling completed",
+          impact: "Ahead of schedule"
+        }
+      ],
+      buyer: {
+        name: "Maria Rodriguez",
+        email: "maria.r@email.com",
+        purchaseDate: "June 15, 2025",
+        paymentStatus: "Current",
+        documents: [
+          { name: "Reservation Agreement", status: "verified" },
+          { name: "Proof of Income", status: "verified" },
+          { name: "Bank Loan Application", status: "in-process" }
+        ],
+        timeline: [
+          { date: "June 15, 2025", event: "Unit Reserved" },
+          { date: "June 30, 2025", event: "Down Payment Completed" },
+          { date: "July 15, 2025", event: "Bank Loan Application Submitted" }
+        ]
+      }
     },
     {
       id: 2,
