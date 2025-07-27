@@ -3,26 +3,37 @@
 
 import React, { useState, useEffect } from 'react';
 import { FaUserTie, FaStar } from 'react-icons/fa';
+import agentsData from '../../agents.json';
 
 function BuyerRC() {
   const [agents, setAgents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
 
-  // Simulated agents data - replace with actual API call
   useEffect(() => {
-    const mockAgents = [
-      {
-        id: 1,
-        name: 'Juan Santos',
-        specialization: 'Residential',
-        rating: 4.8,
-        deals: 24,
-        image: '/path/to/agent1.jpg'
-      },
-      // Add more mock agents as needed
-    ];
-    setAgents(mockAgents);
+    // Transform the agents data to include additional properties
+    const enhancedAgents = agentsData.map(agent => {
+      // Assign specific images based on agent names
+      let image;
+      if (agent.name.toLowerCase().includes('jm')) {
+        image = '/src/assets/jm.jpg';
+      } else if (agent.name.toLowerCase().includes('robert')) {
+        image = '/src/assets/robert.jpg';
+      } else if (agent.id.startsWith('7')) {
+        image = '/src/assets/benedict.jpg';
+      } else {
+        image = '/src/assets/aaron.jpg';
+      }
+
+      return {
+        ...agent,
+        specialization: ['Residential', 'Commercial', 'Industrial'][Math.floor(Math.random() * 3)],
+        rating: (Math.random() * (5 - 4) + 4).toFixed(1),
+        deals: Math.floor(Math.random() * (50 - 10) + 10),
+        image
+      };
+    });
+    setAgents(enhancedAgents);
   }, []);
 
   const renderStars = (rating) => {
@@ -59,7 +70,14 @@ function BuyerRC() {
 
       {/* Agents Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {agents.map((agent) => (
+        {agents
+          .filter(agent => 
+            (selectedFilter === 'all' || agent.specialization.toLowerCase() === selectedFilter) &&
+            (agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+             agent.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+             agent.agency.toLowerCase().includes(searchQuery.toLowerCase()))
+          )
+          .map((agent) => (
           <div key={agent.id} className="card bg-base-100 shadow-xl">
             <div className="card-body">
               <div className="flex items-center gap-4">
