@@ -155,14 +155,6 @@ function AgentDashboard() {
                   Manage and track your property listings
                 </p>
               </div>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="btn btn-primary gap-2 px-6"
-              >
-                <RiAddLine className="w-5 h-5" />
-                Create Listing
-              </motion.button>
             </div>
 
             {/* Active Listings */}

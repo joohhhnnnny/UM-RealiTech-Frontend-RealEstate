@@ -319,115 +319,153 @@ function MyListing() {
       {/* Add Listing Modal */}
       {showAddListingModal && (
         <div className="modal modal-open">
-          <div className="modal-box">
-            <h3 className="font-bold text-lg mb-4">Add New Listing</h3>
-            <form onSubmit={handleAddListing} className="space-y-4">
-              <div className="form-control">
-                <label className="label">Title</label>
+          <div className="modal-box max-w-2xl">
+            <h3 className="font-bold text-xl mb-6">Add New Listing</h3>
+            <form onSubmit={handleAddListing} className="space-y-6">
+              {/* Title Input */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text font-medium">Title</span>
+                </label>
                 <input
                   type="text"
-                  className="input input-bordered"
+                  className="input input-bordered w-full mt-1"
                   value={newListing.title}
                   onChange={e => setNewListing({...newListing, title: e.target.value})}
+                  placeholder="Enter property title"
                   required
                 />
               </div>
-              <div className="form-control">
-                <label className="label">Price</label>
-                <input
-                  type="text"
-                  className="input input-bordered"
-                  value={newListing.price}
-                  onChange={e => setNewListing({...newListing, price: e.target.value})}
-                  required
-                />
+
+              {/* Price Input */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text font-medium">Price</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/70">₱</span>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full pl-7 mt-1"
+                    value={newListing.price}
+                    onChange={e => setNewListing({...newListing, price: e.target.value})}
+                    placeholder="Enter property price"
+                    required
+                  />
+                </div>
               </div>
-              <div className="form-control">
-                <label className="label">Location</label>
+
+              {/* Location Input */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text font-medium">Location</span>
+                </label>
                 <input
                   type="text"
-                  className="input input-bordered"
+                  className="input input-bordered w-full mt-1"
                   value={newListing.location}
                   onChange={e => setNewListing({...newListing, location: e.target.value})}
+                  placeholder="Enter property location"
                   required
                 />
               </div>
-              <div className="form-control">
-                <label className="label">Type</label>
+
+              {/* Type Select */}
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text font-medium">Property Type</span>
+                </label>
                 <select
-                  className="select select-bordered"
+                  className="select select-bordered w-full mt-1"
                   value={newListing.type}
                   onChange={e => setNewListing({...newListing, type: e.target.value})}
                   required
                 >
-                  <option value="">Select Type</option>
+                  <option value="">Select property type</option>
                   <option value="House">House</option>
                   <option value="Townhouse">Townhouse</option>
                   <option value="Condo">Condo</option>
                   <option value="Lot">Lot</option>
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="form-control">
-                  <label className="label">Bedrooms</label>
+
+              {/* Rest of the form remains the same but with updated spacing */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text font-medium">Bedrooms</span>
+                  </label>
                   <input
                     type="number"
-                    className="input input-bordered"
+                    className="input input-bordered w-full mt-1"
                     value={newListing.bedrooms}
                     onChange={e => setNewListing({...newListing, bedrooms: e.target.value})}
+                    placeholder="0"
                     required
                   />
                 </div>
-                <div className="form-control">
-                  <label className="label">Bathrooms</label>
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text font-medium">Bathrooms</span>
+                  </label>
                   <input
                     type="number"
-                    className="input input-bordered"
+                    className="input input-bordered w-full mt-1"
                     value={newListing.bathrooms}
                     onChange={e => setNewListing({...newListing, bathrooms: e.target.value})}
+                    placeholder="0"
                     required
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="form-control">
-                  <label className="label">Floor Area</label>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text font-medium">Floor Area</span>
+                  </label>
                   <input
                     type="text"
-                    className="input input-bordered"
+                    className="input input-bordered w-full mt-1"
                     placeholder="e.g. 120 sqm"
                     value={newListing.floorArea}
                     onChange={e => setNewListing({...newListing, floorArea: e.target.value})}
                   />
                 </div>
-                <div className="form-control">
-                  <label className="label">Lot Area</label>
+                <div className="form-control w-full">
+                  <label className="label">
+                    <span className="label-text font-medium">Lot Area</span>
+                  </label>
                   <input
                     type="text"
-                    className="input input-bordered"
+                    className="input input-bordered w-full mt-1"
                     placeholder="e.g. 100 sqm"
                     value={newListing.lotArea}
                     onChange={e => setNewListing({...newListing, lotArea: e.target.value})}
                   />
                 </div>
               </div>
-              <div className="form-control">
-                <label className="label">Property Image</label>
+
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text font-medium">Property Image</span>
+                </label>
                 <input
                   type="file"
-                  className="file-input file-input-bordered w-full"
+                  className="file-input file-input-bordered w-full mt-1"
                   accept="image/*"
                   onChange={e => setNewListing({...newListing, imageFile: e.target.files[0]})}
                 />
                 <label className="label">
-                  <span className="label-text-alt">Upload property image (JPG, PNG, etc.)</span>
+                  <span className="label-text-alt text-base-content/70">Upload property image (JPG, PNG, etc.)</span>
                 </label>
               </div>
-              <div className="modal-action">
+
+              <div className="modal-action pt-4">
                 <button type="submit" className="btn btn-primary">Add Listing</button>
                 <button 
                   type="button" 
-                  className="btn"
+                  className="btn btn-ghost"
                   onClick={() => setShowAddListingModal(false)}
                 >
                   Cancel

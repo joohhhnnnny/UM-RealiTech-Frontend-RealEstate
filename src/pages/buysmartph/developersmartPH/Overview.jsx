@@ -108,41 +108,6 @@ function Overview({ projectStats }) {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <button 
-          className="btn btn-primary gap-2 h-16"
-          onClick={() => setShowModal(true)}
-        >
-          <RiBuildingLine className="w-5 h-5" />
-          <div className="text-left">
-            <div className="font-semibold">New Project</div>
-            <div className="text-xs opacity-70">Create project</div>
-          </div>
-        </button>
-        <button className="btn btn-outline gap-2 h-16">
-          <RiBarChartBoxLine className="w-5 h-5" />
-          <div className="text-left">
-            <div className="font-semibold">Sales Report</div>
-            <div className="text-xs opacity-70">View analytics</div>
-          </div>
-        </button>
-        <button className="btn btn-outline gap-2 h-16">
-          <RiGroupLine className="w-5 h-5" />
-          <div className="text-left">
-            <div className="font-semibold">Buyer Insights</div>
-            <div className="text-xs opacity-70">Market analysis</div>
-          </div>
-        </button>
-        <button className="btn btn-outline gap-2 h-16">
-          <RiSettings4Line className="w-5 h-5" />
-          <div className="text-left">
-            <div className="font-semibold">Project Settings</div>
-            <div className="text-xs opacity-70">Manage projects</div>
-          </div>
-        </button>
-      </div>
-
       {/* Recent Project Activities */}
       <div className="card bg-base-100 shadow-lg border border-base-200">
         <div className="card-body">
