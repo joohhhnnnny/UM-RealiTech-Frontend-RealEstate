@@ -1,12 +1,77 @@
+import { useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   RiBuildingLine, 
   RiGroupLine, 
   RiBarChartBoxLine,
   RiSettings4Line,
-  RiEyeLine
+  RiEyeLine,
+  RiAddLine,
+  RiCloseLine,
+  RiImageAddLine
 } from 'react-icons/ri';
 
 function Overview({ projectStats }) {
+  const [showModal, setShowModal] = useState(false);
+  const [newProject, setNewProject] = useState({
+    name: "",
+    location: "",
+    totalUnits: "",
+    avgPrice: "",
+    status: "Active",
+    completion: 0,
+    image: null,
+    previewImage: "",
+    description: "",
+    startDate: "",
+    expectedCompletion: ""
+  });
+  const fileInputRef = useRef(null);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewProject(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewProject(prev => ({
+          ...prev,
+          image: file,
+          previewImage: reader.result
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleCreateProject = (e) => {
+    e.preventDefault();
+    // In a real app, you would handle the project creation here
+    console.log("Creating project:", newProject);
+    setShowModal(false);
+    setNewProject({
+      name: "",
+      location: "",
+      totalUnits: "",
+      avgPrice: "",
+      status: "Active",
+      completion: 0,
+      image: null,
+      previewImage: "",
+      description: "",
+      startDate: "",
+      expectedCompletion: ""
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Developer Performance Stats */}
@@ -45,7 +110,10 @@ function Overview({ projectStats }) {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <button className="btn btn-primary gap-2 h-16">
+        <button 
+          className="btn btn-primary gap-2 h-16"
+          onClick={() => setShowModal(true)}
+        >
           <RiBuildingLine className="w-5 h-5" />
           <div className="text-left">
             <div className="font-semibold">New Project</div>
@@ -107,6 +175,213 @@ function Overview({ projectStats }) {
           </div>
         </div>
       </div>
+
+      {/* New Project Modal */}
+      <AnimatePresence>
+        {showModal && (
+          <div className="modal modal-open">
+            <div className="modal-box max-w-4xl relative">
+              <button 
+                onClick={() => setShowModal(false)}
+                className="btn btn-sm btn-circle absolute right-2 top-2"
+              >
+                <RiCloseLine className="w-5 h-5" />
+              </button>
+              
+              <h2 className="text-xl font-bold mb-4">Create New Project</h2>
+              
+              <form onSubmit={handleCreateProject} className="space-y-4">
+                {/* Image Upload Section */}
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">Project Image</span>
+                  </label>
+                  <div className="flex flex-col items-center gap-2">
+                    <div 
+                      className="w-full h-48 bg-base-200 rounded-box flex items-center justify-center cursor-pointer overflow-hidden"
+                      onClick={triggerFileInput}
+                    >
+                      {newProject.previewImage ? (
+                        <img 
+                          src={newProject.previewImage} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center text-base-content/50">
+                          <RiImageAddLine className="w-12 h-12 mb-2" />
+                          <span>Click to upload image</span>
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageChange}
+                      className="hidden"
+                      accept="image/*"
+                    />
+                    <button 
+                      type="button"
+                      onClick={triggerFileInput}
+                      className="btn btn-sm btn-outline"
+                    >
+                      {newProject.previewImage ? "Change Image" : "Select Image"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text">Project Name *</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={newProject.name}
+                      onChange={handleInputChange}
+                      className="input input-bordered w-full"
+                      placeholder="Enter project name"
+                      required
+                    />
+                  </div>
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text">Location *</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="location"
+                      value={newProject.location}
+                      onChange={handleInputChange}
+                      className="input input-bordered w-full"
+                      placeholder="Enter location"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">Description</span>
+                  </label>
+                  <textarea
+                    name="description"
+                    value={newProject.description}
+                    onChange={handleInputChange}
+                    className="textarea textarea-bordered w-full"
+                    placeholder="Project description"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text">Start Date</span>
+                    </label>
+                    <input
+                      type="date"
+                      name="startDate"
+                      value={newProject.startDate}
+                      onChange={handleInputChange}
+                      className="input input-bordered w-full"
+                    />
+                  </div>
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text">Expected Completion</span>
+                    </label>
+                    <input
+                      type="date"
+                      name="expectedCompletion"
+                      value={newProject.expectedCompletion}
+                      onChange={handleInputChange}
+                      className="input input-bordered w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text">Total Units *</span>
+                    </label>
+                    <input
+                      type="number"
+                      name="totalUnits"
+                      value={newProject.totalUnits}
+                      onChange={handleInputChange}
+                      className="input input-bordered w-full"
+                      required
+                      min="1"
+                    />
+                  </div>
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text">Avg Price *</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="avgPrice"
+                      value={newProject.avgPrice}
+                      onChange={handleInputChange}
+                      className="input input-bordered w-full"
+                      required
+                      placeholder="₱0.0M"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text">Status</span>
+                    </label>
+                    <select
+                      name="status"
+                      value={newProject.status}
+                      onChange={handleInputChange}
+                      className="select select-bordered w-full"
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Pre-selling">Pre-selling</option>
+                    </select>
+                  </div>
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text">Progress (%)</span>
+                    </label>
+                    <input
+                      type="number"
+                      name="completion"
+                      value={newProject.completion}
+                      onChange={handleInputChange}
+                      className="input input-bordered w-full"
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                </div>
+
+                <div className="modal-action">
+                  <button type="submit" className="btn btn-primary">
+                    <RiBuildingLine className="w-4 h-4 mr-2" />
+                    Create Project
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn"
+                    onClick={() => setShowModal(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
