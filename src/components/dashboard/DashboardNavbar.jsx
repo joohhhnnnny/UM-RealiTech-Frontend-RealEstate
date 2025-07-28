@@ -238,24 +238,37 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
         {/* CENTER - Navigation */}
         <div className="flex-1 overflow-visible py-4 relative z-[60]">
           <div className="px-4 space-y-2 overflow-visible">
-            {filteredSolutions.map((solution) => (
-              <Link
-                key={solution.title}
-                to={solution.path}
-                state={{ userRole }}
-                className={`group flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors ${
-                  !isOpen ? 'tooltip tooltip-right font-semibold' : ''
-                }`}
-                data-tip={!isOpen ? solution.tooltip : ''}
-              >
-                <solution.icon className={`w-6 h-6 ${solution.color}`} />
-                {isOpen && (
-                  <span className="text-sm font-medium text-base-content/70 group-hover:text-base-content">
-                    {solution.title}
-                  </span>
-                )}
-              </Link>
-            ))}
+            {filteredSolutions.map((solution) => {
+              const isActive = location.pathname === solution.path;
+              return (
+                <Link
+                  key={solution.title}
+                  to={solution.path}
+                  state={{ userRole }}
+                  className={`group flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                    isActive 
+                      ? 'bg-primary/10 text-primary font-semibold border-l-4 border-primary' 
+                      : 'hover:bg-base-200'
+                  } ${
+                    !isOpen ? 'tooltip tooltip-right font-semibold' : ''
+                  }`}
+                  data-tip={!isOpen ? solution.tooltip : ''}
+                >
+                  <solution.icon 
+                    className={`w-6 h-6 ${
+                      isActive ? 'text-primary' : solution.color
+                    }`} 
+                  />
+                  {isOpen && (
+                    <span className={`text-sm font-medium ${
+                      isActive ? 'text-primary' : 'text-base-content/70 group-hover:text-base-content'
+                    }`}>
+                      {solution.title}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
           </div>
         </div>
 
@@ -266,14 +279,28 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
         {/* BOTTOM - User Actions */}
         <div className="p-4 border-t border-base-200 space-y-2">
           {/* Dashboard Quick Access */}
-          <Link 
-            to={`/dashboard/${userRole}`} 
-            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors tooltip tooltip-right font-semibold"
-            data-tip={!isOpen ? 'Dashboard': ''}
-          >
-            <RiDashboardLine className="w-6 h-6 text-primary" />
-            {isOpen && <span className="text-sm font-medium">Dashboard</span>}
-          </Link>
+              <Link 
+                to={`/dashboard/${userRole}`} 
+                className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                  location.pathname === `/dashboard/${userRole}` 
+                    ? 'bg-primary/10 text-primary font-semibold border-l-4 border-primary' 
+                    : 'hover:bg-base-200'
+                } ${
+                  !isOpen ? 'tooltip tooltip-right font-semibold' : ''
+                }`}
+                data-tip={!isOpen ? 'Dashboard': ''}
+              >
+                <RiDashboardLine className={`w-6 h-6 ${
+                  location.pathname === `/dashboard/${userRole}` ? 'text-primary' : 'text-primary'
+                }`} />
+                {isOpen && (
+                  <span className={`text-sm font-medium ${
+                    location.pathname === `/dashboard/${userRole}` ? 'text-primary' : 'text-base-content/70'
+                  }`}>
+                    Dashboard
+                  </span>
+                )}
+              </Link>
 
           {/* Actions Dropdown */}
           <div className="dropdown dropdown-top w-full overflow-visible">

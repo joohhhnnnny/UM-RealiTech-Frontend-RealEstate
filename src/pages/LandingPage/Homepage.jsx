@@ -220,10 +220,10 @@ function Homepage(){
         
             <section 
                 id="hero" 
-                className="min-h-[90vh] md:min-h-[95vh] flex flex-col items-center justify-between 
-                        px-4 lg:px-24 py-12 lg:py-20 transition-colors duration-300 bg-base-100"
+                className="min-h-[90vh] flex flex-col items-center justify-between 
+              px-4 lg:px-24 py-12 lg:py-20 transition-colors duration-300 bg-base-100"
             >
-                <div className="flex flex-col items-center w-full max-w-7xl">
+                <div className="flex flex-col items-center justify-center w-full max-w-7xl flex-grow">
                     <div className="text-center mb-12">
                         <h2 className="text-4xl md:text-5xl font-bold mb-6 text-base-content">
                             Revolutionizing Real Estate
