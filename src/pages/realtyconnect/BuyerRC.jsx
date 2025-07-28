@@ -1,9 +1,125 @@
-
-
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { FaUserTie, FaStar } from 'react-icons/fa';
 import agentsData from '../../agents.json';
+
+// Memoized Agent Card Component
+const AgentCard = memo(({ agent, onViewProfile, renderStars }) => (
+  <div className="card bg-base-100 shadow-xl">
+    <div className="card-body">
+      <div className="flex items-center gap-4">
+        <div className="avatar">
+          <div className="w-16 h-16 rounded-full">
+            <img src={agent.image} alt={agent.name} loading="lazy" />
+          </div>
+        </div>
+        <div>
+          <h2 className="card-title">{agent.name}</h2>
+          <p className="text-sm opacity-70">{agent.specialization} Specialist</p>
+        </div>
+      </div>
+      
+      <div className="mt-4">
+        <div className="flex items-center gap-2">
+          {renderStars(agent.rating)}
+          <span className="text-sm opacity-70">({agent.rating})</span>
+        </div>
+        <p className="mt-2">
+          <span className="font-semibold">{agent.deals}</span> deals closed
+        </p>
+      </div>
+      
+      <div className="card-actions justify-end mt-4">
+        <button className="btn btn-primary">Contact Agent</button>
+        <button 
+          className="btn btn-outline"
+          onClick={() => onViewProfile(agent)}
+        >
+          View Profile
+        </button>
+      </div>
+    </div>
+  </div>
+));
+
+// Memoized Agent Profile Modal Component
+const AgentProfileModal = memo(({ selectedAgent, onClose, renderStars }) => {
+  if (!selectedAgent) return null;
+
+  return (
+    <dialog className="modal modal-bottom sm:modal-middle" open>
+      <div className="modal-box bg-base-100 max-w-3xl">
+        <div className="flex items-start gap-6">
+          <div className="avatar">
+            <div className="w-24 h-24 rounded-full ring ring-purple-500 ring-offset-2">
+              <img src={selectedAgent.image} alt={selectedAgent.name} loading="lazy" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold text-purple-500">{selectedAgent.name}</h2>
+            <p className="text-base-content/70">{selectedAgent.specialization} Specialist at {selectedAgent.agency}</p>
+            <div className="flex items-center gap-2 mt-2">
+              {renderStars(selectedAgent.rating)}
+              <span className="text-sm opacity-70">({selectedAgent.rating})</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="divider"></div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg">Contact Information</h3>
+            <div className="space-y-2">
+              <p className="flex items-center gap-2">
+                <FaUserTie className="text-purple-500" />
+                <span className="text-base-content/70">Email:</span>
+                <span>{selectedAgent.email}</span>
+              </p>
+              <p className="flex items-center gap-2">
+                <FaStar className="text-purple-500" />
+                <span className="text-base-content/70">Experience:</span>
+                <span>{selectedAgent.deals} deals closed</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg">Expertise</h3>
+            <div className="flex flex-wrap gap-2">
+              <span className="badge badge-purple badge-outline">{selectedAgent.specialization}</span>
+              <span className="badge badge-purple badge-outline">Property Valuation</span>
+              <span className="badge badge-purple badge-outline">Contract Negotiation</span>
+              <span className="badge badge-purple badge-outline">Market Analysis</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <h3 className="font-semibold text-lg mb-3">About</h3>
+          <p className="text-base-content/70">
+            Professional real estate agent with proven expertise in {selectedAgent.specialization.toLowerCase()} properties. 
+            Successfully closed {selectedAgent.deals} deals, maintaining a {selectedAgent.rating}/5 client satisfaction rating. 
+            Specializes in providing comprehensive property solutions and exceptional client service.
+          </p>
+        </div>
+
+        <div className="modal-action">
+          <button className="btn btn-primary gap-2">
+            <FaUserTie />
+            Schedule Meeting
+          </button>
+          <button 
+            className="btn btn-ghost"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+      <div className="modal-backdrop bg-black/20" onClick={onClose}></div>
+    </dialog>
+  );
+});
 
 function BuyerRC() {
   const [agents, setAgents] = useState([]);
@@ -11,16 +127,14 @@ function BuyerRC() {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedAgent, setSelectedAgent] = useState(null);
 
-  useEffect(() => {
-    // Transform the agents data to include additional properties
-    const enhancedAgents = agentsData.map((agent, index) => {
+  // Memoize the enhanced agents data
+  const enhancedAgents = useMemo(() => {
+    return agentsData.map((agent, index) => {
       let image;
       
-      // Assign Sarah Garcia's avatar to the first agent in the list
       if (index === 0) {
         image = "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&backgroundColor=b6e3f4";
       } else {
-        // For other agents, use unique professional photos
         const professionalPhotos = [
           'https://images.unsplash.com/photo-1560250097-0b93528c311a',
           'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2',
@@ -36,12 +150,10 @@ function BuyerRC() {
           'https://randomuser.me/api/portraits/women/44.jpg'
         ];
         
-        // Use index to ensure each agent gets a unique photo
         const uniqueIndex = index % professionalPhotos.length;
         image = professionalPhotos[uniqueIndex];
       }
 
-      // Special treatment for Sarah Garcia
       let specialization = ['Residential', 'Commercial', 'Industrial'][Math.floor(Math.random() * 3)];
       let rating = (Math.random() * (5 - 4) + 4).toFixed(1);
       let deals = Math.floor(Math.random() * (50 - 10) + 10);
@@ -49,7 +161,7 @@ function BuyerRC() {
       if (agent.name === 'Sarah Garcia') {
         specialization = 'Residential';
         rating = '4.8';
-        deals = 32; // Match with the AgentDashboard stats
+        deals = 32;
       }
 
       return {
@@ -58,24 +170,51 @@ function BuyerRC() {
         rating,
         deals,
         image,
-        // Add additional info for Sarah Garcia
         ...(agent.name === 'Sarah Garcia' && {
           agency: 'RealiTech Realty',
           email: 'sarah@realitech.com'
         })
       };
     });
-    setAgents(enhancedAgents);
   }, []);
 
-  const renderStars = (rating) => {
+  useEffect(() => {
+    setAgents(enhancedAgents);
+  }, [enhancedAgents]);
+
+  // Memoize filtered agents
+  const filteredAgents = useMemo(() => {
+    return agents.filter(agent => {
+      const matchesSpecialization = selectedFilter === 'all' || 
+        (agent.specialization || '').toLowerCase() === selectedFilter;
+
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = !searchQuery ||
+        (agent.name || '').toLowerCase().includes(searchLower) ||
+        (agent.email || '').toLowerCase().includes(searchLower) ||
+        (agent.agency || '').toLowerCase().includes(searchLower);
+
+      return matchesSpecialization && matchesSearch;
+    });
+  }, [agents, searchQuery, selectedFilter]);
+
+  // Memoize star rendering function
+  const renderStars = useCallback((rating) => {
     return [...Array(5)].map((_, index) => (
       <FaStar
         key={index}
         className={index < Math.floor(rating) ? 'text-yellow-400' : 'text-gray-300'}
       />
     ));
-  };
+  }, []);
+
+  const handleViewProfile = useCallback((agent) => {
+    setSelectedAgent(agent);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setSelectedAgent(null);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -102,137 +241,24 @@ function BuyerRC() {
 
       {/* Agents Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {agents
-          .filter(agent => {
-            // Filter by specialization
-            const matchesSpecialization = selectedFilter === 'all' || 
-              (agent.specialization || '').toLowerCase() === selectedFilter;
-
-            // Filter by search query
-            const searchLower = searchQuery.toLowerCase();
-            const matchesSearch = !searchQuery || // Show all when no search query
-              (agent.name || '').toLowerCase().includes(searchLower) ||
-              (agent.email || '').toLowerCase().includes(searchLower) ||
-              (agent.agency || '').toLowerCase().includes(searchLower);
-
-            return matchesSpecialization && matchesSearch;
-          })
-          .map((agent) => (
-          <div key={agent.id} className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <div className="flex items-center gap-4">
-                <div className="avatar">
-                  <div className="w-16 h-16 rounded-full">
-                    <img src={agent.image} alt={agent.name} />
-                  </div>
-                </div>
-                <div>
-                  <h2 className="card-title">{agent.name}</h2>
-                  <p className="text-sm opacity-70">{agent.specialization} Specialist</p>
-                </div>
-              </div>
-              
-              <div className="mt-4">
-                <div className="flex items-center gap-2">
-                  {renderStars(agent.rating)}
-                  <span className="text-sm opacity-70">({agent.rating})</span>
-                </div>
-                <p className="mt-2">
-                  <span className="font-semibold">{agent.deals}</span> deals closed
-                </p>
-              </div>
-              
-              <div className="card-actions justify-end mt-4">
-                <button className="btn btn-primary">Contact Agent</button>
-                <button 
-                  className="btn btn-outline"
-                  onClick={() => setSelectedAgent(agent)}
-                >
-                  View Profile
-                </button>
-              </div>
-            </div>
-          </div>
+        {filteredAgents.map((agent) => (
+          <AgentCard 
+            key={agent.id} 
+            agent={agent}
+            onViewProfile={handleViewProfile}
+            renderStars={renderStars}
+          />
         ))}
       </div>
 
       {/* Agent Profile Modal */}
-      {selectedAgent && (
-        <dialog className="modal modal-bottom sm:modal-middle" open>
-          <div className="modal-box bg-base-100 max-w-3xl">
-            <div className="flex items-start gap-6">
-              <div className="avatar">
-                <div className="w-24 h-24 rounded-full ring ring-purple-500 ring-offset-2">
-                  <img src={selectedAgent.image} alt={selectedAgent.name} />
-                </div>
-              </div>
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-purple-500">{selectedAgent.name}</h2>
-                <p className="text-base-content/70">{selectedAgent.specialization} Specialist at {selectedAgent.agency}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  {renderStars(selectedAgent.rating)}
-                  <span className="text-sm opacity-70">({selectedAgent.rating})</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="divider"></div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Contact Information</h3>
-                <div className="space-y-2">
-                  <p className="flex items-center gap-2">
-                    <FaUserTie className="text-purple-500" />
-                    <span className="text-base-content/70">Email:</span>
-                    <span>{selectedAgent.email}</span>
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <FaStar className="text-purple-500" />
-                    <span className="text-base-content/70">Experience:</span>
-                    <span>{selectedAgent.deals} deals closed</span>
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Expertise</h3>
-                <div className="flex flex-wrap gap-2">
-                  <span className="badge badge-purple badge-outline">{selectedAgent.specialization}</span>
-                  <span className="badge badge-purple badge-outline">Property Valuation</span>
-                  <span className="badge badge-purple badge-outline">Contract Negotiation</span>
-                  <span className="badge badge-purple badge-outline">Market Analysis</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <h3 className="font-semibold text-lg mb-3">About</h3>
-              <p className="text-base-content/70">
-                Professional real estate agent with proven expertise in {selectedAgent.specialization.toLowerCase()} properties. 
-                Successfully closed {selectedAgent.deals} deals, maintaining a {selectedAgent.rating}/5 client satisfaction rating. 
-                Specializes in providing comprehensive property solutions and exceptional client service.
-              </p>
-            </div>
-
-            <div className="modal-action">
-              <button className="btn btn-primary gap-2">
-                <FaUserTie />
-                Schedule Meeting
-              </button>
-              <button 
-                className="btn btn-ghost"
-                onClick={() => setSelectedAgent(null)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-          <div className="modal-backdrop bg-black/20" onClick={() => setSelectedAgent(null)}></div>
-        </dialog>
-      )}
+      <AgentProfileModal 
+        selectedAgent={selectedAgent}
+        onClose={handleCloseModal}
+        renderStars={renderStars}
+      />
     </div>
   );
 }
 
-export default BuyerRC;
+export default memo(BuyerRC);

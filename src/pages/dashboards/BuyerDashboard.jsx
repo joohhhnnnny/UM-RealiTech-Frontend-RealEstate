@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import { motion } from "framer-motion";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import { 
@@ -11,10 +12,129 @@ import {
   RiErrorWarningLine 
 } from 'react-icons/ri';
 
-function BuyerDashboard() {
+// Memoized Stat Card Component
+const StatCard = memo(({ stat }) => (
+  <motion.div
+    initial={{ scale: 0.95 }}
+    animate={{ scale: 1 }}
+    whileHover={{ scale: 1.02 }}
+    transition={{ duration: 0.2 }}
+    className={`card bg-gradient-to-br ${stat.bgGradient} backdrop-blur-xl shadow-lg`}
+  >
+    <div className="card-body p-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-base-content/70 text-sm font-medium">
+            {stat.title}
+          </p>
+          <h3 className={`text-2xl font-bold mt-2 ${stat.color}`}>
+            {stat.value}
+          </h3>
+        </div>
+        <div className={`p-3 rounded-lg ${stat.bgGradient}`}>
+          <stat.icon className={`w-6 h-6 ${stat.color}`} />
+        </div>
+      </div>
+      <div className="mt-4">
+        <p className="text-sm text-base-content/60">
+          {stat.subtitle}
+        </p>
+        <p className="text-xs text-success mt-1">
+          {stat.trend}
+        </p>
+      </div>
+    </div>
+  </motion.div>
+));
 
-  // Dummy data for statistics
-  const stats = [
+// Memoized Project Step Component
+const ProjectStep = memo(({ step }) => (
+  <div className="flex items-start gap-3">
+    {step.status === 'completed' && (
+      <RiCheckboxCircleLine className="w-5 h-5 text-success mt-1" />
+    )}
+    {step.status === 'current' && (
+      <RiTimeLine className="w-5 h-5 text-primary mt-1" />
+    )}
+    {step.status === 'pending' && (
+      <RiErrorWarningLine className="w-5 h-5 text-base-content/30 mt-1" />
+    )}
+    <div>
+      <p className={`text-sm font-medium ${
+        step.status === 'pending' ? 'text-base-content/50' : ''
+      }`}>{step.title}</p>
+      <p className="text-xs text-base-content/60">{step.date}</p>
+    </div>
+  </div>
+));
+
+// Memoized Project Card Component
+const ProjectCard = memo(({ project }) => (
+  <motion.div
+    initial={{ y: 20, opacity: 0 }}
+    animate={{ y: 0, opacity: 1 }}
+    className="card bg-base-100 shadow-lg overflow-hidden"
+  >
+    <div className="flex flex-col lg:flex-row">
+      {/* Project Image */}
+      <div className="lg:w-1/3 h-[200px] lg:h-auto relative">
+        <img 
+          src={project.image} 
+          alt={project.title}
+          className="w-full h-full object-cover"
+          loading="lazy" // Add lazy loading
+        />
+        <div className="absolute top-4 left-4">
+          <span className="badge badge-primary">{project.status}</span>
+        </div>
+      </div>
+
+      {/* Property Details */}
+      <div className="lg:w-2/3 p-6">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="text-xl font-bold">{project.title}</h3>
+            <p className="text-base-content/60">{project.location}</p>
+            <p className="text-lg font-semibold text-primary mt-2">{project.price}</p>
+          </div>
+          <div className="text-right">
+            <div className="flex items-center gap-2">
+              <img 
+                src={project.agent.avatar} 
+                alt={project.agent.name}
+                className="w-8 h-8 rounded-full"
+                loading="lazy" // Add lazy loading
+              />
+              <div>
+                <p className="text-sm font-medium">{project.agent.name}</p>
+                <p className="text-xs text-base-content/60">Agent • ⭐ {project.agent.rating}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-full bg-base-200 rounded-full h-2 mb-4">
+          <div 
+            className="bg-primary h-2 rounded-full transition-all duration-500"
+            style={{ width: `${project.progress}%` }}
+          />
+        </div>
+
+        {/* Progress Steps */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {project.steps.map((step, index) => (
+            <ProjectStep key={index} step={step} />
+          ))}
+        </div>
+      </div>
+    </div>
+  </motion.div>
+));
+
+function BuyerDashboard() {
+  // Memoize stats data to prevent recreation on every render
+  const stats = useMemo(() => [
     {
       title: "Active Projects",
       value: "124",
@@ -51,9 +171,10 @@ function BuyerDashboard() {
       color: "text-amber-500",
       bgGradient: "from-amber-500/20 to-amber-500/5"
     }
-  ];
+  ], []);
 
-  const myProjects = [
+  // Memoize projects data
+  const myProjects = useMemo(() => [
     {
       id: 1,
       title: "Modern Townhouse in Makati",
@@ -74,18 +195,16 @@ function BuyerDashboard() {
         rating: 4.8
       }
     }
-  ];
+  ], []);
 
   return (
-   <DashboardLayout userRole="buyer">
+    <DashboardLayout userRole="buyer">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="min-h-screen bg-base-100 p-6"
       >
         <div className="max-w-[1400px] mx-auto">
-
-
           {/* Welcome Section */}
           <motion.div 
             initial={{ y: -20 }}
@@ -122,41 +241,9 @@ function BuyerDashboard() {
           {/* Statistics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
             {stats.map((stat) => (
-              <motion.div
-                key={stat.title}
-                initial={{ scale: 0.95 }}
-                animate={{ scale: 1 }}
-                whileHover={{ scale: 1.02 }}
-                transition={{ duration: 0.2 }}
-                className={`card bg-gradient-to-br ${stat.bgGradient} backdrop-blur-xl shadow-lg`}
-              >
-                <div className="card-body p-6">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-base-content/70 text-sm font-medium">
-                        {stat.title}
-                      </p>
-                      <h3 className={`text-2xl font-bold mt-2 ${stat.color}`}>
-                        {stat.value}
-                      </h3>
-                    </div>
-                    <div className={`p-3 rounded-lg ${stat.bgGradient}`}>
-                      <stat.icon className={`w-6 h-6 ${stat.color}`} />
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <p className="text-sm text-base-content/60">
-                      {stat.subtitle}
-                    </p>
-                    <p className="text-xs text-success mt-1">
-                      {stat.trend}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
+              <StatCard key={stat.title} stat={stat} />
             ))}
           </div>
-
 
           {/* My Projects Section */}
           <div className="mt-8">
@@ -166,89 +253,11 @@ function BuyerDashboard() {
                 onClick={() => {/* Add your create listing handler */}} 
                 className="btn btn-primary"
               >
-                
                 Visited Listings
               </button>
             </div>
             {myProjects.map((project) => (
-              <motion.div
-                key={project.id}
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className="card bg-base-100 shadow-lg overflow-hidden"
-              >
-                <div className="flex flex-col lg:flex-row">
-                  {/* Project Image */}
-                  <div className="lg:w-1/3 h-[200px] lg:h-auto relative">
-                    <img 
-                      src={project.image} 
-                      alt={project.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-4 left-4">
-                      <span className="badge badge-primary">{project.status}</span>
-                    </div>
-                  </div>
-
-                  {/* Property Details */}
-                  <div className="lg:w-2/3 p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-xl font-bold">{project.title}</h3>
-                        <p className="text-base-content/60">{project.location}</p>
-                        <p className="text-lg font-semibold text-primary mt-2">{project.price}</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-2">
-                          <img 
-                            src={project.agent.avatar} 
-                            alt={project.agent.name}
-                            className="w-8 h-8 rounded-full"
-                          />
-                          <div>
-                            <p className="text-sm font-medium">{project.agent.name}</p>
-                            <p className="text-xs text-base-content/60">Agent • ⭐ {project.agent.rating}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="w-full bg-base-200 rounded-full h-2 mb-4">
-                      <div 
-                        className="bg-primary h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${project.progress}%` }}
-                      />
-                    </div>
-
-                    {/* Progress Steps */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {project.steps.map((step, index) => (
-                        <div 
-                          key={index}
-                          className="flex items-start gap-3"
-                        >
-                          {step.status === 'completed' && (
-                            <RiCheckboxCircleLine className="w-5 h-5 text-success mt-1" />
-                          )}
-                          {step.status === 'current' && (
-                            <RiTimeLine className="w-5 h-5 text-primary mt-1" />
-                          )}
-                          {step.status === 'pending' && (
-                            <RiErrorWarningLine className="w-5 h-5 text-base-content/30 mt-1" />
-                          )}
-                          <div>
-                            <p className={`text-sm font-medium ${
-                              step.status === 'pending' ? 'text-base-content/50' : ''
-                            }`}>{step.title}</p>
-                            <p className="text-xs text-base-content/60">{step.date}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
+              <ProjectCard key={project.id} project={project} />
             ))}
           </div>
         </div>
@@ -257,4 +266,4 @@ function BuyerDashboard() {
   );
 }
 
-export default BuyerDashboard;
+export default memo(BuyerDashboard);
