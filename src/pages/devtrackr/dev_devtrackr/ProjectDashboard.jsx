@@ -134,7 +134,8 @@ function ProjectDashboard() {
       comments: []
     };
 
-    setProjects([...projects, projectData]);
+    // Add new project at the beginning of the array instead of the end
+    setProjects([projectData, ...projects]);
     setNewProject({
       name: '',
       location: '',
@@ -190,7 +191,7 @@ function ProjectDashboard() {
       if (project.id === selectedProject.id) {
         return {
           ...project,
-          updates: [...project.updates, update],
+          updates: [update, ...project.updates], // Also add new updates at the top
           progress: parseInt(progressUpdate.progress)
         };
       }
