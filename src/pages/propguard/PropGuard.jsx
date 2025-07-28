@@ -16,7 +16,12 @@ import {
   RiHomeSmile2Line,
   RiBuilding4Line,
   RiMapPinLine,
-  RiAddLine
+  RiAddLine,
+  RiUpload2Line,
+  RiCloseLine,
+  RiCheckDoubleLine,
+  RiErrorWarningLine,
+  RiLoader4Line
 } from 'react-icons/ri';
 import { useLocation } from 'react-router-dom';
 import listingsData from '../../listings.json';
@@ -26,11 +31,57 @@ function PropGuard() {
   const userRole = location.state?.userRole || "buyer";
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [documentType, setDocumentType] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState(null);
   const [currentFlow, setCurrentFlow] = useState('greeting');
   const [_userType, setUserType] = useState(null);
   const [_budget, setBudget] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setUploadedFile(file);
+    }
+  };
+
+  const handleScan = async () => {
+    if (!uploadedFile || !documentType) return;
+    
+    setIsScanning(true);
+    try {
+      // Simulating AI document scanning
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setScanResult({
+        status: 'success',
+        message: 'Document validated successfully',
+        details: {
+          type: documentType,
+          filename: uploadedFile.name,
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      setScanResult({
+        status: 'error',
+        message: 'Error validating document',
+        error: error.message
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowDocumentModal(false);
+    setUploadedFile(null);
+    setDocumentType('');
+    setScanResult(null);
+  };
 
   // Get system context based on user role
   const _getSystemContext = () => {
@@ -601,6 +652,11 @@ function PropGuard() {
                       initial={{ scale: 0.95 }}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        if (action.id === 2) { // Document Submissions
+                          setShowDocumentModal(true);
+                        }
+                      }}
                       className={`btn btn-${action.color} btn-outline justify-start gap-4 h-auto py-4 px-6 normal-case`}
                     >
                       <action.icon className="w-6 h-6" />
@@ -616,6 +672,114 @@ function PropGuard() {
           </div>
         </div>
       </motion.div>
+
+      {/* Document Upload Modal */}
+      <AnimatePresence>
+        {showDocumentModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            onClick={handleCloseModal}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-base-100 rounded-lg p-6 max-w-md w-full mx-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold">Upload Document</h3>
+                <button onClick={handleCloseModal} className="btn btn-ghost btn-sm btn-circle">
+                  <RiCloseLine className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="label">Document Type</label>
+                  <select
+                    className="select select-bordered w-full"
+                    value={documentType}
+                    onChange={e => setDocumentType(e.target.value)}
+                  >
+                    <option value="">Select document type</option>
+                    <option value="contract">Contract</option>
+                    <option value="deed">Title Deed</option>
+                    <option value="permit">Building Permit</option>
+                    <option value="certificate">Tax Certificate</option>
+                    <option value="id">ID Verification</option>
+                  </select>
+                </div>
+
+                <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                  {!uploadedFile ? (
+                    <>
+                      <RiUpload2Line className="w-12 h-12 mx-auto mb-2 text-base-content/40" />
+                      <label className="block">
+                        <span className="btn btn-primary btn-sm">Choose File</span>
+                        <input type="file" className="hidden" onChange={handleFileUpload} />
+                      </label>
+                      <p className="text-sm text-base-content/60 mt-2">
+                        Supported formats: PDF, JPG, PNG (max 10MB)
+                      </p>
+                    </>
+                  ) : (
+                    <div>
+                      <RiFileShieldLine className="w-12 h-12 mx-auto mb-2 text-success" />
+                      <p className="font-medium">{uploadedFile.name}</p>
+                      <p className="text-sm text-base-content/60">
+                        {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {scanResult && (
+                  <div className={`alert ${scanResult.status === 'success' ? 'alert-success' : 'alert-error'}`}>
+                    <div className="flex items-center gap-2">
+                      {scanResult.status === 'success' ? (
+                        <RiCheckDoubleLine className="w-5 h-5" />
+                      ) : (
+                        <RiErrorWarningLine className="w-5 h-5" />
+                      )}
+                      <span>{scanResult.message}</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2 justify-end">
+                  <button 
+                    className="btn btn-ghost"
+                    onClick={handleCloseModal}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleScan}
+                    disabled={!uploadedFile || !documentType || isScanning}
+                  >
+                    {isScanning ? (
+                      <>
+                        <RiLoader4Line className="w-5 h-5 animate-spin" />
+                        Scanning...
+                      </>
+                    ) : (
+                      <>
+                        <RiShieldCheckLine className="w-5 h-5" />
+                        Scan Document
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </DashboardLayout>
   );
 }
