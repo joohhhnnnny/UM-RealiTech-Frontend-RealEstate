@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Navbar from '/src/components/Navbar.jsx';
 import Footer from '/src/components/Footer.jsx';
 import listingsData from '../listings.json';
@@ -17,16 +17,18 @@ function Properties() {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState('latest');
     const [propertyType, setPropertyType] = useState('all');
-    const [displayCount, setDisplayCount] = useState(9);
     const [priceRange, setPriceRange] = useState({ min: '', max: '' });
+    const [currentPage, setCurrentPage] = useState(1);
+    const propertiesPerPage = 9;
+    const propertiesSectionRef = useRef(null);
 
     // Filter and sort properties
     const filteredProperties = useMemo(() => {
         return listingsData
             .filter(property => {
                 const matchesSearch = 
-                    (property.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                     property.location?.toLowerCase().includes(searchTerm.toLowerCase()));
+                    property.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                     property.location?.toLowerCase().includes(searchTerm.toLowerCase());
                 
                 const matchesType = propertyType === 'all' ? true :
                     propertyType === 'residential' ? !property.title?.toLowerCase().includes('office') :
@@ -48,13 +50,34 @@ function Properties() {
                 }
                 // Default to latest
                 return new Date(b.days_on_market || 0) - new Date(a.days_on_market || 0);
-            })
-            .slice(0, displayCount);
-    }, [searchTerm, sortBy, propertyType, displayCount, priceRange]);
+            });
+    }, [searchTerm, sortBy, propertyType, priceRange]);
+
+    // Get current properties for pagination
+    const indexOfLastProperty = currentPage * propertiesPerPage;
+    const indexOfFirstProperty = indexOfLastProperty - propertiesPerPage;
+    const currentProperties = filteredProperties.slice(indexOfFirstProperty, indexOfLastProperty);
+    const totalPages = Math.ceil(filteredProperties.length / propertiesPerPage);
 
     const formatPrice = (price) => {
         if (!price) return 'Price on request';
         return price.includes('/mo') ? price : price.trim();
+    };
+
+    // Reset to first page when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, sortBy, propertyType, priceRange]);
+
+    // Scroll to top when page changes
+    useEffect(() => {
+        if (propertiesSectionRef.current) {
+            propertiesSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [currentPage]);
+
+    const handlePageChange = (page) => {
+        setCurrentPage(page);
     };
 
     return (
@@ -63,6 +86,7 @@ function Properties() {
             
             <section className="min-h-screen bg-base-100">   
                 <motion.section 
+                    ref={propertiesSectionRef}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
@@ -145,7 +169,7 @@ function Properties() {
                             transition={{ delay: 0.4, duration: 0.5 }}
                             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
                         >
-                            {filteredProperties.map((property, index) => (
+                            {currentProperties.map((property, index) => (
                                 <motion.div
                                     key={property.id}
                                     initial={{ opacity: 0, y: 20 }}
@@ -233,14 +257,37 @@ function Properties() {
                             ))}
                         </motion.div>
 
-                        {displayCount < listingsData.length && (
-                            <div className="text-center mt-12">
-                                <button 
-                                    onClick={() => setDisplayCount(prev => prev + 9)}
-                                    className="btn btn-primary btn-wide"
-                                >
-                                    Load More Properties
-                                </button>
+                        {filteredProperties.length > propertiesPerPage && (
+                            <div className="flex justify-center mt-12">
+                                <div className="join">
+                                    <button 
+                                        onClick={() => {
+                                            handlePageChange(Math.max(currentPage - 1, 1));
+                                        }}
+                                        disabled={currentPage === 1}
+                                        className="join-item btn"
+                                    >
+                                        «
+                                    </button>
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                        <button
+                                            key={page}
+                                            onClick={() => handlePageChange(page)}
+                                            className={`join-item btn ${currentPage === page ? 'btn-active' : ''}`}
+                                        >
+                                            {page}
+                                        </button>
+                                    ))}
+                                    <button 
+                                        onClick={() => {
+                                            handlePageChange(Math.min(currentPage + 1, totalPages));
+                                        }}
+                                        disabled={currentPage === totalPages}
+                                        className="join-item btn"
+                                    >
+                                        »
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
