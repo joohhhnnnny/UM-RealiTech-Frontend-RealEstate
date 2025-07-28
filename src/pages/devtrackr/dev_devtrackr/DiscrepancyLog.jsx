@@ -236,12 +236,14 @@ function DiscrepancyLog() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-8 max-w-[1600px] mx-auto">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-2xl font-bold">Discrepancy Log</h1>
-          <p className="text-base-content/70">Track and manage project quality issues</p>
+          <h1 className="text-3xl font-bold">
+            Discrepancy Log
+          </h1>
+          <p className="text-base-content/70 mt-2">Track and manage project quality issues</p>
         </div>
         <button
           onClick={() => setShowCreateForm(true)}
@@ -253,7 +255,7 @@ function DiscrepancyLog() {
       </div>
 
       {/* Stats */}
-      <div className="stats shadow w-full mb-6">
+      <div className="stats shadow w-full mb-8">
         <div className="stat">
           <div className="stat-title">Total Issues</div>
           <div className="stat-value text-primary">{discrepancies.length}</div>
@@ -283,7 +285,7 @@ function DiscrepancyLog() {
       </div>
 
       {/* Search and Filters */}
-      <div className="card bg-base-100 shadow-lg mb-6">
+      <div className="card bg-base-100 shadow-lg mb-8">
         <div className="card-body">
           <div className="flex flex-wrap gap-4">
             {/* Search */}
@@ -344,14 +346,16 @@ function DiscrepancyLog() {
 
       {/* Create Discrepancy Modal */}
       <dialog className={`modal ${showCreateForm ? 'modal-open' : ''}`}>
-        <div className="modal-box max-w-2xl">
-          <h2 className="text-xl font-bold mb-4">Report New Issue</h2>
+        <div className="modal-box max-w-2xl bg-white/95 backdrop-blur-md">
+          <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            Report New Issue
+          </h2>
           <form
             onSubmit={(e) => {
               e.preventDefault();
               handleCreateDiscrepancy();
             }}
-            className="space-y-4"
+            className="space-y-6"
           >
             <div className="form-control">
               <label className="label">
@@ -359,7 +363,7 @@ function DiscrepancyLog() {
               </label>
               <input
                 type="text"
-                className="input input-bordered"
+                className="input input-bordered bg-white/70 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                 value={newDiscrepancy.issue}
                 onChange={(e) => setNewDiscrepancy({...newDiscrepancy, issue: e.target.value})}
                 required
@@ -371,7 +375,7 @@ function DiscrepancyLog() {
                 <span className="label-text">Description</span>
               </label>
               <textarea
-                className="textarea textarea-bordered h-24"
+                className="textarea textarea-bordered h-24 bg-white/70 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                 value={newDiscrepancy.description}
                 onChange={(e) => setNewDiscrepancy({...newDiscrepancy, description: e.target.value})}
                 required
@@ -454,13 +458,16 @@ function DiscrepancyLog() {
             </div>
 
             <div className="modal-action">
-              <button type="submit" className="btn btn-primary">
+              <button 
+                type="submit" 
+                className="btn btn-primary hover:scale-105 transition-transform duration-200 shadow-lg"
+              >
                 Create Issue
               </button>
               <button
                 type="button"
                 onClick={() => setShowCreateForm(false)}
-                className="btn"
+                className="btn btn-ghost hover:bg-base-200 transition-colors duration-200"
               >
                 Cancel
               </button>

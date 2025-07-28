@@ -15,6 +15,8 @@ import DevTrackr from './pages/devtrackr/DevTrackr';
 import Notif from './pages/quickactions/Notif';
 import Msg from './pages/quickactions/Msg';
 import Settings from './pages/quickactions/Settings';
+import ActivityLog from './pages/quickactions/ActivityLog';
+import DashboardLayout from './layouts/DashboardLayout';
 
 function App() {
     return (
@@ -36,6 +38,7 @@ function App() {
                 <Route path="/dashboard/notifications" element={<Notif />} />
                 <Route path="/dashboard/messages" element={<Msg />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/dashboard/audit-log" element={<ActivityLog />} />
             </Routes>
             <ChatbotIcon />
             

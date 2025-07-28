@@ -324,7 +324,7 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
               <li>
                 <Link to="/dashboard/audit-log" className="flex items-center gap-2 py-3">
                   <RiHistoryLine className="w-4 h-4" />
-                  {isOpen && <span>Audit Log</span>}
+                  {isOpen && <span>Activity Log</span>}
                 </Link>
               </li>
             </ul>

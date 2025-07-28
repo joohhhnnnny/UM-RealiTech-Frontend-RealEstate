@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import Navbar from '/src/components/Navbar.jsx';
 import Footer from '/src/components/Footer.jsx';
 import listingsData from '../listings.json';
+// Add Map imports
 import { 
     MagnifyingGlassIcon, 
     AdjustmentsHorizontalIcon,
@@ -10,10 +11,40 @@ import {
     HomeIcon,
     CurrencyDollarIcon,
     BuildingOffice2Icon,
-    Square2StackIcon
+    Square2StackIcon,
+    MapIcon
 } from '@heroicons/react/24/outline';
 
 function Properties() {
+    // Helper function to get location from description if location field is empty
+    const getLocationFromDescription = (description) => {
+        if (!description) return null;
+        
+        // Common location patterns in descriptions
+        const locationPatterns = [
+            /Location:\s*([^\.|\n]+)/i,
+            /located at\s*([^\.|\n]+)/i,
+            /located in\s*([^\.|\n]+)/i,
+            /address:\s*([^\.|\n]+)/i,
+        ];
+
+        for (const pattern of locationPatterns) {
+            const match = description.match(pattern);
+            if (match && match[1]) {
+                return match[1].trim();
+            }
+        }
+        return null;
+    };
+
+    // Helper function to get default image for property type
+    const getDefaultImage = (property) => {
+        const isCommercial = property.title?.toLowerCase().includes('office');
+        return isCommercial 
+            ? 'https://images.pexels.com/photos/269077/pexels-photo-269077.jpeg' // Modern office building
+            : 'https://images.pexels.com/photos/106399/pexels-photo-106399.jpeg'; // Modern house
+    };
+
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState('latest');
     const [propertyType, setPropertyType] = useState('all');
@@ -21,7 +52,36 @@ function Properties() {
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedProperty, setSelectedProperty] = useState(null);
     const propertiesPerPage = 9;
+    const location = window.location;
+
+    // Check for property ID in the URL hash and set initial search
+    useEffect(() => {
+        const hash = location.hash;
+        if (hash) {
+            const propertyId = hash.replace('#', '');
+            const property = listingsData.find(p => p.id === propertyId);
+            if (property) {
+                // Set the search term to match the property location and title
+                const searchValue = property.location || '';
+                setSearchTerm(searchValue);
+                setSelectedProperty(property);
+                const modal = document.getElementById('property_modal');
+                if (modal) {
+                    modal.showModal();
+                    // Add event listener for when modal is closed
+                    const handleClose = () => {
+                        modal.removeEventListener('close', handleClose);
+                        // Clear the URL hash when modal is closed
+                        window.history.pushState('', document.title, window.location.pathname);
+                    };
+                    modal.addEventListener('close', handleClose);
+                }
+            }
+        }
+    }, [location]);
     const propertiesSectionRef = useRef(null);
+
+
 
     // Format price for display
     const formatPriceInput = (value) => {
@@ -95,13 +155,27 @@ function Properties() {
         }
     }, [currentPage]);
 
+
+
     const handlePageChange = (page) => {
         setCurrentPage(page);
     };
 
     const handleViewDetails = (property) => {
         setSelectedProperty(property);
-        document.getElementById('property_modal').showModal();
+        // Update URL hash with property ID
+        window.history.pushState('', document.title, `#${property.id}`);
+        const modal = document.getElementById('property_modal');
+        modal.showModal();
+        
+        // Add event listener for cleanup when modal is closed
+        const handleClose = () => {
+            setSelectedProperty(null);
+            modal.removeEventListener('close', handleClose);
+            // Don't clear the search term when closing the modal
+            // This keeps the filtered list visible
+        };
+        modal.addEventListener('close', handleClose);
     };
 
     return (
@@ -114,7 +188,7 @@ function Properties() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
-                    className="py-16 px-4 lg:px-24"
+                    className="py-12 px-4 sm:px-6 lg:px-8 max-w-[1440px] mx-auto"
                 >
                     <div className="max-w-7xl mx-auto">
                         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
@@ -136,7 +210,7 @@ function Properties() {
                                 <div className="relative flex-grow">
                                     <input
                                         type="text"
-                                        placeholder="Search properties by title, location, or features..."
+                                        placeholder="Clear search to view all properties..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         className="input input-bordered w-full pl-10 pr-4 bg-base-100 min-w-[320px]"
@@ -213,88 +287,105 @@ function Properties() {
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: index * 0.1 + 0.5, duration: 0.5 }}
-                                    className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300"
+                                    className="card bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 border border-base-200 overflow-hidden group"
                                 >
                                     <div className="relative">
-                                        <div className="h-64 rounded-t-xl relative overflow-hidden group">
+                                        <div className="h-72 relative overflow-hidden">
                                             <img 
-                                                src={property.images?.[0] || 'https://via.placeholder.com/800x600?text=No+Image+Available'}
+                                                src={property.images?.[0] || getDefaultImage(property)}
                                                 alt={property.title}
-                                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                onError={(e) => {
+                                                    e.target.onerror = null;
+                                                    e.target.src = getDefaultImage(property);
+                                                }}
                                             />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
                                             <div className="absolute bottom-4 left-4 right-4 text-white">
-                                                <div className="flex items-center gap-2 text-white/90">
-                                                    {property.title?.toLowerCase().includes('office') ? (
-                                                        <>
-                                                            <BuildingOffice2Icon className="w-5 h-5" />
-                                                            <span className="text-sm font-medium">Commercial Property</span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <HomeIcon className="w-5 h-5" />
-                                                            <span className="text-sm font-medium">Residential Property</span>
-                                                        </>
-                                                    )}
+                                                <div className="flex items-center gap-2">
+                                                    <div className="badge badge-primary gap-2">
+                                                        {property.title?.toLowerCase().includes('office') ? (
+                                                            <>
+                                                                <BuildingOffice2Icon className="w-4 h-4" />
+                                                                Commercial
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <HomeIcon className="w-4 h-4" />
+                                                                Residential
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="mt-2 flex items-center gap-2">
-                                                    {property.beds && (
-                                                        <span className="badge badge-sm badge-ghost text-white">{property.beds} Beds</span>
-                                                    )}
-                                                    {property.floor_area_sqm && (
-                                                        <span className="badge badge-sm badge-ghost text-white">{property.floor_area_sqm} sqm</span>
-                                                    )}
+                                                <div className="mt-3">
+                                                    <div className="text-xl font-bold line-clamp-1">{formatPrice(property.price)}</div>
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="absolute top-4 right-4 flex flex-col gap-2">
-                                            {property.furnishing && (
-                                                <div className="badge badge-primary">{property.furnishing}</div>
-                                            )}
-                                            {property.days_on_market && (
-                                                <div className="badge badge-secondary badge-outline">
-                                                    {property.days_on_market}
-                                                </div>
-                                            )}
+                                            <div className="badge badge-accent badge-outline">
+                                                {property.days_on_market || 'New'}
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="card-body">
-                                        <h2 className="card-title text-base-content line-clamp-2">{property.title}</h2>
-                                        
-                                        <div className="flex items-center gap-2 text-base-content/70 mt-2">
-                                            <MapPinIcon className="w-5 h-5" />
-                                            <p className="line-clamp-1">{property.location || 'Location not specified'}</p>
-                                        </div>
-
-                                        <div className="flex flex-wrap gap-4 mt-4">
-                                            {property.beds && (
-                                                <div className="flex items-center gap-1">
-                                                    <HomeIcon className="w-5 h-5 text-primary" />
-                                                    <span>{property.beds} Beds</span>
-                                                </div>
-                                            )}
-                                            {property.floor_area_sqm && (
-                                                <div className="flex items-center gap-1">
-                                                    <Square2StackIcon className="w-5 h-5 text-primary" />
-                                                    <span>{property.floor_area_sqm} sqm</span>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="mt-6 flex items-center justify-between">
-                                            <div className="flex items-center gap-1">
-                                                <CurrencyDollarIcon className="w-6 h-6 text-primary" />
-                                                <span className="text-xl font-bold text-primary">
-                                                    {formatPrice(property.price)}
-                                                </span>
+                                    <div className="card-body p-6 flex flex-col h-full">
+                                        {/* Title and Location - Fixed Height Section */}
+                                        <div className="flex-none">
+                                            <h2 className="text-lg font-bold text-base-content line-clamp-2 mb-2">{property.title}</h2>
+                                            
+                                            <div className="flex items-center gap-2 text-base-content/70">
+                                                <MapPinIcon className="w-4 h-4 flex-shrink-0" />
+                                                <p className="text-sm line-clamp-1">
+                                                    {property.location || getLocationFromDescription(property.description) || 'Location details in description'}
+                                                </p>
                                             </div>
-                                            <button 
-                                                className="btn btn-primary btn-sm"
-                                                onClick={() => handleViewDetails(property)}
-                                            >
-                                                View Details
-                                            </button>
+                                        </div>
+
+                                        <div className="divider my-3"></div>
+
+                                        {/* Property Features - Fixed Height Section */}
+                                        <div className="flex-none">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                {property.beds && (
+                                                    <div className="flex items-center gap-2">
+                                                        <HomeIcon className="w-4 h-4 text-primary" />
+                                                        <span className="text-sm">{property.beds} Beds</span>
+                                                    </div>
+                                                )}
+                                                {property.floor_area_sqm && (
+                                                    <div className="flex items-center gap-2">
+                                                        <Square2StackIcon className="w-4 h-4 text-primary" />
+                                                        <span className="text-sm">{property.floor_area_sqm} sqm</span>
+                                                    </div>
+                                                )}
+                                                {property.furnishing && (
+                                                    <div className="flex items-center gap-2 col-span-2">
+                                                        <div className="badge badge-ghost badge-sm">{property.furnishing}</div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Buttons - Always at Bottom */}
+                                        <div className="mt-auto pt-4">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <a 
+                                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(property.location)}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="btn btn-ghost btn-sm gap-2 flex-1"
+                                                >
+                                                    <MapIcon className="w-4 h-4" />
+                                                    View Map
+                                                </a>
+                                                <button 
+                                                    className="btn btn-primary btn-sm flex-1"
+                                                    onClick={() => handleViewDetails(property)}
+                                                >
+                                                    View Details
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </motion.div>
@@ -302,28 +393,40 @@ function Properties() {
                         </motion.div>
 
                         {/* Property Details Modal */}
-                        <dialog id="property_modal" className="modal modal-bottom sm:modal-middle">
-                            {selectedProperty && (
-                                <div className="modal-box">
-                                    <div className="relative h-64 -mt-6 -mx-6 mb-4">
-                                        <div className="carousel w-full h-full">
-                                            {selectedProperty.images?.map((image, index) => (
-                                                <div key={index} className="carousel-item relative w-full h-full">
-                                                    <img 
-                                                        src={image} 
-                                                        alt={`${selectedProperty.title} - Image ${index + 1}`}
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                </div>
-                                            ))}
+                        <dialog id="property_modal" className="modal">
+                            <div className="modal-box max-w-2xl relative">
+                                <form method="dialog" className="absolute right-2 top-2 z-30">
+                                    <button className="btn btn-circle btn-ghost">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </form>
+                                {selectedProperty && (
+                                    <>
+                                        <div className="relative h-64 -mt-6 -mx-6 mb-4">
+                                            <div className="carousel w-full h-full">
+                                                {(selectedProperty.images?.length > 0 ? selectedProperty.images : [getDefaultImage(selectedProperty)]).map((image, index) => (
+                                                    <div key={index} className="carousel-item relative w-full h-full">
+                                                        <img 
+                                                            src={image} 
+                                                            alt={`${selectedProperty.title} - Image ${index + 1}`}
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => {
+                                                                e.target.onerror = null;
+                                                                e.target.src = getDefaultImage(selectedProperty);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
                                     <h3 className="font-bold text-xl mb-4">{selectedProperty.title}</h3>
                                     
                                     <div className="grid grid-cols-2 gap-4 mb-4">
                                         <div className="flex items-center gap-2">
                                             <MapPinIcon className="w-5 h-5 text-primary" />
-                                            <span>{selectedProperty.location}</span>
+                                            <span>{selectedProperty.location || getLocationFromDescription(selectedProperty.description) || 'Location details in description'}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <CurrencyDollarIcon className="w-5 h-5 text-primary" />
@@ -350,19 +453,15 @@ function Properties() {
                                         </div>
                                     )}
 
-                                    <div className="modal-action">
-                                        <form method="dialog">
-                                            <button 
-                                                className="btn"
-                                                onClick={() => setSelectedProperty(null)}
-                                            >
-                                                Close
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
-                            )}
+                                    </>
+                                )}
+                            </div>
+                            <form method="dialog" className="modal-backdrop">
+                                <button>close</button>
+                            </form>
                         </dialog>
+
+
 
                         {filteredProperties.length > propertiesPerPage && (
                             <div className="flex justify-center mt-12">

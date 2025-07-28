@@ -33,13 +33,19 @@ function ProjectDashboard() {
           date: "2025-07-25",
           description: "Interior walls completion for floors 1-10",
           progress: 65,
-          media: ["/sample/progress1.jpg", "/sample/progress2.jpg"]
+          media: [
+            "https://images.unsplash.com/photo-1574958269340-fa927503f3dd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y29uc3RydWN0aW9uJTIwcHJvZ3Jlc3N8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60",
+            "https://images.unsplash.com/photo-1590644365607-4cf4ce0034a8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8Y29uc3RydWN0aW9uJTIwcHJvZ3Jlc3N8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60"
+          ]
         },
         {
           date: "2025-07-20",
           description: "Structural work completed for floors 11-15",
           progress: 60,
-          media: ["/sample/structure1.jpg"]
+          media: [
+            "https://images.unsplash.com/photo-1603720913673-4e5bab3a1c7c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8Y29uc3RydWN0aW9uJTIwcHJvZ3Jlc3N8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60",
+            "https://images.unsplash.com/photo-1621155475465-462f53acbbf7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fGNvbnN0cnVjdGlvbiUyMHByb2dyZXNzfGVufDB8fDB8fHww&auto=format&fit=crop&w=800&q=60"
+          ]
         }
       ],
       comments: [
@@ -72,7 +78,18 @@ function ProjectDashboard() {
           date: "2025-07-23",
           description: "Foundation work completed",
           progress: 30,
-          media: ["/sample/foundation1.jpg"]
+          media: [
+            "https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=60"
+          ]
+        },
+        {
+          date: "2025-07-15",
+          description: "Site preparation and initial groundwork",
+          progress: 25,
+          media: [
+            "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=60",
+            "https://images.unsplash.com/photo-1503387762-592deb58ef4e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=60"
+          ]
         }
       ],
       comments: []

@@ -111,8 +111,8 @@ function Homepage(){
     };
 
     const handleResultClick = (listing) => {
-        // Navigate to the property details page
-        navigate(`/properties/${listing.id}`);
+        // Navigate to the properties page with the property ID in the hash
+        navigate(`/properties#${listing.id}`);
         setIsSearchFocused(false);
         setSearchResults([]);
     };

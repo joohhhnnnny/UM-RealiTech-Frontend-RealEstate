@@ -9,6 +9,7 @@ function BuyerRC() {
   const [agents, setAgents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [selectedAgent, setSelectedAgent] = useState(null);
 
   useEffect(() => {
     // Transform the agents data to include additional properties
@@ -102,12 +103,20 @@ function BuyerRC() {
       {/* Agents Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {agents
-          .filter(agent => 
-            (selectedFilter === 'all' || agent.specialization.toLowerCase() === selectedFilter) &&
-            (agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-             agent.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-             agent.agency.toLowerCase().includes(searchQuery.toLowerCase()))
-          )
+          .filter(agent => {
+            // Filter by specialization
+            const matchesSpecialization = selectedFilter === 'all' || 
+              (agent.specialization || '').toLowerCase() === selectedFilter;
+
+            // Filter by search query
+            const searchLower = searchQuery.toLowerCase();
+            const matchesSearch = !searchQuery || // Show all when no search query
+              (agent.name || '').toLowerCase().includes(searchLower) ||
+              (agent.email || '').toLowerCase().includes(searchLower) ||
+              (agent.agency || '').toLowerCase().includes(searchLower);
+
+            return matchesSpecialization && matchesSearch;
+          })
           .map((agent) => (
           <div key={agent.id} className="card bg-base-100 shadow-xl">
             <div className="card-body">
@@ -135,12 +144,93 @@ function BuyerRC() {
               
               <div className="card-actions justify-end mt-4">
                 <button className="btn btn-primary">Contact Agent</button>
-                <button className="btn btn-outline">View Profile</button>
+                <button 
+                  className="btn btn-outline"
+                  onClick={() => setSelectedAgent(agent)}
+                >
+                  View Profile
+                </button>
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Agent Profile Modal */}
+      {selectedAgent && (
+        <dialog className="modal modal-bottom sm:modal-middle" open>
+          <div className="modal-box bg-base-100 max-w-3xl">
+            <div className="flex items-start gap-6">
+              <div className="avatar">
+                <div className="w-24 h-24 rounded-full ring ring-purple-500 ring-offset-2">
+                  <img src={selectedAgent.image} alt={selectedAgent.name} />
+                </div>
+              </div>
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-purple-500">{selectedAgent.name}</h2>
+                <p className="text-base-content/70">{selectedAgent.specialization} Specialist at {selectedAgent.agency}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  {renderStars(selectedAgent.rating)}
+                  <span className="text-sm opacity-70">({selectedAgent.rating})</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="divider"></div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Contact Information</h3>
+                <div className="space-y-2">
+                  <p className="flex items-center gap-2">
+                    <FaUserTie className="text-purple-500" />
+                    <span className="text-base-content/70">Email:</span>
+                    <span>{selectedAgent.email}</span>
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <FaStar className="text-purple-500" />
+                    <span className="text-base-content/70">Experience:</span>
+                    <span>{selectedAgent.deals} deals closed</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Expertise</h3>
+                <div className="flex flex-wrap gap-2">
+                  <span className="badge badge-purple badge-outline">{selectedAgent.specialization}</span>
+                  <span className="badge badge-purple badge-outline">Property Valuation</span>
+                  <span className="badge badge-purple badge-outline">Contract Negotiation</span>
+                  <span className="badge badge-purple badge-outline">Market Analysis</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <h3 className="font-semibold text-lg mb-3">About</h3>
+              <p className="text-base-content/70">
+                Professional real estate agent with proven expertise in {selectedAgent.specialization.toLowerCase()} properties. 
+                Successfully closed {selectedAgent.deals} deals, maintaining a {selectedAgent.rating}/5 client satisfaction rating. 
+                Specializes in providing comprehensive property solutions and exceptional client service.
+              </p>
+            </div>
+
+            <div className="modal-action">
+              <button className="btn btn-primary gap-2">
+                <FaUserTie />
+                Schedule Meeting
+              </button>
+              <button 
+                className="btn btn-ghost"
+                onClick={() => setSelectedAgent(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+          <div className="modal-backdrop bg-black/20" onClick={() => setSelectedAgent(null)}></div>
+        </dialog>
+      )}
     </div>
   );
 }
