@@ -7,9 +7,9 @@ import {
   RiPriceTag3Line
 } from 'react-icons/ri';
 
-function AIGuide() {
+function AIGuide({ profileData, setProfileData, onComplete }) {
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(profileData || {
     buyerType: '',
     monthlyIncome: '',
     monthlyDebts: '',
@@ -221,13 +221,31 @@ function AIGuide() {
           </div>
         </div>
       </div>
-      <div className="alert alert-success">
-        <RiRobot2Line className="w-6 h-6" />
-        <div>
-          <h3 className="font-bold">AI Profile Complete!</h3>
-          <div className="text-sm">Based on your profile, we'll provide personalized recommendations.</div>
+      {formData.buyerType && formData.monthlyIncome && formData.preferredLocation && formData.budgetRange ? (
+        <div className="alert alert-success">
+          <RiRobot2Line className="w-6 h-6" />
+          <div>
+            <h3 className="font-bold">AI Profile Complete!</h3>
+            <div className="text-sm">Based on your profile, we'll provide personalized recommendations.</div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="alert alert-error">
+          <RiRobot2Line className="w-6 h-6" />
+          <div>
+            <h3 className="font-bold">Profile Incomplete</h3>
+            <div className="text-sm">
+              Please complete the following required fields:
+              <ul className="mt-1 list-disc list-inside">
+                {!formData.buyerType && <li>Buyer Type</li>}
+                {!formData.monthlyIncome && <li>Monthly Income</li>}
+                {!formData.preferredLocation && <li>Preferred Location</li>}
+                {!formData.budgetRange && <li>Budget Range</li>}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 
@@ -251,7 +269,20 @@ function AIGuide() {
         </button>
         <button 
           className="btn btn-primary gap-2" 
-          onClick={handleNext}
+          onClick={() => {
+            if (step === 4) {
+              // Only proceed if all required fields are filled
+              if (formData.buyerType && formData.monthlyIncome && formData.preferredLocation && formData.budgetRange) {
+                setProfileData(formData);
+                onComplete(formData);
+              } else {
+                // You might want to add proper validation feedback here
+                alert("Please complete all required fields before proceeding");
+              }
+            } else {
+              handleNext();
+            }
+          }}
         >
           {step === 4 ? (
             <>

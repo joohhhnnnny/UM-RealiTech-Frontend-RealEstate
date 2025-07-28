@@ -14,20 +14,74 @@ import {
 } from 'react-icons/ri';
 import listingsData from '../../../listings.json';
 
-function SmartListing() {
+function SmartListing({ profileData }) {
   const [listings, setListings] = useState([]);
-  const [sortBy, setSortBy] = useState('latest');
+  const [sortBy, setSortBy] = useState('match'); // Set default sort to match score
   const [selectedProperty, setSelectedProperty] = useState(null);
-  const [profileData] = useState({
-    buyerType: 'Investor',
-    monthlyIncome: '',
-    monthlyDebts: '',
-    hasSpouseIncome: false,
-    preferredLocation: '',
-    budgetRange: ''
-  });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
+
+  // Calculate match score based on profile data and listing
+  const calculateMatchScore = (listing, profile) => {
+    let score = 0;
+    let factors = 0;
+
+    // Budget match (highest weight)
+    if (profile.budgetRange && listing.price) {
+      factors += 3;
+      const price = parseInt(listing.price.replace(/[₱,\s]/g, '')) || 0;
+      const budgetRanges = {
+        '1M-3M': { min: 1000000, max: 3000000 },
+        '3M-5M': { min: 3000000, max: 5000000 },
+        '5M-10M': { min: 5000000, max: 10000000 },
+        '10M+': { min: 10000000, max: Infinity }
+      };
+      const range = budgetRanges[profile.budgetRange];
+      if (range) {
+        if (price >= range.min && price <= range.max) score += 300;
+        else if (price < range.min * 1.1 || price > range.max * 0.9) score += 150;
+      }
+    }
+
+    // Location match (high weight)
+    if (profile.preferredLocation && listing.location) {
+      factors += 2;
+      if (listing.location.toLowerCase().includes(profile.preferredLocation.toLowerCase())) {
+        score += 200;
+      }
+    }
+
+    // Buyer type specific matches
+    if (profile.buyerType) {
+      factors += 1;
+      switch(profile.buyerType) {
+        case 'First Time Buyer':
+          if (parseInt(listing.price?.replace(/[₱,\s]/g, '')) <= 5000000) score += 100;
+          break;
+        case 'Investor':
+          if (listing.title?.toLowerCase().includes('investment') ||
+              listing.description?.toLowerCase().includes('investment') ||
+              listing.amenities?.some(a => a.toLowerCase().includes('rental'))) {
+            score += 100;
+          }
+          break;
+        case 'OFW':
+          if (listing.description?.toLowerCase().includes('ofw friendly') ||
+              listing.furnishing === 'Fully Furnished') {
+            score += 100;
+          }
+          break;
+        case 'Upgrader':
+          if (parseInt(listing.price?.replace(/[₱,\s]/g, '')) >= 5000000 &&
+              listing.amenities?.length >= 3) {
+            score += 100;
+          }
+          break;
+      }
+    }
+
+    return factors > 0 ? Math.round((score / (factors * 100)) * 100) : 50;
+  };
 
   // Calculate total pages
   const totalPages = Math.ceil(listings.length / itemsPerPage);
@@ -39,19 +93,26 @@ function SmartListing() {
 
   // Load listings data
   useEffect(() => {
+    if (!profileData) return;
+
     // Filter out listings with missing essential data
     const validListings = listingsData.filter(listing => 
       listing.title && listing.location && (listing.price || listing.price === 0)
     );
     
-    // Add random match scores for demo
+    // Calculate match scores based on profile
     const listingsWithScores = validListings.map(listing => ({
       ...listing,
-      matchScore: Math.floor(Math.random() * 20) + 80
+      matchScore: calculateMatchScore(listing, profileData)
     }));
+
+    // Sort by match score by default
+    const sortedListings = [...listingsWithScores].sort((a, b) => 
+      (b.matchScore || 0) - (a.matchScore || 0)
+    );
     
-    setListings(listingsWithScores);
-  }, []);
+    setListings(sortedListings);
+  }, [profileData]);
 
   // Add this useEffect hook to handle scrolling
     useEffect(() => {
@@ -86,29 +147,69 @@ function SmartListing() {
 
   // Filter listings when profile data changes
   useEffect(() => {
-    if (listings.length === 0) return;
+    if (listings.length === 0 || !profileData) return;
     
-    const filtered = listings.filter(listing => {
+    const validListings = listingsData.filter(listing => 
+      listing.title && listing.location && (listing.price || listing.price === 0)
+    );
+    
+    const filtered = validListings.filter(listing => {
+      // Location filter
       if (profileData.preferredLocation && 
           !listing.location?.toLowerCase().includes(profileData.preferredLocation.toLowerCase())) {
         return false;
       }
 
+      // Budget range filter
       if (profileData.budgetRange) {
         const price = parseInt(listing.price?.replace(/[₱,\s]/g, '')) || 0;
-        switch(profileData.budgetRange) {
-          case '1M-3M': return price >= 1000000 && price <= 3000000;
-          case '3M-5M': return price >= 3000000 && price <= 5000000;
-          case '5M-10M': return price >= 5000000 && price <= 10000000;
-          case '10M+': return price >= 10000000;
-          default: return true;
+        const budgetRanges = {
+          '1M-3M': { min: 1000000, max: 3000000 },
+          '3M-5M': { min: 3000000, max: 5000000 },
+          '5M-10M': { min: 5000000, max: 10000000 },
+          '10M+': { min: 10000000, max: Infinity }
+        };
+        
+        const range = budgetRanges[profileData.budgetRange];
+        if (range && (price < range.min || price > range.max)) {
+          return false;
+        }
+      }
+
+      // Buyer type specific filters
+      if (profileData.buyerType) {
+        switch(profileData.buyerType) {
+          case 'First Time Buyer':
+            // Filter for more affordable properties and beginner-friendly options
+            return parseInt(listing.price?.replace(/[₱,\s]/g, '')) <= 5000000;
+          case 'Investor':
+            // Look for properties with good investment potential
+            return listing.title?.toLowerCase().includes('investment') || 
+                   listing.description?.toLowerCase().includes('investment') ||
+                   listing.amenities?.some(a => a.toLowerCase().includes('rental'));
+          case 'OFW':
+            // Properties suitable for OFWs
+            return listing.description?.toLowerCase().includes('ofw friendly') ||
+                   listing.furnishing === 'Fully Furnished';
+          case 'Upgrader':
+            // Higher-end properties with more amenities
+            return parseInt(listing.price?.replace(/[₱,\s]/g, '')) >= 5000000 &&
+                   listing.amenities?.length >= 3;
+          default:
+            return true;
         }
       }
 
       return true;
     });
 
-    setListings(filtered);
+    // Calculate match scores based on profile
+    const listingsWithScores = filtered.map(listing => ({
+      ...listing,
+      matchScore: calculateMatchScore(listing, profileData)
+    }));
+
+    setListings(listingsWithScores);
     setCurrentPage(1); // Reset to first page when filters change
   }, [profileData]);
 
@@ -444,10 +545,10 @@ function SmartListing() {
             value={sortBy} 
             onChange={(e) => setSortBy(e.target.value)}
           >
-            <option value="latest">Latest First</option>
+            <option value="match">Best Match</option>
             <option value="price-low">Price: Low to High</option>
             <option value="price-high">Price: High to Low</option>
-            <option value="match">Best Match</option>
+            <option value="latest">Latest First</option>
           </select>
         </div>
       </div>

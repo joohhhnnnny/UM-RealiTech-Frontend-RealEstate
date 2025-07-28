@@ -174,6 +174,12 @@ function ProjectDashboard() {
     });
   };
 
+  const handleDeleteProject = (projectId) => {
+    if (window.confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
+      setProjects(projects.filter(project => project.id !== projectId));
+    }
+  };
+
   const handleProgressUpload = (e) => {
     e.preventDefault();
     if (!progressUpdate.description || !progressUpdate.progress || !selectedProject) {
@@ -551,6 +557,13 @@ function ProjectDashboard() {
                         onClick={() => handleEditProject(project)}
                       >
                         <RiEditLine className="text-xl" />
+                      </button>
+                      <button 
+                        className="btn btn-circle btn-error btn-ghost btn-sm"
+                        onClick={() => handleDeleteProject(project.id)}
+                        title="Delete Project"
+                      >
+                        <RiDeleteBinLine className="text-xl" />
                       </button>
                       <button 
                         className="btn btn-circle btn-ghost btn-sm"

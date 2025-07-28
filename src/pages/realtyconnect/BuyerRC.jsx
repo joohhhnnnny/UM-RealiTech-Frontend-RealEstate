@@ -12,25 +12,56 @@ function BuyerRC() {
 
   useEffect(() => {
     // Transform the agents data to include additional properties
-    const enhancedAgents = agentsData.map(agent => {
-      // Assign specific images based on agent names
+    const enhancedAgents = agentsData.map((agent, index) => {
       let image;
-      if (agent.name.toLowerCase().includes('jm')) {
-        image = '/src/assets/jm.jpg';
-      } else if (agent.name.toLowerCase().includes('robert')) {
-        image = '/src/assets/robert.jpg';
-      } else if (agent.id.startsWith('7')) {
-        image = '/src/assets/benedict.jpg';
+      
+      // Assign Sarah Garcia's avatar to the first agent in the list
+      if (index === 0) {
+        image = "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&backgroundColor=b6e3f4";
       } else {
-        image = '/src/assets/aaron.jpg';
+        // For other agents, use unique professional photos
+        const professionalPhotos = [
+          'https://images.unsplash.com/photo-1560250097-0b93528c311a',
+          'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2',
+          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d',
+          'https://images.unsplash.com/photo-1580489944761-15a19d654956',
+          'https://images.unsplash.com/photo-1438761681033-6461ffad8d80',
+          'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e',
+          'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79',
+          'https://images.unsplash.com/photo-1544005313-94ddf0286df2',
+          'https://randomuser.me/api/portraits/men/41.jpg',
+          'https://randomuser.me/api/portraits/women/42.jpg',
+          'https://randomuser.me/api/portraits/men/43.jpg',
+          'https://randomuser.me/api/portraits/women/44.jpg'
+        ];
+        
+        // Use index to ensure each agent gets a unique photo
+        const uniqueIndex = index % professionalPhotos.length;
+        image = professionalPhotos[uniqueIndex];
+      }
+
+      // Special treatment for Sarah Garcia
+      let specialization = ['Residential', 'Commercial', 'Industrial'][Math.floor(Math.random() * 3)];
+      let rating = (Math.random() * (5 - 4) + 4).toFixed(1);
+      let deals = Math.floor(Math.random() * (50 - 10) + 10);
+
+      if (agent.name === 'Sarah Garcia') {
+        specialization = 'Residential';
+        rating = '4.8';
+        deals = 32; // Match with the AgentDashboard stats
       }
 
       return {
         ...agent,
-        specialization: ['Residential', 'Commercial', 'Industrial'][Math.floor(Math.random() * 3)],
-        rating: (Math.random() * (5 - 4) + 4).toFixed(1),
-        deals: Math.floor(Math.random() * (50 - 10) + 10),
-        image
+        specialization,
+        rating,
+        deals,
+        image,
+        // Add additional info for Sarah Garcia
+        ...(agent.name === 'Sarah Garcia' && {
+          agency: 'RealiTech Realty',
+          email: 'sarah@realitech.com'
+        })
       };
     });
     setAgents(enhancedAgents);

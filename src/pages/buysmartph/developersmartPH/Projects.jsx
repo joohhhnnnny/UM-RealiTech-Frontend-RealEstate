@@ -24,7 +24,7 @@ function Projects() {
       status: "Active",
       completion: 75,
       completionDate: "2025-06-30",
-      image: "https://via.placeholder.com/300x200?text=Viva+Homes",
+      image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
       description: "Modern townhouse development in Quezon City with excellent amenities",
       startDate: "2023-01-15"
     },
@@ -38,7 +38,7 @@ function Projects() {
       status: "Active",
       completion: 45,
       completionDate: "2026-12-15",
-      image: "https://via.placeholder.com/300x200?text=Metro+Heights",
+      image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
       description: "Luxury condominium in the heart of Makati's financial district",
       startDate: "2022-08-01"
     },
@@ -52,7 +52,7 @@ function Projects() {
       status: "Pre-selling",
       completion: 20,
       completionDate: "2027-03-30",
-      image: "https://via.placeholder.com/300x200?text=Garden+Residences",
+      image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
       description: "Premium green living spaces in Bonifacio Global City",
       startDate: "2024-02-10"
     }
@@ -77,6 +77,19 @@ function Projects() {
   });
   const fileInputRef = useRef(null);
   const editFileInputRef = useRef(null);
+
+  // Backup images array for fallback
+  const backupImages = [
+    "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1565402170291-8491f14678db?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1576941089067-2de3c901e126?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1602343168117-bb8ffe3e2e9f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+  ];
+
+  const handleImageError = (e) => {
+    const randomBackup = backupImages[Math.floor(Math.random() * backupImages.length)];
+    e.target.src = randomBackup;
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -232,78 +245,84 @@ function Projects() {
             whileHover={{ scale: 1.02 }}
             className="card bg-base-100 shadow-lg border border-base-200 hover:shadow-xl transition-all duration-300 ease-in-out"
           >
-            <figure className="h-48 overflow-hidden">
+            <figure className="h-52 overflow-hidden">
               <img 
                 src={project.image} 
                 alt={project.name}
+                onError={handleImageError}
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
               />
             </figure>
-            <div className="card-body p-6">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="font-bold text-lg text-primary">{project.name}</h3>
-                  <p className="text-sm text-base-content/70 flex items-center gap-1">
-                    <RiMapPinLine className="w-4 h-4" />
-                    {project.location}
-                  </p>
+            <div className="card-body p-6 gap-4">
+              {/* Header Section */}
+              <div className="space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-bold text-lg text-primary line-clamp-1">{project.name}</h3>
+                  <div className={`badge ${project.status === 'Active' ? 'badge-success' : 'badge-warning'} badge-lg shrink-0`}>
+                    {project.status}
+                  </div>
                 </div>
-                <div className={`badge ${project.status === 'Active' ? 'badge-success' : 'badge-warning'} badge-lg`}>
-                  {project.status}
+                <p className="text-sm text-base-content/70 flex items-center gap-2">
+                  <RiMapPinLine className="w-4 h-4 shrink-0" />
+                  <span className="line-clamp-1">{project.location}</span>
+                </p>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="stat-box p-3 bg-base-200/50 rounded-xl hover:bg-base-200/70 transition-colors">
+                  <div className="text-lg font-bold text-center">{project.totalUnits}</div>
+                  <div className="text-xs text-base-content/70 text-center">Total Units</div>
+                </div>
+                <div className="stat-box p-3 bg-base-200/50 rounded-xl hover:bg-base-200/70 transition-colors">
+                  <div className="text-lg font-bold text-center">{project.soldUnits}</div>
+                  <div className="text-xs text-base-content/70 text-center">Units Sold</div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="text-center p-3 bg-base-200/50 rounded-lg hover:scale-103 transition-transform">
-                  <div className="text-lg font-bold">{project.totalUnits}</div>
-                  <div className="text-xs text-base-content/70">Total Units</div>
+              {/* Progress Bar */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium">Construction Progress</span>
+                  <span className="font-bold text-primary">{project.completion}%</span>
                 </div>
-                <div className="text-center p-3 bg-base-200/50 rounded-lg hover:scale-103 transition-transform">
-                  <div className="text-lg font-bold">{project.soldUnits}</div>
-                  <div className="text-xs text-base-content/70">Units Sold</div>
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Construction Progress</span>
-                  <span>{project.completion}%</span>
-                </div>
-                <div className="w-full h-2 bg-base-200 rounded-full overflow-hidden">
+                <div className="w-full h-2.5 bg-base-200 rounded-full overflow-hidden">
                   <div 
-                    className="h-2 bg-primary rounded-full transition-all duration-500"
+                    className="h-full bg-primary rounded-full transition-all duration-500"
                     style={{ width: `${project.completion}%` }}
                   />
                 </div>
               </div>
 
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-base-content/70">Avg Price:</span>
-                  <span className="font-medium">{project.avgPrice}</span>
+              {/* Project Details */}
+              <div className="grid gap-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-base-content/70">Average Price</span>
+                  <span className="font-semibold text-primary">{project.avgPrice}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-base-content/70">Sales Rate:</span>
-                  <span className="font-medium">
+                <div className="flex items-center justify-between">
+                  <span className="text-base-content/70">Sales Rate</span>
+                  <span className="font-semibold">
                     {Math.round((project.soldUnits/project.totalUnits)*100)}%
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-base-content/70">Completion:</span>
-                  <span className="font-medium">{project.completionDate}</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-base-content/70">Target Completion</span>
+                  <span className="font-semibold">{project.completionDate}</span>
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-4">
+              {/* Action Buttons */}
+              <div className="flex gap-3 mt-2">
                 <button 
-                  className="btn btn-primary btn-sm flex-1"
+                  className="btn btn-primary btn-sm flex-1 gap-2"
                   onClick={() => handleViewDetails(project)}
                 >
-                  <RiEyeLine className="w-4 h-4" />
-                  View Details
+                  <RiEyeLine className="w-4 h-4 shrink-0" />
+                  <span>View Details</span>
                 </button>
                 <button 
-                  className="btn btn-outline btn-sm"
+                  className="btn btn-outline btn-sm px-3"
                   onClick={() => handleEditClick(project)}
                 >
                   <RiEditLine className="w-4 h-4" />
@@ -544,6 +563,7 @@ function Projects() {
                     <img 
                       src={selectedProject.image} 
                       alt={selectedProject.name}
+                      onError={handleImageError}
                       className="w-full h-full object-cover"
                     />
                   </figure>

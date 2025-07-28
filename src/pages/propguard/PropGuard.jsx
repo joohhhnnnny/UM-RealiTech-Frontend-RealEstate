@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import { 
   RiHomeSmileLine,
@@ -15,7 +15,8 @@ import {
   RiFingerprint2Line,
   RiHomeSmile2Line,
   RiBuilding4Line,
-  RiMapPinLine
+  RiMapPinLine,
+  RiAddLine
 } from 'react-icons/ri';
 import { useLocation } from 'react-router-dom';
 import listingsData from '../../listings.json';
@@ -26,11 +27,13 @@ function PropGuard() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [currentFlow, setCurrentFlow] = useState('greeting');
+  const [_userType, setUserType] = useState(null);
+  const [_budget, setBudget] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
   // Get system context based on user role
-  const getSystemContext = () => {
+  const _getSystemContext = () => {
     if (userRole === 'developer') {
       return `You are PropGuard Developer Assistant, an AI assistant for real estate developers. You help with project management, sales analytics, property inventory, buyer applications, and partner management. You have access to:
         - Active Projects: 3 projects with 245 total units, 78% sales progress, 54 available units
@@ -59,111 +62,181 @@ function PropGuard() {
     }
   };
 
-  const getAIResponse = (userMessage, matchingProperties = []) => {
-    const isPropertyQuery = userMessage.toLowerCase().match(/(?:property|house|condo|apartment|looking|buy|price|bedroom|location)/);
-    const context = getSystemContext();
+  const getGeminiResponse = async (userMessage) => {
+    try {
+      const systemContext = _getSystemContext();
+      const response = await fetch(import.meta.env.VITE_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `${systemContext}\n\nUser: ${userMessage}\n\nAssistant:`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.9,
+            topK: 40,
+            topP: 0.8,
+            maxOutputTokens: 1000,
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            }
+          ]
+        })
+      });
 
-    // Common response patterns based on message content
-    if (userMessage.toLowerCase().includes('hello') || userMessage.toLowerCase().includes('hi')) {
-      return "Hello! How can I assist you with your real estate needs today?";
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const data = await response.json();
+      return data.candidates[0].content.parts[0].text;
+    } catch (error) {
+      console.error('Error:', error);
+      return handleFallbackResponse(userMessage);
+    }
+  };
+
+  const handleFallbackResponse = (userMessage) => {
+    let fallbackMessage = "I apologize, but I'm not able to assist with that. Can you please provide more details or ask something else?";
+    
+    // Customize fallback responses based on user message
+    if (userMessage.toLowerCase().includes('property')) {
+      fallbackMessage = "I can help you search for properties, verify listings, or provide market insights. What specific information are you looking for?";
+    } else if (userMessage.toLowerCase().includes('document')) {
+      fallbackMessage = "I can assist with document verification, submissions, and legal requirements. What type of documents do you need help with?";
+    } else if (userMessage.toLowerCase().includes('finance') || userMessage.toLowerCase().includes('payment')) {
+      fallbackMessage = "I can guide you through financing options, payment processes, and budget planning. What would you like to know more about?";
+    }
+    
+    return fallbackMessage;
+  };
+
+  const getAIResponse = async (userMessage, matchingProperties = []) => {
+    // First, get the AI response regardless of the query type
+    const aiResponse = await getGeminiResponse(userMessage);
+
+    // Only add property results for specific property search queries
+    const isPropertyQuery = currentFlow === 'property_search' && 
+      userMessage.toLowerCase().match(/(?:budget.*range|location.*interested|prefer.*(?:house|condo|apartment)|how.*many.*bedrooms)/);
+
+    if (isPropertyQuery && matchingProperties.length > 0) {
+      return `${aiResponse}\n\nI found ${matchingProperties.length} properties that match your criteria. Here are some suggestions that might interest you:`;
     }
 
-    if (userMessage.toLowerCase().includes('budget')) {
-      return "I can help you with budget planning. What's your target price range for a property?";
-    }
-
-    if (userMessage.toLowerCase().includes('fraud') || userMessage.toLowerCase().includes('scam')) {
-      return "I understand your concern about fraud. I can help verify property authenticity and check for common red flags. Would you like me to explain our fraud detection process?";
-    }
-
-    if (userMessage.toLowerCase().includes('document')) {
-      return "I can assist with document verification and submissions. What type of documents do you need help with - property titles, contracts, or other legal documents?";
-    }
-
-    if (isPropertyQuery) {
-      return `I found ${matchingProperties.length} properties that match your criteria. ${
-        matchingProperties.length > 0 
-          ? "Here are some suggestions that might interest you:" 
-          : "Could you provide more details about what you're looking for? For example, your preferred location or budget range?"
-      }`;
-    }
-
-    if (userMessage.toLowerCase().includes('right') || userMessage.toLowerCase().includes('law')) {
-      return "I can guide you through your real estate rights and legal considerations. What specific aspect would you like to learn more about?";
-    }
-
-    if (userMessage.toLowerCase().includes('finance') || userMessage.toLowerCase().includes('loan')) {
-      return "I can help you understand your financing options. Would you like to know about mortgage rates, loan requirements, or payment terms?";
-    }
-
-    // Default contextual response based on role
-    return userRole === 'developer' 
-      ? "I can help you manage your development projects, track sales, or handle buyer applications. What would you like to focus on?"
-      : userRole === 'agent'
-      ? "I can assist you with client management, market analysis, or property listings. What area would you like to explore?"
-      : "I'm here to help protect your real estate journey. Would you like to explore properties, verify documents, or learn about financing options?";
+    return aiResponse;
   };
 
   const updateConversationFlow = (message) => {
     const text = message.toLowerCase();
-    if (text.includes('buy') || text.includes('property') || text.includes('house') || text.includes('condo')) {
-      setCurrentFlow('buying');
-    } else if (text.includes('document') || text.includes('submit') || text.includes('verification')) {
-      setCurrentFlow('documents');
-    } else if (text.includes('right') || text.includes('law') || text.includes('legal')) {
+    
+    // Property search flow
+    if (text.includes('find') || text.includes('search') || text.includes('looking') || 
+        text.includes('property') || text.includes('house') || text.includes('condo')) {
+      setCurrentFlow('property_search');
+    }
+    // Legal rights flow
+    else if (text.includes('right') || text.includes('law') || text.includes('legal') || 
+             text.includes('protection') || text.includes('standard')) {
       setCurrentFlow('rights');
-    } else if (text.includes('payment') || text.includes('finance') || text.includes('money')) {
-      setCurrentFlow('finance');
+    }
+    // Payment process flow
+    else if (text.includes('payment') || text.includes('pay') || text.includes('transaction') || 
+             text.includes('transfer') || text.includes('process')) {
+      setCurrentFlow('payments');
+    }
+    // Financing flow
+    else if (text.includes('finance') || text.includes('loan') || text.includes('mortgage') || 
+             text.includes('interest') || text.includes('bank')) {
+      setCurrentFlow('financing');
+    }
+    // Reset to default if none match
+    else if (text.includes('back') || text.includes('start') || text.includes('hello')) {
+      setCurrentFlow('greeting');
     }
   };
 
   // Initialize chat when component mounts
-  useEffect(() => {
-    initializeChat();
-  }, []);
-
-  const initializeChat = () => {
+  const initializeChat = useCallback(() => {
     const welcomeMessage = {
       id: Date.now(),
       type: 'bot',
-      content: "Hello! I'm PropGuard AI Assistant. I'm here to help protect your real estate journey and provide guidance. How can I assist you today?"
+      content: userRole === 'agent' || userRole === 'developer'
+        ? `Welcome to PropGuard Agent Dashboard! I can help you manage client inquiries, process applications, and provide market insights. Hello ${userRole === 'developer' ? 'Developer' : 'Agent'}! What would you like to work on?`
+        : "Hi! I'm PropGuard Assistant. I'm here to help you with property inquiries, fraud detection, and real estate guidance. How can I assist you today?"
     };
     setMessages([welcomeMessage]);
     setCurrentFlow('greeting');
+    setUserType(null);
+    setBudget('');
     setShowSuggestions(true);
-  };
+  }, [userRole]);  // Add userRole as dependency
+
+  useEffect(() => {
+    initializeChat();
+  }, [initializeChat]);
 
   const getSuggestions = () => {
     switch (currentFlow) {
       case 'greeting':
         return [
-          { emoji: '🏠', text: 'I want to buy a property' },
-          { emoji: '📋', text: 'Submit property documents' },
-          { emoji: '🔍', text: 'Check property authenticity' },
-          { emoji: '💰', text: 'Help with financing' },
-          { emoji: '📄', text: 'Understand my rights' }
+          { emoji: '🏠', text: "I'd like to find a property" },
+          { emoji: '⚖️', text: 'What are my rights as a buyer?' },
+          { emoji: '💳', text: 'How do payments work?' },
+          { emoji: '�', text: 'Help me with financing options' }
         ];
-      case 'buying':
+      case 'property_search':
         return [
-          { emoji: '💵', text: 'Set my budget range' },
-          { emoji: '📍', text: 'Show properties in my area' },
-          { emoji: '🏢', text: 'Find condos' },
-          { emoji: '🏡', text: 'Find house and lot' },
-          { emoji: '📋', text: 'Property buying guide' }
+          { emoji: '💵', text: 'What is your budget range?' },
+          { emoji: '�', text: 'Which location are you interested in?' },
+          { emoji: '🏗️', text: 'Do you prefer a house, condo, or apartment?' },
+          { emoji: '🛏️', text: 'How many bedrooms do you need?' }
         ];
-      case 'documents':
+      case 'rights':
         return [
-          { emoji: '📄', text: 'Submit title documents' },
-          { emoji: '📝', text: 'Contract verification' },
-          { emoji: '✍️', text: 'Digital signatures' },
-          { emoji: '📋', text: 'Required document checklist' }
+          { emoji: '�', text: 'Property buyer protection laws' },
+          { emoji: '🤝', text: 'Contract and agreement rights' },
+          { emoji: '🏗️', text: 'Construction and development standards' },
+          { emoji: '⚖️', text: 'Legal recourse and remedies' }
+        ];
+      case 'payments':
+        return [
+          { emoji: '💳', text: 'Payment methods accepted' },
+          { emoji: '📅', text: 'Payment schedules and terms' },
+          { emoji: '�', text: 'Bank transfer and processing' },
+          { emoji: '�', text: 'Documentation requirements' }
+        ];
+      case 'financing':
+        return [
+          { emoji: '🏦', text: 'Available loan options' },
+          { emoji: '�', text: 'Interest rates and terms' },
+          { emoji: '📋', text: 'Loan requirements and eligibility' },
+          { emoji: '�', text: 'Tips for loan approval' }
         ];
       default:
         return [
-          { emoji: '🏠', text: 'Show me properties' },
-          { emoji: '📋', text: 'Document help' },
-          { emoji: '💰', text: 'Payment assistance' },
-          { emoji: '❓', text: 'Legal rights info' }
+          { emoji: '🏠', text: 'Search for properties' },
+          { emoji: '⚖️', text: 'Legal rights information' },
+          { emoji: '�', text: 'Payment process' },
+          { emoji: '💰', text: 'Financing guidance' }
         ];
     }
   };
@@ -318,13 +391,9 @@ function PropGuard() {
     // Update conversation flow based on message
     updateConversationFlow(text);
 
-    // Generate bot response
-    setTimeout(() => {
-      const hasPropertyMatches = matchingProperties.length > 0;
-      const isPropertyQuery = text.toLowerCase().match(/(?:property|house|condo|apartment|looking|buy|price|bedroom|location)/);
-      
+    try {
       // Get personalized AI response based on user message and role
-      const aiResponse = getAIResponse(text, matchingProperties);
+      const aiResponse = await getAIResponse(text, matchingProperties);
 
       // Add bot response message
       setMessages(prev => [...prev, {
@@ -333,14 +402,18 @@ function PropGuard() {
         content: aiResponse
       }]);
 
-      // If property matches found, show them
-      if (hasPropertyMatches && isPropertyQuery) {
-        matchingProperties.forEach((property, index) => {
+      // Only show properties for specific property search queries in property_search flow
+      const isPropertyQuery = currentFlow === 'property_search' && 
+        text.toLowerCase().match(/(?:budget.*range|location.*interested|prefer.*(?:house|condo|apartment)|how.*many.*bedrooms)/);
+
+      if (matchingProperties.length > 0 && isPropertyQuery) {
+        // Limit to top 5 most relevant properties
+        matchingProperties.slice(0, 5).forEach((property, index) => {
           setTimeout(() => {
             setMessages(prev => [...prev, {
               id: Date.now() + index + 2,
-              type: 'bot',
-              ...formatPropertyCard(property)
+              type: 'property',
+              content: formatPropertyCard(property).content
             }]);
           }, 300 * (index + 1));
         });
@@ -348,7 +421,16 @@ function PropGuard() {
 
       setIsLoading(false);
       setShowSuggestions(true);
-    }, 1000);
+    } catch (error) {
+      console.error('Error:', error);
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        type: 'bot',
+        content: "I apologize, but I encountered an error. Please try again or ask a different question."
+      }]);
+      setIsLoading(false);
+      setShowSuggestions(true);
+    }
   };
 
   return (
@@ -369,14 +451,23 @@ function PropGuard() {
               >
                 <div className="card-body p-0">
                   {/* Chat Header */}
-                  <div className="p-4 border-b border-base-200 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <RiRobot2Fill className="w-6 h-6 text-primary" />
+                  <div className="p-4 border-b border-base-200 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <RiRobot2Fill className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold">PropGuard AI Assistant</h2>
+                        <p className="text-sm text-base-content/60">Your real estate protection guide</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-lg font-bold">PropGuard AI Assistant</h2>
-                      <p className="text-sm text-base-content/60">Your real estate protection guide</p>
-                    </div>
+                    <button 
+                      onClick={initializeChat}
+                      className="btn btn-ghost btn-sm btn-circle tooltip tooltip-left"
+                      data-tip="Start New Chat"
+                    >
+                      <RiAddLine className="w-5 h-5" />
+                    </button>
                   </div>
 
                   {/* Chat Messages */}

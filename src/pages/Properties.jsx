@@ -19,8 +19,27 @@ function Properties() {
     const [propertyType, setPropertyType] = useState('all');
     const [priceRange, setPriceRange] = useState({ min: '', max: '' });
     const [currentPage, setCurrentPage] = useState(1);
+    const [selectedProperty, setSelectedProperty] = useState(null);
     const propertiesPerPage = 9;
     const propertiesSectionRef = useRef(null);
+
+    // Format price for display
+    const formatPriceInput = (value) => {
+        if (!value) return '';
+        const number = parseInt(value.replace(/[^0-9]/g, ''));
+        return new Intl.NumberFormat('en-PH').format(number);
+    };
+
+    // Parse price input
+    const parsePriceInput = (value) => {
+        return value.replace(/[^0-9]/g, '');
+    };
+
+    // Handle price input change
+    const handlePriceChange = (type, value) => {
+        const numericValue = parsePriceInput(value);
+        setPriceRange(prev => ({ ...prev, [type]: numericValue }));
+    };
 
     // Filter and sort properties
     const filteredProperties = useMemo(() => {
@@ -36,8 +55,8 @@ function Properties() {
 
                 const price = parseInt(property.price?.replace(/[^0-9]/g, '')) || 0;
                 const matchesPrice = 
-                    (!priceRange.min || price >= parseInt(priceRange.min)) &&
-                    (!priceRange.max || price <= parseInt(priceRange.max));
+                    (!priceRange.min || price >= parseInt(parsePriceInput(priceRange.min))) &&
+                    (!priceRange.max || price <= parseInt(parsePriceInput(priceRange.max)));
 
                 return matchesSearch && matchesType && matchesPrice;
             })
@@ -80,6 +99,11 @@ function Properties() {
         setCurrentPage(page);
     };
 
+    const handleViewDetails = (property) => {
+        setSelectedProperty(property);
+        document.getElementById('property_modal').showModal();
+    };
+
     return (
         <>
             <Navbar />
@@ -109,13 +133,13 @@ function Properties() {
                                 transition={{ delay: 0.3, duration: 0.5 }}
                                 className="flex flex-col sm:flex-row gap-4"
                             >
-                                <div className="relative">
+                                <div className="relative flex-grow">
                                     <input
                                         type="text"
-                                        placeholder="Search properties..."
+                                        placeholder="Search properties by title, location, or features..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="input input-bordered w-full pl-10 pr-4 bg-base-100"
+                                        className="input input-bordered w-full pl-10 pr-4 bg-base-100 min-w-[320px]"
                                     />
                                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-base-content/50" />
                                 </div>
@@ -145,21 +169,35 @@ function Properties() {
                         <div className="mb-8 flex flex-wrap gap-4">
                             <div className="flex items-center gap-2">
                                 <span className="text-base-content/70">Price Range:</span>
-                                <input
-                                    type="number"
-                                    placeholder="Min"
-                                    value={priceRange.min}
-                                    onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
-                                    className="input input-bordered input-sm w-24"
-                                />
+                                <div className="join">
+                                    <div className="join-item flex items-center px-3 bg-base-200 border border-base-300">
+                                        ₱
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="1,000,000"
+                                        value={formatPriceInput(priceRange.min)}
+                                        onChange={(e) => handlePriceChange('min', e.target.value)}
+                                        className="input input-bordered input-sm w-36 join-item"
+                                        min="0"
+                                        step="100000"
+                                    />
+                                </div>
                                 <span>-</span>
-                                <input
-                                    type="number"
-                                    placeholder="Max"
-                                    value={priceRange.max}
-                                    onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
-                                    className="input input-bordered input-sm w-24"
-                                />
+                                <div className="join">
+                                    <div className="join-item flex items-center px-3 bg-base-200 border border-base-300">
+                                        ₱
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="10,000,000"
+                                        value={formatPriceInput(priceRange.max)}
+                                        onChange={(e) => handlePriceChange('max', e.target.value)}
+                                        className="input input-bordered input-sm w-36 join-item"
+                                        min="0"
+                                        step="100000"
+                                    />
+                                </div>
                             </div>
                         </div>
                         
@@ -178,30 +216,33 @@ function Properties() {
                                     className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300"
                                 >
                                     <div className="relative">
-                                        <div className={`h-64 rounded-t-xl flex items-center justify-center relative overflow-hidden
-                                                     ${property.title?.toLowerCase().includes('office') 
-                                                       ? 'bg-gradient-to-br from-blue-500/20 to-blue-500/5'
-                                                       : 'bg-gradient-to-br from-emerald-500/20 to-emerald-500/5'}`}
-                                        >
-                                            <div className="absolute inset-0 bg-base-200 opacity-50"></div>
-                                            <div className="relative z-10 text-center p-4">
-                                                {property.title?.toLowerCase().includes('office') ? (
-                                                    <BuildingOffice2Icon className="w-16 h-16 mx-auto text-blue-500" />
-                                                ) : (
-                                                    <HomeIcon className="w-16 h-16 mx-auto text-emerald-500" />
-                                                )}
-                                                <p className="mt-4 font-semibold text-base-content/70">
-                                                    {property.title?.toLowerCase().includes('office') 
-                                                        ? 'Commercial Property'
-                                                        : 'Residential Property'
-                                                    }
-                                                </p>
-                                                <div className="mt-2 flex items-center justify-center gap-2">
+                                        <div className="h-64 rounded-t-xl relative overflow-hidden group">
+                                            <img 
+                                                src={property.images?.[0] || 'https://via.placeholder.com/800x600?text=No+Image+Available'}
+                                                alt={property.title}
+                                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                                            <div className="absolute bottom-4 left-4 right-4 text-white">
+                                                <div className="flex items-center gap-2 text-white/90">
+                                                    {property.title?.toLowerCase().includes('office') ? (
+                                                        <>
+                                                            <BuildingOffice2Icon className="w-5 h-5" />
+                                                            <span className="text-sm font-medium">Commercial Property</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <HomeIcon className="w-5 h-5" />
+                                                            <span className="text-sm font-medium">Residential Property</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                <div className="mt-2 flex items-center gap-2">
                                                     {property.beds && (
-                                                        <span className="badge badge-sm">{property.beds} Beds</span>
+                                                        <span className="badge badge-sm badge-ghost text-white">{property.beds} Beds</span>
                                                     )}
                                                     {property.floor_area_sqm && (
-                                                        <span className="badge badge-sm">{property.floor_area_sqm} sqm</span>
+                                                        <span className="badge badge-sm badge-ghost text-white">{property.floor_area_sqm} sqm</span>
                                                     )}
                                                 </div>
                                             </div>
@@ -248,7 +289,10 @@ function Properties() {
                                                     {formatPrice(property.price)}
                                                 </span>
                                             </div>
-                                            <button className="btn btn-primary btn-sm">
+                                            <button 
+                                                className="btn btn-primary btn-sm"
+                                                onClick={() => handleViewDetails(property)}
+                                            >
                                                 View Details
                                             </button>
                                         </div>
@@ -256,6 +300,69 @@ function Properties() {
                                 </motion.div>
                             ))}
                         </motion.div>
+
+                        {/* Property Details Modal */}
+                        <dialog id="property_modal" className="modal modal-bottom sm:modal-middle">
+                            {selectedProperty && (
+                                <div className="modal-box">
+                                    <div className="relative h-64 -mt-6 -mx-6 mb-4">
+                                        <div className="carousel w-full h-full">
+                                            {selectedProperty.images?.map((image, index) => (
+                                                <div key={index} className="carousel-item relative w-full h-full">
+                                                    <img 
+                                                        src={image} 
+                                                        alt={`${selectedProperty.title} - Image ${index + 1}`}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <h3 className="font-bold text-xl mb-4">{selectedProperty.title}</h3>
+                                    
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div className="flex items-center gap-2">
+                                            <MapPinIcon className="w-5 h-5 text-primary" />
+                                            <span>{selectedProperty.location}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <CurrencyDollarIcon className="w-5 h-5 text-primary" />
+                                            <span className="font-bold">{formatPrice(selectedProperty.price)}</span>
+                                        </div>
+                                        {selectedProperty.beds && (
+                                            <div className="flex items-center gap-2">
+                                                <HomeIcon className="w-5 h-5 text-primary" />
+                                                <span>{selectedProperty.beds} Bedrooms</span>
+                                            </div>
+                                        )}
+                                        {selectedProperty.floor_area_sqm && (
+                                            <div className="flex items-center gap-2">
+                                                <Square2StackIcon className="w-5 h-5 text-primary" />
+                                                <span>{selectedProperty.floor_area_sqm} sqm</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {selectedProperty.furnishing && (
+                                        <div className="mb-4">
+                                            <h4 className="font-semibold mb-2">Furnishing:</h4>
+                                            <div className="badge badge-primary">{selectedProperty.furnishing}</div>
+                                        </div>
+                                    )}
+
+                                    <div className="modal-action">
+                                        <form method="dialog">
+                                            <button 
+                                                className="btn"
+                                                onClick={() => setSelectedProperty(null)}
+                                            >
+                                                Close
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            )}
+                        </dialog>
 
                         {filteredProperties.length > propertiesPerPage && (
                             <div className="flex justify-center mt-12">

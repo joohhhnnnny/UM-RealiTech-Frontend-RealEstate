@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { 
   RiRobot2Line, 
   RiMoneyDollarCircleLine,
@@ -8,7 +8,6 @@ import {
   RiCheckboxCircleLine,
   RiLayoutGridLine
 } from 'react-icons/ri';
-import listingsData from '../../listings.json';
 import AIGuide from './buyersmartPH/AIGuide.jsx';
 import LoanCalculator from './buyersmartPH/LoanCalculator';
 import CostCalculator from './buyersmartPH/CostCalculator';
@@ -17,10 +16,6 @@ import SmartListing from './buyersmartPH/SmartListing';
 
 function BuyerBSPH() {
   const [activeStep, setActiveStep] = useState(1);
-  const [listings, setListings] = useState([]);
-  const [displayCount, setDisplayCount] = useState(9);
-  const [selectedProperty, setSelectedProperty] = useState(null);
-  const [sortBy, setSortBy] = useState('latest');
   const [profileData, setProfileData] = useState({
     buyerType: '',
     monthlyIncome: '',
@@ -29,14 +24,6 @@ function BuyerBSPH() {
     preferredLocation: '',
     budgetRange: ''
   });
-
-  useEffect(() => {
-    // Filter out listings with missing essential data
-    const validListings = listingsData.filter(listing => 
-      listing.title && listing.location && (listing.price || listing.price === 0)
-    );
-    setListings(validListings);
-  }, []);
 
   const buyingSteps = [
     {
@@ -81,23 +68,38 @@ function BuyerBSPH() {
     }
   ];
 
+
+
   // Content components for each step
   const stepContent = {
-    1: <AIGuide profileData={profileData} setProfileData={setProfileData} onComplete={() => setActiveStep(5)} />,
+    1: <AIGuide 
+         profileData={profileData} 
+         setProfileData={setProfileData} 
+         onComplete={() => setActiveStep(5)} 
+       />,
     2: <LoanCalculator />,
     3: <CostCalculator />,
     4: <DocumentSubmission />,
-    5: (
-      <SmartListing 
-        listings={listings} 
-        displayCount={displayCount} 
-        setDisplayCount={setDisplayCount}
-        selectedProperty={selectedProperty}
-        setSelectedProperty={setSelectedProperty}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-        profileData={profileData}
-      />
+    5: profileData.buyerType ? (
+      <SmartListing profileData={profileData} />
+    ) : (
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="card bg-base-100 shadow-lg p-8 text-center"
+      >
+        <RiRobot2Line className="w-16 h-16 mx-auto text-primary mb-4" />
+        <h3 className="text-xl font-bold mb-2">Complete Your AI Profile First</h3>
+        <p className="text-base-content/70 mb-6">
+          To get personalized property recommendations, please complete your buyer profile through the AI Guide first.
+        </p>
+        <button 
+          onClick={() => setActiveStep(1)} 
+          className="btn btn-primary mx-auto"
+        >
+          Go to AI Guide
+        </button>
+      </motion.div>
     )
   };
 
