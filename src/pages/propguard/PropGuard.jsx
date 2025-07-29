@@ -82,7 +82,7 @@ const formatTextWithBold = (text) => {
     if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
       // Remove asterisks and make bold with black color
       const boldText = part.slice(1, -1);
-      return <strong key={index} className="font-bold text-black">{boldText}</strong>;
+      return <strong key={index} className="font-bold text-content">{boldText}</strong>;
     }
     // Return regular text, filter out standalone asterisks
     return part === '*' ? '' : part;

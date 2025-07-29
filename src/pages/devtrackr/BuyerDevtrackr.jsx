@@ -220,7 +220,7 @@ function BuyerDevTrackr() {
               </button>
               <button 
                 onClick={() => setViewMode('comparison')}
-                className="btn btn-secondary"
+                className="btn btn-warning"
               >
                 <RiEyeLine className="w-4 h-4" />
                 Compare Layouts
@@ -488,21 +488,41 @@ function BuyerDevTrackr() {
                       {review.developer}
                     </h3>
                     <div className="flex items-center gap-2 mt-2">
-                      <div className="rating rating-sm">
-                        {[...Array(5)].map((_, i) => (
-                          <RiStarFill 
-                            key={i} 
-                            className={`w-4 h-4 ${i < review.rating ? 'text-warning' : 'text-base-300'}`} 
-                          />
-                        ))}
-                      </div>
-                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                        {review.rating}/5
-                      </span>
-                      <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                        ({review.totalReviews} reviews)
-                      </span>
+                    {/* Star Rating - Fixed Version */}
+                    <div className="flex items-center">
+                      {[1, 2, 3, 4, 5].map((star) => {
+                        const isFilled = star <= review.rating;
+                        const isHalfFilled = !isFilled && (star - 0.5) <= review.rating;
+                        
+                        return (
+                          <div key={star} className="relative w-4 h-4">
+                            {/* Star Outline (always shown) */}
+                            <RiStarFill className="absolute w-4 h-4 text-gray-300" />
+                            
+                            {/* Filled portion (full or half) */}
+                            {isFilled && (
+                              <RiStarFill className="absolute w-4 h-4 text-yellow-400" />
+                            )}
+                            {isHalfFilled && (
+                              <div className="absolute overflow-hidden w-2 h-4">
+                                <RiStarFill className="w-4 h-4 text-yellow-400" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
+
+                    {/* Rating Text */}
+                    <span className="text-sm font-medium text-content">
+                      {review.rating}/5
+                    </span>
+
+                    {/* Review Count */}
+                    <span className="text-sm text-gray-500">
+                      ({review.totalReviews} reviews)
+                    </span>
+                  </div>
                   </div>
                   <div className="text-right">
                     <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
