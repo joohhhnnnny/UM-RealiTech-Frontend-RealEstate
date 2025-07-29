@@ -48,8 +48,8 @@ This repository contains the frontend code for the UM-RealiTech suite of real es
 
 ## Technologies Used
 
-*   [List the main technologies used, e.g., React, Vue.js, Angular, etc.]
-*   [List any relevant libraries or frameworks]
+*   React.JS
+*   Tailwind with Daisy UI
 
 ## Setup Instructions
 
