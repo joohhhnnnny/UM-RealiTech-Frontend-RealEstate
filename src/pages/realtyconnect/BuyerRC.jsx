@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
+import React, { useState, useMemo, memo, useCallback } from 'react';
 import { FaUserTie, FaStar } from 'react-icons/fa';
 import agentsData from '../../agents.json';
 
@@ -17,7 +17,7 @@ const AgentCard = memo(({ agent, onViewProfile, renderStars }) => (
           <p className="text-sm opacity-70">{agent.specialization} Specialist</p>
         </div>
       </div>
-      
+
       <div className="mt-4">
         <div className="flex items-center gap-2">
           {renderStars(agent.rating)}
@@ -27,10 +27,10 @@ const AgentCard = memo(({ agent, onViewProfile, renderStars }) => (
           <span className="font-semibold">{agent.deals}</span> deals closed
         </p>
       </div>
-      
+
       <div className="card-actions justify-end mt-4">
         <button className="btn btn-primary">Contact Agent</button>
-        <button 
+        <button
           className="btn btn-outline"
           onClick={() => onViewProfile(agent)}
         >
@@ -108,7 +108,7 @@ const AgentProfileModal = memo(({ selectedAgent, onClose, renderStars }) => {
             <FaUserTie />
             Schedule Meeting
           </button>
-          <button 
+          <button
             className="btn btn-ghost"
             onClick={onClose}
           >
@@ -122,16 +122,15 @@ const AgentProfileModal = memo(({ selectedAgent, onClose, renderStars }) => {
 });
 
 function BuyerRC() {
-  const [agents, setAgents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedAgent, setSelectedAgent] = useState(null);
 
-  // Memoize the enhanced agents data
-  const enhancedAgents = useMemo(() => {
+  // Optimized agent data processing (only once since agentsData is static)
+  const agents = useMemo(() => {
     return agentsData.map((agent, index) => {
       let image;
-      
+
       if (index === 0) {
         image = "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&backgroundColor=b6e3f4";
       } else {
@@ -149,9 +148,7 @@ function BuyerRC() {
           'https://randomuser.me/api/portraits/men/43.jpg',
           'https://randomuser.me/api/portraits/women/44.jpg'
         ];
-        
-        const uniqueIndex = index % professionalPhotos.length;
-        image = professionalPhotos[uniqueIndex];
+        image = professionalPhotos[index % professionalPhotos.length];
       }
 
       let specialization = ['Residential', 'Commercial', 'Industrial'][Math.floor(Math.random() * 3)];
@@ -178,35 +175,44 @@ function BuyerRC() {
     });
   }, []);
 
-  useEffect(() => {
-    setAgents(enhancedAgents);
-  }, [enhancedAgents]);
+  // Precomputed star cache
+  const starCache = useMemo(() => {
+    const cache = {};
+    for (let r = 4.0; r <= 5.0; r += 0.1) {
+      const rounded = parseFloat(r.toFixed(1));
+      const filled = Math.floor(rounded);
+      cache[rounded] = Array.from({ length: 5 }, (_, i) => (
+        <FaStar
+          key={i}
+          className={i < filled ? 'text-yellow-400' : 'text-gray-300'}
+        />
+      ));
+    }
+    return cache;
+  }, []);
 
-  // Memoize filtered agents
+  const renderStars = useCallback((rating) => {
+    const rounded = parseFloat(rating).toFixed(1);
+    return starCache[rounded] || null;
+  }, [starCache]);
+
+  // Filter agents by search and specialization
   const filteredAgents = useMemo(() => {
-    return agents.filter(agent => {
-      const matchesSpecialization = selectedFilter === 'all' || 
-        (agent.specialization || '').toLowerCase() === selectedFilter;
+    const searchLower = searchQuery.toLowerCase();
+    const filterLower = selectedFilter.toLowerCase();
 
-      const searchLower = searchQuery.toLowerCase();
-      const matchesSearch = !searchQuery ||
+    return agents.filter(agent => {
+      if (selectedFilter !== 'all' && (agent.specialization || '').toLowerCase() !== filterLower) {
+        return false;
+      }
+
+      return !searchQuery || (
         (agent.name || '').toLowerCase().includes(searchLower) ||
         (agent.email || '').toLowerCase().includes(searchLower) ||
-        (agent.agency || '').toLowerCase().includes(searchLower);
-
-      return matchesSpecialization && matchesSearch;
+        (agent.agency || '').toLowerCase().includes(searchLower)
+      );
     });
   }, [agents, searchQuery, selectedFilter]);
-
-  // Memoize star rendering function
-  const renderStars = useCallback((rating) => {
-    return [...Array(5)].map((_, index) => (
-      <FaStar
-        key={index}
-        className={index < Math.floor(rating) ? 'text-yellow-400' : 'text-gray-300'}
-      />
-    ));
-  }, []);
 
   const handleViewProfile = useCallback((agent) => {
     setSelectedAgent(agent);
@@ -214,6 +220,14 @@ function BuyerRC() {
 
   const handleCloseModal = useCallback(() => {
     setSelectedAgent(null);
+  }, []);
+
+  const handleSearchChange = useCallback((e) => {
+    setSearchQuery(e.target.value);
+  }, []);
+
+  const handleFilterChange = useCallback((e) => {
+    setSelectedFilter(e.target.value);
   }, []);
 
   return (
@@ -225,12 +239,12 @@ function BuyerRC() {
           placeholder="Search agents..."
           className="input input-bordered w-full md:w-96"
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={handleSearchChange}
         />
         <select
           className="select select-bordered w-full md:w-48"
           value={selectedFilter}
-          onChange={(e) => setSelectedFilter(e.target.value)}
+          onChange={handleFilterChange}
         >
           <option value="all">All Specializations</option>
           <option value="residential">Residential</option>
@@ -242,8 +256,8 @@ function BuyerRC() {
       {/* Agents Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredAgents.map((agent) => (
-          <AgentCard 
-            key={agent.id} 
+          <AgentCard
+            key={agent.id}
             agent={agent}
             onViewProfile={handleViewProfile}
             renderStars={renderStars}
@@ -251,12 +265,14 @@ function BuyerRC() {
         ))}
       </div>
 
-      {/* Agent Profile Modal */}
-      <AgentProfileModal 
-        selectedAgent={selectedAgent}
-        onClose={handleCloseModal}
-        renderStars={renderStars}
-      />
+      {/* Conditionally rendered modal */}
+      {selectedAgent && (
+        <AgentProfileModal
+          selectedAgent={selectedAgent}
+          onClose={handleCloseModal}
+          renderStars={renderStars}
+        />
+      )}
     </div>
   );
 }

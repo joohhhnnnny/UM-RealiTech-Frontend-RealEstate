@@ -1,6 +1,37 @@
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useCallback, memo } from "react";
 import { RiBarChartBoxLine } from 'react-icons/ri';
+
+const InputField = memo(({ label, value, onChange, name }) => (
+  <div className="form-control">
+    <label className="label">
+      <span className="label-text">{label}</span>
+    </label>
+    <input
+      type="number"
+      name={name}
+      placeholder={`Enter ${label.toLowerCase()}`}
+      className="input input-bordered w-full"
+      value={value}
+      onChange={onChange}
+      min="0"
+    />
+  </div>
+));
+
+const ResultDisplay = memo(({ results }) => (
+  <div className="mt-4 p-4 bg-base-200 rounded-lg">
+    <p className="text-lg font-semibold">
+      Down Payment: ₱{results.downPayment.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+    </p>
+    <p className="text-lg font-semibold">
+      Additional Costs: ₱{results.additionalCostsTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+    </p>
+    <p className="text-xl font-bold text-primary mt-2">
+      Total Cash Needed: ₱{results.totalCashNeeded.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+    </p>
+  </div>
+));
 
 function CostCalculator() {
   const [propertyPrice, setPropertyPrice] = useState('');
@@ -12,11 +43,25 @@ function CostCalculator() {
     legalFees: ''
   });
 
-  const calculateTotal = () => {
+  const [results, setResults] = useState({
+    downPayment: 0,
+    additionalCostsTotal: 0,
+    totalCashNeeded: 0
+  });
+
+  const handleAdditionalCostChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setAdditionalCosts((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  }, []);
+
+  const calculateTotal = useCallback(() => {
     const price = parseFloat(propertyPrice) || 0;
     const downPayPercent = parseFloat(downPaymentPercent) || 0;
     const downPayment = price * (downPayPercent / 100);
-    
+
     const transferFee = parseFloat(additionalCosts.transferFee) || 0;
     const documentaryStamps = parseFloat(additionalCosts.documentaryStamps) || 0;
     const registrationFee = parseFloat(additionalCosts.registrationFee) || 0;
@@ -25,14 +70,12 @@ function CostCalculator() {
     const additionalCostsTotal = transferFee + documentaryStamps + registrationFee + legalFees;
     const totalCashNeeded = downPayment + additionalCostsTotal;
 
-    return {
+    setResults({
       downPayment,
       additionalCostsTotal,
       totalCashNeeded
-    };
-  };
-
-  const results = calculateTotal();
+    });
+  }, [propertyPrice, downPaymentPercent, additionalCosts]);
 
   return (
     <motion.div
@@ -50,101 +93,41 @@ function CostCalculator() {
         </div>
 
         <div className="space-y-4">
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Property Price (₱)</span>
-            </label>
-            <input
-              type="number"
-              placeholder="Enter property price"
-              className="input input-bordered w-full"
-              value={propertyPrice}
-              onChange={(e) => setPropertyPrice(e.target.value)}
-              min="0"
-            />
-          </div>
-
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Down Payment (%)</span>
-            </label>
-            <input
-              type="number"
-              placeholder="Enter down payment percentage"
-              className="input input-bordered w-full"
-              value={downPaymentPercent}
-              onChange={(e) => setDownPaymentPercent(e.target.value)}
-              min="0"
-              max="100"
-            />
-          </div>
+          <InputField
+            label="Property Price (₱)"
+            name="propertyPrice"
+            value={propertyPrice}
+            onChange={(e) => setPropertyPrice(e.target.value)}
+          />
+          <InputField
+            label="Down Payment (%)"
+            name="downPaymentPercent"
+            value={downPaymentPercent}
+            onChange={(e) => setDownPaymentPercent(e.target.value)}
+          />
 
           <div className="divider">Additional Costs</div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Transfer Fee (₱)</span>
-              </label>
-              <input
-                type="number"
-                placeholder="Enter transfer fee"
-                className="input input-bordered w-full"
-                value={additionalCosts.transferFee}
-                onChange={(e) => setAdditionalCosts({...additionalCosts, transferFee: e.target.value})}
-                min="0"
+            {[
+              { label: "Transfer Fee", name: "transferFee" },
+              { label: "Documentary Stamps", name: "documentaryStamps" },
+              { label: "Registration Fee", name: "registrationFee" },
+              { label: "Legal Fees", name: "legalFees" },
+            ].map(({ label, name }) => (
+              <InputField
+                key={name}
+                label={`${label} (₱)`}
+                name={name}
+                value={additionalCosts[name]}
+                onChange={handleAdditionalCostChange}
               />
-            </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Documentary Stamps (₱)</span>
-              </label>
-              <input
-                type="number"
-                placeholder="Enter documentary stamps"
-                className="input input-bordered w-full"
-                value={additionalCosts.documentaryStamps}
-                onChange={(e) => setAdditionalCosts({...additionalCosts, documentaryStamps: e.target.value})}
-                min="0"
-              />
-            </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Registration Fee (₱)</span>
-              </label>
-              <input
-                type="number"
-                placeholder="Enter registration fee"
-                className="input input-bordered w-full"
-                value={additionalCosts.registrationFee}
-                onChange={(e) => setAdditionalCosts({...additionalCosts, registrationFee: e.target.value})}
-                min="0"
-              />
-            </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Legal Fees (₱)</span>
-              </label>
-              <input
-                type="number"
-                placeholder="Enter legal fees"
-                className="input input-bordered w-full"
-                value={additionalCosts.legalFees}
-                onChange={(e) => setAdditionalCosts({...additionalCosts, legalFees: e.target.value})}
-                min="0"
-              />
-            </div>
+            ))}
           </div>
 
-          <div className="mt-4 p-4 bg-base-200 rounded-lg">
-            <p className="text-lg font-semibold">Down Payment: ₱{results.downPayment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            <p className="text-lg font-semibold">Additional Costs: ₱{results.additionalCostsTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            <p className="text-xl font-bold text-primary mt-2">
-              Total Cash Needed: ₱{results.totalCashNeeded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-          </div>
+          <ResultDisplay results={results} />
 
-          <button 
+          <button
             className="btn btn-primary w-full mt-4"
             onClick={calculateTotal}
           >

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   RiBuildingLine,
   RiImageLine,
@@ -10,6 +10,306 @@ import {
   RiSaveLine,
   RiCloseLine,
 } from 'react-icons/ri';
+
+// Memoized Stats Component
+const ProjectStats = React.memo(({ projects }) => {
+  const stats = useMemo(() => ({
+    total: projects.length,
+    onSchedule: projects.filter(p => p.progress >= 30).length,
+    pendingReviews: projects.reduce((acc, proj) => 
+      acc + proj.comments.filter(c => c.status === 'pending').length, 0
+    )
+  }), [projects]);
+
+  return (
+    <div className="stats stats-vertical lg:stats-horizontal shadow w-full mb-8">
+      <div className="stat">
+        <div className="stat-title">Active Projects</div>
+        <div className="stat-value text-primary">{stats.total}</div>
+        <div className="stat-desc">Projects in development</div>
+      </div>
+      
+      <div className="stat">
+        <div className="stat-title">On Schedule</div>
+        <div className="stat-value text-success">{stats.onSchedule}</div>
+        <div className="stat-desc">Projects meeting timeline</div>
+      </div>
+      
+      <div className="stat">
+        <div className="stat-title">Pending Reviews</div>
+        <div className="stat-value text-warning">{stats.pendingReviews}</div>
+        <div className="stat-desc">Requiring attention</div>
+      </div>
+    </div>
+  );
+});
+
+// Memoized Milestone Component
+const MilestoneCard = React.memo(({ milestone }) => (
+  <div className={`card bg-base-200 ${milestone.completed ? 'border-success' : ''}`}>
+    <div className="card-body p-4">
+      <div className="flex items-center gap-2">
+        {milestone.completed ? (
+          <div className="badge badge-success gap-2">
+            <RiCheckboxCircleLine />
+            Completed
+          </div>
+        ) : (
+          <div className="badge badge-outline gap-2">
+            Pending
+          </div>
+        )}
+      </div>
+      <h3 className="font-medium mt-2">{milestone.name}</h3>
+      <div className="text-xs text-base-content/70">Target: {milestone.progressPercentage}%</div>
+      {milestone.completedDate && (
+        <div className="text-xs text-success">Completed: {milestone.completedDate}</div>
+      )}
+      <progress 
+        className="progress progress-success w-full mt-2" 
+        value={milestone.completed ? milestone.progressPercentage : 0} 
+        max="100"
+      />
+    </div>
+  </div>
+));
+
+// Memoized Update Component
+const UpdateCard = React.memo(({ update, index }) => (
+  <div className="card bg-base-100">
+    <div className="card-body p-4">
+      <div className="flex justify-between">
+        <div className="badge badge-neutral">{update.date}</div>
+        <div className="badge badge-primary">{update.progress}%</div>
+      </div>
+      <p className="py-2">{update.description}</p>
+      {update.media && (
+        <div className="grid grid-cols-4 gap-2">
+          {update.media.map((media, idx) => (
+            <div key={idx} className="relative aspect-video">
+              <img
+                src={media}
+                alt="Progress"
+                className="w-full h-full object-cover rounded-box hover:scale-105 transition-transform duration-200"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+));
+
+// Memoized Comment Component
+const CommentCard = React.memo(({ comment, onCommentAction }) => {
+  const handleApprove = useCallback(() => {
+    onCommentAction(comment.id, 'approved');
+  }, [comment.id, onCommentAction]);
+
+  const handleFlag = useCallback(() => {
+    onCommentAction(comment.id, 'flagged');
+  }, [comment.id, onCommentAction]);
+
+  return (
+    <div className={`alert shadow-lg mb-4 ${
+      comment.status === 'pending' ? 'alert-warning' : 
+      comment.status === 'approved' ? 'alert-success' : 'alert-error'
+    }`}>
+      <div className="flex-1">
+        <div>
+          <h3 className="font-bold">{comment.user}</h3>
+          <div className="text-xs opacity-70">{comment.date}</div>
+        </div>
+        <div className="py-2">{comment.text}</div>
+        {comment.status === 'pending' && (
+          <div className="flex gap-2">
+            <button className="btn btn-sm btn-success" onClick={handleApprove}>
+              Approve
+            </button>
+            <button className="btn btn-sm btn-error" onClick={handleFlag}>
+              Flag Issue
+            </button>
+          </div>
+        )}
+        {comment.status !== 'pending' && (
+          <div className="badge badge-outline mt-2">
+            Status: {comment.status}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+
+// Memoized Project Card Component
+const ProjectCard = React.memo(({ 
+  project, 
+  editingProject, 
+  onEdit, 
+  onSaveEdit, 
+  onCancelEdit, 
+  onDelete, 
+  onUpload, 
+  onCommentAction,
+  onEditChange 
+}) => {
+  const isEditing = editingProject && editingProject.id === project.id;
+
+  const handleEdit = useCallback(() => {
+    onEdit(project);
+  }, [project, onEdit]);
+
+  const handleDelete = useCallback(() => {
+    onDelete(project.id);
+  }, [project.id, onDelete]);
+
+  const handleUpload = useCallback(() => {
+    onUpload(project);
+  }, [project, onUpload]);
+
+  const handleCommentActionForProject = useCallback((commentId, action) => {
+    onCommentAction(project.id, commentId, action);
+  }, [project.id, onCommentAction]);
+
+  const handleNameChange = useCallback((e) => {
+    onEditChange({ ...editingProject, name: e.target.value });
+  }, [editingProject, onEditChange]);
+
+  const handleLocationChange = useCallback((e) => {
+    onEditChange({ ...editingProject, location: e.target.value });
+  }, [editingProject, onEditChange]);
+
+  const handleDescriptionChange = useCallback((e) => {
+    onEditChange({ ...editingProject, description: e.target.value });
+  }, [editingProject, onEditChange]);
+
+  return (
+    <div className="card bg-base-100 shadow-xl">
+      <div className="card-body">
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            {isEditing ? (
+              <div className="space-y-2">
+                <input 
+                  type="text" 
+                  className="input input-bordered w-full font-bold text-lg"
+                  value={editingProject.name}
+                  onChange={handleNameChange}
+                />
+                <input 
+                  type="text" 
+                  className="input input-bordered w-full"
+                  value={editingProject.location}
+                  onChange={handleLocationChange}
+                />
+                <textarea 
+                  className="textarea textarea-bordered w-full"
+                  value={editingProject.description}
+                  onChange={handleDescriptionChange}
+                />
+              </div>
+            ) : (
+              <div>
+                <h2 className="card-title">
+                  {project.name}
+                  <div className="badge badge-primary">{project.status}</div>
+                </h2>
+                <p className="flex items-center gap-2 text-base-content/70">
+                  <RiBuildingLine />
+                  {project.location}
+                </p>
+                {project.description && (
+                  <p className="text-base-content/70 mt-1">{project.description}</p>
+                )}
+                {project.startDate && (
+                  <p className="text-sm text-base-content/50 mt-1">
+                    Started: {project.startDate} | Expected: {project.expectedCompletion}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2">
+            {isEditing ? (
+              <>
+                <button className="btn btn-circle btn-success btn-sm" onClick={onSaveEdit}>
+                  <RiSaveLine className="text-xl" />
+                </button>
+                <button className="btn btn-circle btn-ghost btn-sm" onClick={onCancelEdit}>
+                  <RiCloseLine className="text-xl" />
+                </button>
+              </>
+            ) : (
+              <>
+                <button className="btn btn-circle btn-ghost btn-sm" onClick={handleEdit}>
+                  <RiEditLine className="text-xl" />
+                </button>
+                <button 
+                  className="btn btn-circle btn-error btn-ghost btn-sm"
+                  onClick={handleDelete}
+                  title="Delete Project"
+                >
+                  <RiDeleteBinLine className="text-xl" />
+                </button>
+                <button className="btn btn-circle btn-ghost btn-sm" onClick={handleUpload}>
+                  <RiUploadCloud2Line className="text-xl" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="my-6">
+          <div className="flex justify-between mb-2">
+            <span className="font-semibold">Progress</span>
+            <span className="font-semibold text-primary">{project.progress}%</span>
+          </div>
+          <progress 
+            className="progress progress-primary w-full" 
+            value={project.progress} 
+            max="100"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          {project.milestones.map((milestone) => (
+            <MilestoneCard key={milestone.id} milestone={milestone} />
+          ))}
+        </div>
+
+        <div className="collapse collapse-plus bg-base-200">
+          <input type="checkbox" /> 
+          <div className="collapse-title text-xl font-medium">
+            Recent Updates ({project.updates.length})
+          </div>
+          <div className="collapse-content">
+            <div className="space-y-4">
+              {project.updates.map((update, index) => (
+                <UpdateCard key={index} update={update} index={index} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {project.comments.length > 0 && (
+          <>
+            <div className="divider"></div>
+            <div className="mt-6">
+              <h3 className="text-xl font-medium mb-3">Buyer Comments</h3>
+              {project.comments.map((comment) => (
+                <CommentCard 
+                  key={comment.id} 
+                  comment={comment} 
+                  onCommentAction={handleCommentActionForProject}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+});
 
 function ProjectDashboard() {
   const [projects, setProjects] = useState([
@@ -101,7 +401,6 @@ function ProjectDashboard() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [editingProject, setEditingProject] = useState(null);
   
-  // Form states
   const [newProject, setNewProject] = useState({
     name: '',
     location: '',
@@ -122,14 +421,15 @@ function ProjectDashboard() {
     media: []
   });
 
-  const milestoneTemplates = [
+  const milestoneTemplates = useMemo(() => [
     { id: 1, name: 'Foundation', progressPercentage: 25 },
     { id: 2, name: 'Structure', progressPercentage: 50 },
     { id: 3, name: 'Finishing', progressPercentage: 75 },
     { id: 4, name: 'Completion', progressPercentage: 100 }
-  ];
+  ], []);
 
-  const handleCreateProject = (e) => {
+  // Memoized handlers
+  const handleCreateProject = useCallback((e) => {
     e.preventDefault();
     if (!newProject.name || !newProject.location) {
       alert('Please fill in required fields');
@@ -151,8 +451,7 @@ function ProjectDashboard() {
       comments: []
     };
 
-    // Add new project at the beginning of the array instead of the end
-    setProjects([projectData, ...projects]);
+    setProjects(prev => [projectData, ...prev]);
     setNewProject({
       name: '',
       location: '',
@@ -162,42 +461,42 @@ function ProjectDashboard() {
       milestones: []
     });
     setShowNewProject(false);
-  };
+  }, [newProject]);
 
-  const handleAddMilestone = () => {
+  const handleAddMilestone = useCallback(() => {
     if (!newMilestone.name || !newMilestone.progressPercentage) {
       alert('Please fill milestone details');
       return;
     }
 
-    setNewProject({
-      ...newProject,
-      milestones: [...newProject.milestones, { ...newMilestone }]
-    });
+    setNewProject(prev => ({
+      ...prev,
+      milestones: [...prev.milestones, { ...newMilestone }]
+    }));
     setNewMilestone({ name: '', progressPercentage: '' });
-  };
+  }, [newMilestone]);
 
-  const handleRemoveMilestone = (index) => {
-    setNewProject({
-      ...newProject,
-      milestones: newProject.milestones.filter((_, i) => i !== index)
-    });
-  };
+  const handleRemoveMilestone = useCallback((index) => {
+    setNewProject(prev => ({
+      ...prev,
+      milestones: prev.milestones.filter((_, i) => i !== index)
+    }));
+  }, []);
 
-  const handleUseTemplate = () => {
-    setNewProject({
-      ...newProject,
+  const handleUseTemplate = useCallback(() => {
+    setNewProject(prev => ({
+      ...prev,
       milestones: [...milestoneTemplates]
-    });
-  };
+    }));
+  }, [milestoneTemplates]);
 
-  const handleDeleteProject = (projectId) => {
+  const handleDeleteProject = useCallback((projectId) => {
     if (window.confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
-      setProjects(projects.filter(project => project.id !== projectId));
+      setProjects(prev => prev.filter(project => project.id !== projectId));
     }
-  };
+  }, []);
 
-  const handleProgressUpload = (e) => {
+  const handleProgressUpload = useCallback((e) => {
     e.preventDefault();
     if (!progressUpdate.description || !progressUpdate.progress || !selectedProject) {
       alert('Please fill in all fields');
@@ -210,11 +509,11 @@ function ProjectDashboard() {
       progress: parseInt(progressUpdate.progress)
     };
 
-    setProjects(projects.map(project => {
+    setProjects(prev => prev.map(project => {
       if (project.id === selectedProject.id) {
         return {
           ...project,
-          updates: [update, ...project.updates], // Also add new updates at the top
+          updates: [update, ...project.updates],
           progress: parseInt(progressUpdate.progress)
         };
       }
@@ -224,10 +523,10 @@ function ProjectDashboard() {
     setProgressUpdate({ description: '', progress: '', media: [] });
     setShowUploadModal(false);
     setSelectedProject(null);
-  };
+  }, [progressUpdate, selectedProject]);
 
-  const handleCommentAction = (projectId, commentId, action) => {
-    setProjects(projects.map(project => {
+  const handleCommentAction = useCallback((projectId, commentId, action) => {
+    setProjects(prev => prev.map(project => {
       if (project.id === projectId) {
         return {
           ...project,
@@ -241,18 +540,27 @@ function ProjectDashboard() {
       }
       return project;
     }));
-  };
+  }, []);
 
-  const handleEditProject = (project) => {
+  const handleEditProject = useCallback((project) => {
     setEditingProject({ ...project });
-  };
+  }, []);
 
-  const handleSaveEdit = () => {
-    setProjects(projects.map(project => 
+  const handleSaveEdit = useCallback(() => {
+    setProjects(prev => prev.map(project => 
       project.id === editingProject.id ? editingProject : project
     ));
     setEditingProject(null);
-  };
+  }, [editingProject]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingProject(null);
+  }, []);
+
+  const handleUploadProject = useCallback((project) => {
+    setSelectedProject(project);
+    setShowUploadModal(true);
+  }, []);
 
   return (
     <div className="p-6">
@@ -270,30 +578,7 @@ function ProjectDashboard() {
         </button>
       </div>
 
-      {/* Project Stats */}
-      <div className="stats stats-vertical lg:stats-horizontal shadow w-full mb-8">
-        <div className="stat">
-          <div className="stat-title">Active Projects</div>
-          <div className="stat-value text-primary">{projects.length}</div>
-          <div className="stat-desc">Projects in development</div>
-        </div>
-        
-        <div className="stat">
-          <div className="stat-title">On Schedule</div>
-          <div className="stat-value text-success">
-            {projects.filter(p => p.progress >= 30).length}
-          </div>
-          <div className="stat-desc">Projects meeting timeline</div>
-        </div>
-        
-        <div className="stat">
-          <div className="stat-title">Pending Reviews</div>
-          <div className="stat-value text-warning">
-            {projects.reduce((acc, proj) => acc + proj.comments.filter(c => c.status === 'pending').length, 0)}
-          </div>
-          <div className="stat-desc">Requiring attention</div>
-        </div>
-      </div>
+      <ProjectStats projects={projects} />
 
       {/* New Project Modal */}
       <dialog className={`modal ${showNewProject ? 'modal-open' : ''}`}>
@@ -337,7 +622,7 @@ function ProjectDashboard() {
                 placeholder="Project description"
                 value={newProject.description}
                 onChange={(e) => setNewProject({...newProject, description: e.target.value})}
-              ></textarea>
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -437,7 +722,7 @@ function ProjectDashboard() {
             </div>
           </div>
         </div>
-        <div className="modal-backdrop" onClick={() => setShowNewProject(false)}></div>
+        <div className="modal-backdrop" onClick={() => setShowNewProject(false)} />
       </dialog>
 
       {/* Progress Upload Modal */}
@@ -454,7 +739,7 @@ function ProjectDashboard() {
                 placeholder="Describe the progress made..."
                 value={progressUpdate.description}
                 onChange={(e) => setProgressUpdate({...progressUpdate, description: e.target.value})}
-              ></textarea>
+              />
             </div>
             
             <div className="form-control">
@@ -500,232 +785,24 @@ function ProjectDashboard() {
             </div>
           </div>
         </div>
-        <div className="modal-backdrop" onClick={() => setShowUploadModal(false)}></div>
+        <div className="modal-backdrop" onClick={() => setShowUploadModal(false)} />
       </dialog>
 
       {/* Projects List */}
       <div className="grid gap-6">
         {projects.map((project) => (
-          <div key={project.id} className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  {editingProject && editingProject.id === project.id ? (
-                    <div className="space-y-2">
-                      <input 
-                        type="text" 
-                        className="input input-bordered w-full font-bold text-lg"
-                        value={editingProject.name}
-                        onChange={(e) => setEditingProject({...editingProject, name: e.target.value})}
-                      />
-                      <input 
-                        type="text" 
-                        className="input input-bordered w-full"
-                        value={editingProject.location}
-                        onChange={(e) => setEditingProject({...editingProject, location: e.target.value})}
-                      />
-                      <textarea 
-                        className="textarea textarea-bordered w-full"
-                        value={editingProject.description}
-                        onChange={(e) => setEditingProject({...editingProject, description: e.target.value})}
-                      ></textarea>
-                    </div>
-                  ) : (
-                    <div>
-                      <h2 className="card-title">
-                        {project.name}
-                        <div className="badge badge-primary">{project.status}</div>
-                      </h2>
-                      <p className="flex items-center gap-2 text-base-content/70">
-                        <RiBuildingLine />
-                        {project.location}
-                      </p>
-                      {project.description && (
-                        <p className="text-base-content/70 mt-1">{project.description}</p>
-                      )}
-                      {project.startDate && (
-                        <p className="text-sm text-base-content/50 mt-1">
-                          Started: {project.startDate} | Expected: {project.expectedCompletion}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  {editingProject && editingProject.id === project.id ? (
-                    <>
-                      <button 
-                        className="btn btn-circle btn-success btn-sm"
-                        onClick={handleSaveEdit}
-                      >
-                        <RiSaveLine className="text-xl" />
-                      </button>
-                      <button 
-                        className="btn btn-circle btn-ghost btn-sm"
-                        onClick={() => setEditingProject(null)}
-                      >
-                        <RiCloseLine className="text-xl" />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button 
-                        className="btn btn-circle btn-ghost btn-sm"
-                        onClick={() => handleEditProject(project)}
-                      >
-                        <RiEditLine className="text-xl" />
-                      </button>
-                      <button 
-                        className="btn btn-circle btn-error btn-ghost btn-sm"
-                        onClick={() => handleDeleteProject(project.id)}
-                        title="Delete Project"
-                      >
-                        <RiDeleteBinLine className="text-xl" />
-                      </button>
-                      <button 
-                        className="btn btn-circle btn-ghost btn-sm"
-                        onClick={() => {
-                          setSelectedProject(project);
-                          setShowUploadModal(true);
-                        }}
-                      >
-                        <RiUploadCloud2Line className="text-xl" />
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div className="my-6">
-                <div className="flex justify-between mb-2">
-                  <span className="font-semibold">Progress</span>
-                  <span className="font-semibold text-primary">{project.progress}%</span>
-                </div>
-                <progress 
-                  className="progress progress-primary w-full" 
-                  value={project.progress} 
-                  max="100"
-                ></progress>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                {project.milestones.map((milestone) => (
-                  <div 
-                    key={milestone.id} 
-                    className={`card bg-base-200 ${
-                      milestone.completed ? 'border-success' : ''
-                    }`}
-                  >
-                    <div className="card-body p-4">
-                      <div className="flex items-center gap-2">
-                        {milestone.completed ? (
-                          <div className="badge badge-success gap-2">
-                            <RiCheckboxCircleLine />
-                            Completed
-                          </div>
-                        ) : (
-                          <div className="badge badge-outline gap-2">
-                            Pending
-                          </div>
-                        )}
-                      </div>
-                      <h3 className="font-medium mt-2">{milestone.name}</h3>
-                      <div className="text-xs text-base-content/70">Target: {milestone.progressPercentage}%</div>
-                      {milestone.completedDate && (
-                        <div className="text-xs text-success">Completed: {milestone.completedDate}</div>
-                      )}
-                      <progress 
-                        className="progress progress-success w-full mt-2" 
-                        value={milestone.completed ? milestone.progressPercentage : 0} 
-                        max="100"
-                      ></progress>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Recent Updates */}
-              <div className="collapse collapse-plus bg-base-200">
-                <input type="checkbox" /> 
-                <div className="collapse-title text-xl font-medium">
-                  Recent Updates ({project.updates.length})
-                </div>
-                <div className="collapse-content">
-                  <div className="space-y-4">
-                    {project.updates.map((update, index) => (
-                      <div key={index} className="card bg-base-100">
-                        <div className="card-body p-4">
-                          <div className="flex justify-between">
-                            <div className="badge badge-neutral">{update.date}</div>
-                            <div className="badge badge-primary">{update.progress}%</div>
-                          </div>
-                          <p className="py-2">{update.description}</p>
-                          {update.media && (
-                            <div className="grid grid-cols-4 gap-2">
-                              {update.media.map((media, idx) => (
-                                <div key={idx} className="relative aspect-video">
-                                  <img
-                                    src={media}
-                                    alt="Progress"
-                                    className="w-full h-full object-cover rounded-box hover:scale-105 transition-transform duration-200"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Buyer Comments Section */}
-              {project.comments.length > 0 && (
-                <>
-                  <div className="divider"></div>
-                  <div className="mt-6">
-                    <h3 className="text-xl font-medium mb-3">Buyer Comments</h3>
-                    {project.comments.map((comment) => (
-                      <div key={comment.id} className={`alert shadow-lg mb-4 ${
-                        comment.status === 'pending' ? 'alert-warning' : 
-                        comment.status === 'approved' ? 'alert-success' : 'alert-error'
-                      }`}>
-                        <div className="flex-1">
-                          <div>
-                            <h3 className="font-bold">{comment.user}</h3>
-                            <div className="text-xs opacity-70">{comment.date}</div>
-                          </div>
-                          <div className="py-2">{comment.text}</div>
-                          {comment.status === 'pending' && (
-                            <div className="flex gap-2">
-                              <button 
-                                className="btn btn-sm btn-success"
-                                onClick={() => handleCommentAction(project.id, comment.id, 'approved')}
-                              >
-                                Approve
-                              </button>
-                              <button 
-                                className="btn btn-sm btn-error"
-                                onClick={() => handleCommentAction(project.id, comment.id, 'flagged')}
-                              >
-                                Flag Issue
-                              </button>
-                            </div>
-                          )}
-                          {comment.status !== 'pending' && (
-                            <div className="badge badge-outline mt-2">
-                              Status: {comment.status}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+          <ProjectCard
+            key={project.id}
+            project={project}
+            editingProject={editingProject}
+            onEdit={handleEditProject}
+            onSaveEdit={handleSaveEdit}
+            onCancelEdit={handleCancelEdit}
+            onDelete={handleDeleteProject}
+            onUpload={handleUploadProject}
+            onCommentAction={handleCommentAction}
+            onEditChange={setEditingProject}
+          />
         ))}
       </div>
     </div>
