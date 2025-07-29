@@ -73,7 +73,7 @@ const Settings = () => {
                       <div className="flex items-center gap-4 mb-8">
                         <div className="avatar">
                           <div className="w-24 h-24 rounded-full">
-                            <img src="https://ui-avatars.com/api/?name=John+Doe" alt="Profile" />
+                            <img src="https://ui-avatars.com/api/?name=Michael+Anderson" alt="Profile" />
                           </div>
                         </div>
                         <button className="btn btn-outline">Change Avatar</button>
@@ -82,11 +82,11 @@ const Settings = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="form-control">
                           <label className="label">Full Name</label>
-                          <input type="text" className="input input-bordered" defaultValue="John Doe" />
+                          <input type="text" className="input input-bordered" defaultValue="Michael Anderson" />
                         </div>
                         <div className="form-control">
                           <label className="label">Email</label>
-                          <input type="email" className="input input-bordered" defaultValue="john@example.com" />
+                          <input type="email" className="input input-bordered" defaultValue="m.anderson@example.com" />
                         </div>
                         <div className="form-control">
                           <label className="label">Phone</label>
@@ -94,7 +94,7 @@ const Settings = () => {
                         </div>
                         <div className="form-control">
                           <label className="label">Location</label>
-                          <input type="text" className="input input-bordered" defaultValue="New York, USA" />
+                          <input type="text" className="input input-bordered" defaultValue="New York, USA, Unahan sa Amakan" />
                         </div>
                       </div>
                     </div>
