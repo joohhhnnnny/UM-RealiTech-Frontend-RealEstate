@@ -182,18 +182,18 @@ function Homepage() {
         <BackgroundPattern />
         
         {/* Main Content */}
-        <div className="relative z-10 flex flex-col items-center justify-center flex-grow px-4 lg:px-24 py-20">
+        <div className="relative z-10 flex flex-col items-center justify-center flex-grow px-4 lg:px-24 py-8">
           {/* Hero Content */}
-          <div className="text-center max-w-6xl mx-auto mb-16">
+          <div className="text-center max-w-6xl mx-auto mb-8">
             {/* Main Heading */}
             <motion.h1 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, ease: "easeOut" }}
-              className="text-5xl md:text-7xl lg:text-8xl font-bold mb-8 text-base-content leading-tight"
+              className="text-3xl md:text-4xl lg:text-6xl font-bold mb-6 text-base-content leading-tight"
             >
               Rebuilding Trust in{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-blue-700">
                 Real Estate
               </span>
             </motion.h1>
@@ -203,7 +203,7 @@ function Homepage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-              className="text-xl md:text-2xl lg:text-3xl text-base-content/80 mb-4 max-w-4xl mx-auto leading-relaxed"
+              className="text-xl md:text-2xl lg:text-3xl text-base-content/80 mb-3 max-w-4xl mx-auto leading-relaxed"
             >
               Empowering Filipino homebuyers with trust, tech, and transparency.
             </motion.p>
@@ -213,14 +213,8 @@ function Homepage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
-              className="text-base md:text-lg text-base-content/60 mb-16 max-w-2xl mx-auto"
+              className="text-base md:text-lg text-base-content/60 mb-8 max-w-2xl mx-auto"
             >
-              <p className="mb-4">
-                Thousands of Filipino homebuyers face delays, broken promises, and a lack of transparency.
-              </p>
-              <p>
-                Realitech is a 4-in-1 real estate ecosystem solving this with technology, transparency, and trust.
-              </p>
             </motion.div>
 
             {/* Search Section */}
@@ -228,7 +222,7 @@ function Homepage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }}
-              className="w-full max-w-4xl mx-auto mb-12" 
+              className="w-full max-w-4xl mx-auto mb-6" 
               ref={searchRef}
             >
               <SearchInput
@@ -247,15 +241,27 @@ function Homepage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.8, ease: "easeOut" }}
-              className="flex justify-center"
+              className="flex justify-center mb-8"
             >
-              <ViewAllPropertiesButton navigate={navigate} />
+              <motion.button
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => navigate('/properties')}
+                className="btn btn-lg rounded-2xl font-semibold px-10 py-4 text-lg shadow-xl hover:shadow-2xl 
+                           transition-all duration-300 flex items-center gap-3 
+                           bg-gradient-to-r from-blue-500 to-blue-700 border-none text-white"
+              >
+                <span>View All Properties</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </motion.button>
             </motion.div>
           </div>
         </div>
 
         {/* Scroll Indicator */}
-        <div className="relative z-10">
+        <div className="relative z-10 mb-4">
           <ScrollIndicator scrollToSolutions={scrollToSolutions} />
         </div>
       </section>
@@ -300,7 +306,9 @@ const ViewAllPropertiesButton = React.memo(({ navigate }) => (
     whileHover={{ scale: 1.05, y: -2 }}
     whileTap={{ scale: 0.95 }}
     onClick={() => navigate('/properties')}
-    className="btn btn-primary btn-lg rounded-2xl font-semibold px-10 py-4 text-lg shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-3 bg-gradient-to-r from-primary to-secondary border-none text-white"
+    className="btn btn-lg rounded-2xl font-semibold px-10 py-4 text-lg shadow-xl hover:shadow-2xl 
+               transition-all duration-300 flex items-center gap-3 
+               bg-gradient-to-r from-blue-500 to-blue-700 border-none text-white"
   >
     <span>View All Properties</span>
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

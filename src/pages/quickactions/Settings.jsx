@@ -199,11 +199,11 @@ const Settings = () => {
                           style={{ marginLeft: '1rem' }}
                         >
                           <option>English</option>
-                          <option>Spanish</option>
+                          <option>Bisaya</option>
                           <option>French</option>
                           <option>German</option>
-                          <option>Chinese</option>
                           <option>Japanese</option>
+                          <option>Spanish</option>
                         </select>
                       </div>
                     </div>
