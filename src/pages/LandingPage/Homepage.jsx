@@ -45,6 +45,30 @@ const SearchResultItem = React.memo(({ listing, onClick }) => (
   </div>
 ));
 
+// Background pattern component
+const BackgroundPattern = () => (
+  <div className="absolute inset-0 overflow-hidden">
+    {/* Wavy lines pattern */}
+    <div className="absolute inset-0 opacity-5">
+      <svg width="100%" height="100%" viewBox="0 0 1200 800" className="w-full h-full">
+        <defs>
+          <pattern id="wave" x="0" y="0" width="200" height="200" patternUnits="userSpaceOnUse">
+            <path d="M0,100 Q50,50 100,100 T200,100" fill="none" stroke="currentColor" strokeWidth="2"/>
+            <path d="M0,150 Q50,100 100,150 T200,150" fill="none" stroke="currentColor" strokeWidth="2"/>
+            <path d="M0,50 Q50,0 100,50 T200,50" fill="none" stroke="currentColor" strokeWidth="2"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#wave)" className="text-base-content"/>
+      </svg>
+    </div>
+    
+    {/* Floating orbs */}
+    <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
+    <div className="absolute top-3/4 right-1/4 w-48 h-48 bg-secondary/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+    <div className="absolute top-1/2 left-3/4 w-24 h-24 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
+  </div>
+);
+
 function Homepage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -154,85 +178,148 @@ function Homepage() {
 
   return (
     <>
-      <section id="hero" className="min-h-[90vh] flex flex-col items-center justify-between px-4 lg:px-24 py-12 lg:py-20 transition-colors duration-300 bg-base-100">
-        <div className="flex flex-col items-center justify-center w-full max-w-7xl flex-grow">
-          <HeroText />
+      <section id="hero" className="relative min-h-screen flex flex-col bg-base-100 overflow-hidden">
+        <BackgroundPattern />
+        
+        {/* Main Content */}
+        <div className="relative z-10 flex flex-col items-center justify-center flex-grow px-4 lg:px-24 py-20">
+          {/* Hero Content */}
+          <div className="text-center max-w-6xl mx-auto mb-16">
+            {/* Main Heading */}
+            <motion.h1 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="text-5xl md:text-7xl lg:text-8xl font-bold mb-8 text-base-content leading-tight"
+            >
+              Rebuilding Trust in{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
+                Real Estate
+              </span>
+            </motion.h1>
+            
+            {/* Subtitle */}
+            <motion.p 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+              className="text-xl md:text-2xl lg:text-3xl text-base-content/80 mb-4 max-w-4xl mx-auto leading-relaxed"
+            >
+              Empowering Filipino homebuyers with trust, tech, and transparency.
+            </motion.p>
+            
+            {/* Description */}
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
+              className="text-base md:text-lg text-base-content/60 mb-16 max-w-2xl mx-auto"
+            >
+              <p className="mb-4">
+                Thousands of Filipino homebuyers face delays, broken promises, and a lack of transparency.
+              </p>
+              <p>
+                Realitech is a 4-in-1 real estate ecosystem solving this with technology, transparency, and trust.
+              </p>
+            </motion.div>
 
-          <div className="w-full max-w-3xl px-4" ref={searchRef}>
-            <SearchInput
-              searchTerm={searchTerm}
-              handleSearch={handleSearch}
-              isSearchFocused={isSearchFocused}
-              setIsSearchFocused={setIsSearchFocused}
-              searchPlaceholder={searchPlaceholder}
-              searchResults={filteredResults}
-              handleResultClick={handleResultClick}
-            />
+            {/* Search Section */}
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }}
+              className="w-full max-w-4xl mx-auto mb-12" 
+              ref={searchRef}
+            >
+              <SearchInput
+                searchTerm={searchTerm}
+                handleSearch={handleSearch}
+                isSearchFocused={isSearchFocused}
+                setIsSearchFocused={setIsSearchFocused}
+                searchPlaceholder={searchPlaceholder}
+                searchResults={filteredResults}
+                handleResultClick={handleResultClick}
+              />
+            </motion.div>
 
-            <div className="flex justify-center mt-14 md:mt-8">
+            {/* CTA Button */}
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.8, ease: "easeOut" }}
+              className="flex justify-center"
+            >
               <ViewAllPropertiesButton navigate={navigate} />
-            </div>
+            </motion.div>
           </div>
         </div>
 
-        <ScrollIndicator scrollToSolutions={scrollToSolutions} />
+        {/* Scroll Indicator */}
+        <div className="relative z-10">
+          <ScrollIndicator scrollToSolutions={scrollToSolutions} />
+        </div>
       </section>
     </>
   );
 }
 
-const HeroText = React.memo(() => (
-  <div className="text-center mb-12">
-    <h2 className="text-4xl md:text-5xl font-bold mb-6 text-base-content">Revolutionizing Real Estate</h2>
-    <p className="text-lg md:text-xl max-w-2xl mx-auto text-base-content/70">
-      Protecting buyers. Empowering agents. Regulating developers.
-      Together, we make every real estate journey transparent, fair, and safe.
-    </p>
-  </div>
-));
-
 const SearchInput = React.memo(({ searchTerm, handleSearch, isSearchFocused, setIsSearchFocused, searchPlaceholder, searchResults, handleResultClick }) => (
   <div className="relative">
-    <input
-      type="text"
-      value={searchTerm}
-      onChange={(e) => handleSearch(e.target.value)}
-      onFocus={() => setIsSearchFocused(true)}
-      placeholder={isSearchFocused ? 'Type to search properties...' : searchPlaceholder}
-      className="input input-xl input-bordered w-full px-6 py-4 text-lg rounded-full transition-all duration-300 pl-14 bg-base-100 border-2 focus:outline-none shadow-md hover:shadow-lg placeholder-base-content/60 text-base-content"
-    />
-    <MagnifyingGlassIcon className="absolute left-5 top-1/2 transform -translate-y-1/2 w-6 h-6 pointer-events-none text-base-content/70" />
+    <div className="relative">
+      <input
+        type="text"
+        value={searchTerm}
+        onChange={(e) => handleSearch(e.target.value)}
+        onFocus={() => setIsSearchFocused(true)}
+        placeholder={isSearchFocused ? 'Type to search properties...' : searchPlaceholder}
+        className="input input-lg w-full px-6 py-5 text-lg rounded-2xl transition-all duration-300 pl-16 bg-base-100/80 backdrop-blur-sm border-2 border-base-300 focus:border-primary focus:outline-none shadow-xl hover:shadow-2xl placeholder-base-content/50 text-base-content"
+      />
+      <MagnifyingGlassIcon className="absolute left-5 top-1/2 transform -translate-y-1/2 w-6 h-6 pointer-events-none text-base-content/70" />
+    </div>
 
-    {isSearchFocused && searchResults.length > 0 && (
-      <div className="absolute z-50 w-full mt-2 bg-base-100 rounded-2xl shadow-xl border border-base-200 overflow-hidden max-h-[60vh] overflow-y-auto">
-        {searchResults.map((listing) => (
-          <SearchResultItem key={listing.id} listing={listing} onClick={handleResultClick} />
-        ))}
-      </div>
-    )}
+    <AnimatePresence>
+      {isSearchFocused && searchResults.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+          className="absolute z-50 w-full mt-3 bg-base-100/95 backdrop-blur-md rounded-2xl shadow-2xl border border-base-200 overflow-hidden max-h-[60vh] overflow-y-auto"
+        >
+          {searchResults.map((listing) => (
+            <SearchResultItem key={listing.id} listing={listing} onClick={handleResultClick} />
+          ))}
+        </motion.div>
+      )}
+    </AnimatePresence>
   </div>
 ));
 
 const ViewAllPropertiesButton = React.memo(({ navigate }) => (
   <motion.button
-    whileHover={{ scale: 1.05 }}
+    whileHover={{ scale: 1.05, y: -2 }}
     whileTap={{ scale: 0.95 }}
     onClick={() => navigate('/properties')}
-    className="btn btn-primary btn-lg rounded-full font-medium px-8 py-3 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2"
+    className="btn btn-primary btn-lg rounded-2xl font-semibold px-10 py-4 text-lg shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-3 bg-gradient-to-r from-primary to-secondary border-none text-white"
   >
-    View All Properties
+    <span>View All Properties</span>
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+    </svg>
   </motion.button>
 ));
 
 const ScrollIndicator = React.memo(({ scrollToSolutions }) => (
   <motion.div
-    className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity mt-11 md:mt-12 pb-4"
+    className="flex flex-col items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity pb-8"
     onClick={scrollToSolutions}
-    animate={{ y: [0, -10, 0] }}
+    animate={{ y: [0, -8, 0] }}
     transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
   >
-    <span className="text-xs md:text-sm text-primary font-medium">Scroll to explore</span>
-    <ChevronDownIcon className="w-5 h-5 md:w-6 md:h-6 lg:w-8 lg:h-8 text-primary" aria-label="Scroll to solutions" />
+    <span className="text-sm text-base-content/70 font-medium">Scroll to explore</span>
+    <div className="p-2 rounded-full bg-primary/10 backdrop-blur-sm">
+      <ChevronDownIcon className="w-6 h-6 text-primary" aria-label="Scroll to solutions" />
+    </div>
   </motion.div>
 ));
 
