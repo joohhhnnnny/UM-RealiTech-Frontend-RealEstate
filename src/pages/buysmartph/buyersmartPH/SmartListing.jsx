@@ -10,7 +10,10 @@ import {
   RiCalculatorLine,
   RiFileTextLine,
   RiBuilding4Line,
-  RiBarChartBoxLine
+  RiBarChartBoxLine,
+  RiHome3Line,
+  RiHotelBedLine,
+  RiDropLine
 } from 'react-icons/ri';
 import listingsData from '../../../listings.json';
 
@@ -213,7 +216,7 @@ function SmartListing({ profileData }) {
     setCurrentPage(1); // Reset to first page when filters change
   }, [profileData]);
 
-  // Function to render property cards (keeping all card content exactly the same)
+  // Function to render property cards (improved with icons and responsiveness)
   const renderPropertyCards = () => {
     return currentListings.map((listing) => (
       <motion.div 
@@ -230,15 +233,15 @@ function SmartListing({ profileData }) {
             alt={listing.title}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
           />
-          <div className="absolute top-4 left-4 flex gap-2 z-20">
-            <div className="badge bg-teal-600/90 text-white border-0 backdrop-blur-md shadow-lg">
+          <div className="absolute top-4 left-4 flex flex-wrap gap-2 z-20">
+            <div className="badge badge-success bg-teal-600/90 text-white border-0 backdrop-blur-md shadow-lg text-xs">
               AI Match: {listing.matchScore}%
             </div>
             {listing.furnishing === "Semi Furnished" && (
-              <div className="badge bg-blue-700/90 text-white border-0 backdrop-blur-md shadow-lg">Semi Furnished</div>
+              <div className="badge badge-info bg-blue-700/90 text-white border-0 backdrop-blur-md shadow-lg text-xs">Semi Furnished</div>
             )}
             {listing.furnishing === "Fully Furnished" && (
-              <div className="badge bg-blue-600/90 text-white border-0 backdrop-blur-md shadow-lg">Fully Furnished</div>
+              <div className="badge badge-info bg-blue-600/90 text-white border-0 backdrop-blur-md shadow-lg text-xs">Fully Furnished</div>
             )}
           </div>
           <div className="absolute bottom-4 right-4 z-20">
@@ -260,29 +263,35 @@ function SmartListing({ profileData }) {
             </p>
           </div>
           
-          <div className="flex items-start justify-between mt-3">
-            <div className="grid grid-cols-3 gap-2 text-sm w-full">
-              <div className="flex flex-col items-center p-2 rounded-lg bg-gradient-to-br from-teal-700/5 to-teal-800/10 backdrop-blur-sm border border-teal-700/10 hover:border-teal-700/20 transition-colors">
+          <div className="flex flex-col lg:flex-row items-start justify-between mt-3 gap-3">
+            {/* Property stats with icons - responsive grid */}
+            <div className="grid grid-cols-3 gap-1 sm:gap-2 text-sm w-full lg:flex-1">
+              <div className="flex flex-col items-center p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-teal-700/5 to-teal-800/10 backdrop-blur-sm border border-teal-700/10 hover:border-teal-700/20 transition-colors">
+                <RiHome3Line className="h-3 w-3 sm:h-4 sm:w-4 text-teal-700 mb-1" />
                 <span className="text-base-content/70 text-xs">Area</span>
-                <span className="font-semibold mt-0.5 text-teal-700">
+                <span className="font-semibold mt-0.5 text-teal-700 text-xs sm:text-sm">
                   {listing.floor_area_sqm || '0'} sqm
                 </span>
               </div>
-              <div className="flex flex-col items-center p-2 rounded-lg bg-gradient-to-br from-teal-600/5 to-teal-700/10 backdrop-blur-sm border border-teal-600/10 hover:border-teal-600/20 transition-colors">
+              <div className="flex flex-col items-center p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-teal-600/5 to-teal-700/10 backdrop-blur-sm border border-teal-600/10 hover:border-teal-600/20 transition-colors">
+                <RiHotelBedLine className="h-3 w-3 sm:h-4 sm:w-4 text-teal-600 mb-1" />
                 <span className="text-base-content/70 text-xs">Beds</span>
-                <span className="font-semibold mt-0.5 text-teal-600">
+                <span className="font-semibold mt-0.5 text-teal-600 text-xs sm:text-sm">
                   {listing.beds || '0'}
                 </span>
               </div>
-              <div className="flex flex-col items-center p-2 rounded-lg bg-gradient-to-br from-teal-500/5 to-teal-600/10 backdrop-blur-sm border border-teal-500/10 hover:border-teal-500/20 transition-colors">
+              <div className="flex flex-col items-center p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-teal-500/5 to-teal-600/10 backdrop-blur-sm border border-teal-500/10 hover:border-teal-500/20 transition-colors">
+                <RiDropLine className="h-3 w-3 sm:h-4 sm:w-4 text-teal-500 mb-1" />
                 <span className="text-base-content/70 text-xs">Baths</span>
-                <span className="font-semibold mt-0.5 text-teal-500">
+                <span className="font-semibold mt-0.5 text-teal-500 text-xs sm:text-sm">
                   {listing.baths || '0'}
                 </span>
               </div>
             </div>
-            <div className="text-right ml-4 flex-none">
-              <p className="text-xl font-bold bg-gradient-to-r from-teal-900 to-teal-700 text-white px-3 py-1 rounded-full shadow-lg whitespace-nowrap">
+            
+            {/* Price section */}
+            <div className="text-center lg:text-right lg:ml-4 flex-none w-full lg:w-auto">
+              <p className="text-lg sm:text-xl font-bold bg-gradient-to-r from-teal-900 to-teal-700 text-white px-3 py-1 rounded-full shadow-lg whitespace-nowrap">
                 {listing.price}
               </p>
               {listing.lot_area_sqm > 0 && (
@@ -293,21 +302,23 @@ function SmartListing({ profileData }) {
             </div>
           </div>
 
+          {/* Amenities badges */}
           {listing.amenities && listing.amenities.length > 0 && (
             <div className="flex flex-wrap gap-1.5 my-3">
               {listing.amenities.slice(0, 3).map((amenity) => (
-                <div key={amenity} className="badge bg-gradient-to-r from-teal-800/10 to-teal-700/10 text-base-content border-teal-700/20 hover:border-teal-600/30 transition-colors backdrop-blur-sm">
+                <div key={amenity} className="badge badge-outline bg-gradient-to-r from-teal-800/10 to-teal-700/10 text-base-content border-teal-700/20 hover:border-teal-600/30 transition-colors backdrop-blur-sm text-xs">
                   {amenity}
                 </div>
               ))}
               {listing.amenities.length > 3 && (
-                <div className="badge bg-gradient-to-r from-teal-700/10 to-teal-600/10 text-base-content border-teal-600/20 hover:border-teal-500/30 transition-colors backdrop-blur-sm">
+                <div className="badge badge-outline bg-gradient-to-r from-teal-700/10 to-teal-600/10 text-base-content border-teal-600/20 hover:border-teal-500/30 transition-colors backdrop-blur-sm text-xs">
                   +{listing.amenities.length - 3} more
                 </div>
               )}
             </div>
           )}
 
+          {/* Footer section */}
           <div className="flex-none pt-2 border-t border-gradient-to-r from-teal-800/20 to-teal-600/20">
             <div className="flex items-center gap-2 mb-3 text-xs text-base-content/60">
               <RiPriceTag3Line className="h-3.5 w-3.5 text-teal-600" />
@@ -315,7 +326,7 @@ function SmartListing({ profileData }) {
             </div>
             
             <button 
-              className="btn w-full mb-2 normal-case bg-gradient-to-r from-teal-900 to-teal-700 text-white hover:brightness-110 transition-all duration-300 shadow-lg hover:shadow-xl"
+              className="btn btn-primary w-full mb-2 normal-case bg-gradient-to-r from-teal-900 to-teal-700 text-white hover:brightness-110 transition-all duration-300 shadow-lg hover:shadow-xl"
               onClick={() => setSelectedProperty(listing)}
             >
               View Details
@@ -324,15 +335,15 @@ function SmartListing({ profileData }) {
             <div className="grid grid-cols-3 gap-1">
               <button className="btn btn-sm btn-outline gap-1 text-xs">
                 <RiCalculatorLine className="w-3 h-3" />
-                Loan
+                <span className="hidden sm:inline">Loan</span>
               </button>
               <button className="btn btn-sm btn-outline gap-1 text-xs">
                 <RiFileTextLine className="w-3 h-3" />
-                Apply
+                <span className="hidden sm:inline">Apply</span>
               </button>
               <button className="btn btn-sm btn-outline gap-1 text-xs">
                 <RiPhoneLine className="w-3 h-3" />
-                Call
+                <span className="hidden sm:inline">Call</span>
               </button>
             </div>
           </div>
@@ -481,7 +492,7 @@ function SmartListing({ profileData }) {
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
             <button
               key={number}
-              className={`join-item btn ${currentPage === number ? 'btn-active' : ''}`}
+              className={`join-item btn ${currentPage === number ? 'btn-active btn-primary' : ''}`}
               onClick={() => setCurrentPage(number)}
             >
               {number}
@@ -502,7 +513,7 @@ function SmartListing({ profileData }) {
   return (
     <div className="space-y-8">
       {/* AI Recommendations Banner */}
-      <div className="alert alert-success">
+      <div className="alert alert-success shadow-lg">
         <RiRobot2Line className="w-6 h-6" />
         <div>
           <h3 className="font-bold">AI Recommendations Ready!</h3>
@@ -531,17 +542,17 @@ function SmartListing({ profileData }) {
       </motion.div>
 
       {/* Filter and Sort Controls */}
-      <div className="flex items-center justify-between">
-        <h2 id="listings-heading" className="text-2xl font-bold">Smart Property Recommendations</h2>
-        <div className="flex items-center gap-4">
-          <button className="btn btn-outline btn-sm gap-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <h2 id="listings-heading" className="text-xl sm:text-2xl font-bold">Smart Property Recommendations</h2>
+        <div className="flex items-center gap-4 w-full sm:w-auto">
+          <button className="btn btn-outline btn-sm gap-2 flex-1 sm:flex-none">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
             Filter
           </button>
           <select 
-            className="select select-bordered select-sm" 
+            className="select select-bordered select-sm flex-1 sm:flex-none" 
             value={sortBy} 
             onChange={(e) => setSortBy(e.target.value)}
           >
@@ -554,7 +565,7 @@ function SmartListing({ profileData }) {
       </div>
 
       {/* Property Listings Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
         {renderPropertyCards()}
       </div>
 
