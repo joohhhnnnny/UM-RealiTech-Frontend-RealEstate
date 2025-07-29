@@ -26,6 +26,44 @@ function ChatbotIcon() {
   const [budget, setBudget] = useState('');
   const [showPresets, setShowPresets] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [buttonPosition, setButtonPosition] = useState({ x: 0, y: 0 });
+
+  // Calculate chat window position based on button position
+  const getChatWindowPosition = () => {
+    const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
+    const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
+    const chatWidth = 384; // 96 * 4 (w-96)
+    const chatHeight = 500;
+    
+    // Default position (bottom-right)
+    let bottom = 100;
+    let right = 32;
+    
+    // If button has been dragged, calculate relative position
+    if (buttonPosition.x !== 0 || buttonPosition.y !== 0) {
+      // Position chat window near the button but ensure it stays on screen
+      const buttonCenterX = buttonPosition.x;
+      const buttonCenterY = buttonPosition.y;
+      
+      // Try to position chat to the left of button first
+      right = Math.max(16, windowWidth - buttonCenterX + 40);
+      if (right + chatWidth > windowWidth) {
+        // If not enough space on the right, try left
+        right = Math.max(16, windowWidth - (buttonCenterX - chatWidth - 40));
+      }
+      
+      // Position vertically
+      bottom = Math.max(16, windowHeight - buttonCenterY - chatHeight / 2);
+      if (bottom + chatHeight > windowHeight) {
+        bottom = Math.max(16, windowHeight - chatHeight - 16);
+      }
+    }
+    
+    return { bottom, right };
+  };
+
+  const chatPosition = getChatWindowPosition();
 
   // Get system context based on user role and chat mode
   const getSystemContext = () => {
@@ -400,10 +438,14 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            className="fixed bottom-18 right-8 w-96 bg-base-100 rounded-lg shadow-xl z-50 border border-base-200"
+            initial={{ opacity: 0, y: 100, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 100, scale: 0.9 }}
+            className="fixed w-96 bg-base-100 rounded-lg shadow-xl z-40 border border-base-200"
+            style={{
+              bottom: `${chatPosition.bottom}px`,
+              right: `${chatPosition.right}px`,
+            }}
           >
             {/* Chat Header */}
             <div className="p-4 border-b border-base-200 bg-primary rounded-t-lg">
@@ -571,27 +613,70 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
 
       {/* Floating Chat Button */}
       <motion.div
-        initial={{ scale: 0 }}
+        initial={{ scale: 0, x: 0, y: 0 }}
         animate={{ scale: 1 }}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        className="fixed bottom-8 right-8 z-50"
+        whileHover={{ scale: isDragging ? 1 : 1.1 }}
+        whileTap={{ scale: isDragging ? 1 : 0.9 }}
+        drag
+        dragMomentum={false}
+        dragElastic={0.1}
+        dragConstraints={{
+          top: -window.innerHeight + 150,
+          left: -window.innerWidth + 150,
+          right: window.innerWidth - 150,
+          bottom: window.innerHeight - 150,
+        }}
+        onDrag={(event, info) => {
+          setButtonPosition({
+            x: info.point.x,
+            y: info.point.y
+          });
+        }}
+        onDragStart={() => setIsDragging(true)}
+        onDragEnd={() => {
+          setTimeout(() => setIsDragging(false), 100);
+        }}
+        className="fixed bottom-8 right-8 z-50 select-none"
+        style={{ 
+          touchAction: 'none',
+          cursor: isDragging ? 'grabbing' : 'grab'
+        }}
       >
         <button
-          className="btn btn-primary btn-circle btn-lg shadow-lg"
-          onClick={() => setIsOpen(!isOpen)}
+          className="btn btn-primary btn-circle btn-lg shadow-lg transition-all duration-200 hover:shadow-xl relative"
+          onClick={(e) => {
+            e.preventDefault();
+            // Only open/close chat if not dragging
+            if (!isDragging) {
+              setIsOpen(!isOpen);
+            }
+          }}
+          style={{ 
+            pointerEvents: 'auto',
+            cursor: isDragging ? 'grabbing' : 'pointer',
+            userSelect: 'none'
+          }}
         >
           {isOpen ? (
-            <XMarkIcon className="w-6 h-6" />
+            <XMarkIcon className="w-6 h-6 pointer-events-none" />
           ) : (
             <>
-              <ChatBubbleOvalLeftEllipsisIcon className="w-6 h-6" />
-              <span className="absolute -top-2 -right-2 bg-error text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              <ChatBubbleOvalLeftEllipsisIcon className="w-6 h-6 pointer-events-none" />
+              <span className="absolute -top-2 -right-2 bg-error text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse pointer-events-none">
                 1
               </span>
             </>
           )}
         </button>
+        
+        {/* Drag indicator */}
+        {isDragging && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute -inset-2 rounded-full border-2 border-primary border-dashed pointer-events-none"
+          />
+        )}
       </motion.div>
     </>
   );

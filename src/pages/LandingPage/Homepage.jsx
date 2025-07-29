@@ -51,7 +51,6 @@ function Homepage() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [searchPlaceholder, setSearchPlaceholder] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [showLoginHint, setShowLoginHint] = useState(true);
   const searchRef = useRef(null);
 
   const phrases = useMemo(() => [
@@ -153,43 +152,8 @@ function Homepage() {
     document.getElementById('solutions')?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowLoginHint(false);
-    }, 10000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    const handleProfileClick = (e) => {
-      const profileButton = e.target.closest('[data-profile-button]');
-      if (profileButton) {
-        setShowLoginHint(false);
-      }
-    };
-
-    document.body.addEventListener('click', handleProfileClick, true);
-    return () => {
-      document.body.removeEventListener('click', handleProfileClick, true);
-    };
-  }, []);
-
   return (
     <>
-      <AnimatePresence mode="wait">
-        {showLoginHint && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0, transition: { duration: 0.5 } }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-20 right-17 z-[40]"
-          >
-            <LoginHint />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <section id="hero" className="min-h-[90vh] flex flex-col items-center justify-between px-4 lg:px-24 py-12 lg:py-20 transition-colors duration-300 bg-base-100">
         <div className="flex flex-col items-center justify-center w-full max-w-7xl flex-grow">
           <HeroText />
@@ -216,28 +180,6 @@ function Homepage() {
     </>
   );
 }
-
-const LoginHint = React.memo(() => (
-  <motion.div
-    animate={{ y: [0, -8, 0] }}
-    transition={{ duration: 2, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-    className="relative backdrop-blur-sm bg-base-100/80 dark:bg-base-300/80 text-base-content border border-base-content/20 dark:border-base-content/20 px-4 py-3 rounded-xl shadow-lg"
-  >
-    <div className="absolute -top-2 right-6 w-4 h-4 bg-base-100/80 dark:bg-base-300/80 border-t border-l border-base-content/20 dark:border-base-content/20 transform rotate-45" />
-    <div className="relative z-10 flex items-center gap-3">
-      <span className="text-sm font-medium whitespace-nowrap">Click to Login</span>
-      <motion.div
-        animate={{ scale: [1, 1.2, 1], rotate: [0, 10, 0] }}
-        transition={{ duration: 1.5, repeat: Infinity, repeatType: "reverse" }}
-        className="w-5 h-5 flex items-center justify-center text-base-content"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      </motion.div>
-    </div>
-  </motion.div>
-));
 
 const HeroText = React.memo(() => (
   <div className="text-center mb-12">
