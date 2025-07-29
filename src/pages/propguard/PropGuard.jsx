@@ -70,6 +70,88 @@ const PropertyCard = memo(({ property }) => {
 
 PropertyCard.displayName = 'PropertyCard';
 
+// Helper function to format text with bold styling
+const formatTextWithBold = (text) => {
+  if (!text) return text;
+  
+  // Split text by asterisks and process each part
+  const parts = text.split(/(\*[^*]+\*)/g);
+  
+  return parts.map((part, index) => {
+    // Check if this part is enclosed in asterisks
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+      // Remove asterisks and make bold with black color
+      const boldText = part.slice(1, -1);
+      return <strong key={index} className="font-bold text-black">{boldText}</strong>;
+    }
+    // Return regular text, filter out standalone asterisks
+    return part === '*' ? '' : part;
+  }).filter(part => part !== ''); // Remove empty parts
+};
+
+// Helper function to format bot messages
+const formatBotMessage = (content) => {
+  if (!content) return content;
+  
+  // Split content into paragraphs and format them
+  const paragraphs = content.split('\n\n').filter(p => p.trim());
+  
+  return paragraphs.map((paragraph, index) => {
+    const trimmedParagraph = paragraph.trim();
+    
+    // Handle bullet points
+    if (trimmedParagraph.includes('•') || trimmedParagraph.includes('-')) {
+      const lines = trimmedParagraph.split('\n');
+      return (
+        <div key={index} className="mb-3">
+          {lines.map((line, lineIndex) => {
+            const trimmedLine = line.trim();
+            if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-')) {
+              const lineText = trimmedLine.replace(/^[•\-]\s*/, '');
+              return (
+                <div key={lineIndex} className="flex items-start gap-2 mb-1">
+                  <span className="text-primary mt-1">•</span>
+                  <span className="flex-1">{formatTextWithBold(lineText)}</span>
+                </div>
+              );
+            }
+            return <div key={lineIndex} className="mb-2">{formatTextWithBold(trimmedLine)}</div>;
+          })}
+        </div>
+      );
+    }
+    
+    // Handle numbered lists
+    if (/^\d+\./.test(trimmedParagraph)) {
+      const lines = trimmedParagraph.split('\n');
+      return (
+        <div key={index} className="mb-3">
+          {lines.map((line, lineIndex) => {
+            const trimmedLine = line.trim();
+            const numberMatch = trimmedLine.match(/^(\d+\.)\s*(.*)/);
+            if (numberMatch) {
+              return (
+                <div key={lineIndex} className="flex items-start gap-2 mb-2">
+                  <span className="text-primary font-semibold min-w-[24px]">{numberMatch[1]}</span>
+                  <span className="flex-1">{formatTextWithBold(numberMatch[2])}</span>
+                </div>
+              );
+            }
+            return <div key={lineIndex} className="mb-1">{formatTextWithBold(trimmedLine)}</div>;
+          })}
+        </div>
+      );
+    }
+    
+    // Regular paragraphs
+    return (
+      <div key={index} className="mb-3 leading-relaxed">
+        {formatTextWithBold(trimmedParagraph)}
+      </div>
+    );
+  });
+};
+
 // Memoized ChatMessage component
 const ChatMessage = memo(({ message }) => {
   return (
@@ -79,8 +161,8 @@ const ChatMessage = memo(({ message }) => {
       animate={{ x: 0, opacity: 1 }}
       className={`flex items-start gap-3 ${message.type === 'user' ? 'flex-row-reverse' : ''}`}
     >
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center 
-        ${message.type === 'user' ? 'bg-primary text-primary-content' : 'bg-base-300'}`}
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
+        ${message.type === 'user' ? 'bg-primary text-primary-content' : 'bg-gradient-to-br from-primary/20 to-primary/10 text-primary'}`}
       >
         {message.type === 'user' ? (
           <RiUser3Fill className="w-5 h-5" />
@@ -88,14 +170,23 @@ const ChatMessage = memo(({ message }) => {
           <RiRobot2Fill className="w-5 h-5" />
         )}
       </div>
-      <div className={`flex-1 max-w-[80%] ${message.type === 'user' ? 'text-right' : ''}`}>
+      <div className={`flex-1 max-w-[85%] ${message.type === 'user' ? 'text-right' : ''}`}>
         {message.type === 'property' ? (
           <PropertyCard property={message.content} />
         ) : (
-          <div className={`inline-block rounded-lg p-3 
-            ${message.type === 'user' ? 'bg-primary text-primary-content' : 'bg-base-200'}`}
+          <div className={`rounded-lg p-4 shadow-sm border
+            ${message.type === 'user' 
+              ? 'bg-primary text-primary-content ml-auto inline-block max-w-[90%]' 
+              : 'bg-base-100 border-base-200 w-full'
+            }`}
           >
-            {message.content}
+            {message.type === 'user' ? (
+              <div className="text-sm leading-relaxed">{message.content}</div>
+            ) : (
+              <div className="text-sm">
+                {formatBotMessage(message.content)}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -110,9 +201,11 @@ const SuggestionButtons = memo(({ suggestions, onSuggestionClick }) => {
   if (!suggestions || suggestions.length === 0) return null;
 
   return (
-    <div className="space-y-2 mt-6 pt-4 border-t border-base-200">
-      <p className="text-sm text-base-content/60 text-center font-medium">Quick options:</p>
-      <div className="grid grid-cols-1 gap-2">
+    <div className="mt-8 pt-6 border-t border-base-200/50">
+      <p className="text-sm text-base-content/70 text-center font-medium mb-4">
+        💡 Try asking about:
+      </p>
+      <div className="grid grid-cols-1 gap-3">
         {suggestions.map((suggestion, index) => (
           <motion.button
             key={`${suggestion.text}-${index}`}
@@ -120,10 +213,10 @@ const SuggestionButtons = memo(({ suggestions, onSuggestionClick }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
             onClick={() => onSuggestionClick(suggestion.text)}
-            className="btn btn-sm btn-outline hover:btn-primary text-left justify-start transition-all duration-200"
+            className="btn btn-sm btn-ghost hover:btn-primary hover:text-primary-content text-left justify-start transition-all duration-200 rounded-lg border border-base-200 hover:border-primary hover:shadow-md"
           >
-            <span className="mr-2">{suggestion.emoji}</span>
-            {suggestion.text}
+            <span className="text-lg mr-3">{suggestion.emoji}</span>
+            <span className="text-sm font-medium">{suggestion.text}</span>
           </motion.button>
         ))}
       </div>
@@ -637,8 +730,8 @@ function PropGuard() {
       id: Date.now(),
       type: 'bot',
       content: userRole === 'agent' || userRole === 'developer'
-        ? `Welcome to PropGuard Agent Dashboard! I can help you manage client inquiries, process applications, and provide market insights. Hello ${userRole === 'developer' ? 'Developer' : 'Agent'}! What would you like to work on?`
-        : "Hi! I'm PropGuard Assistant. I'm here to help you with property inquiries, fraud detection, and real estate guidance. How can I assist you today?"
+        ? `Welcome to PropGuard ${userRole === 'developer' ? 'Developer' : 'Agent'} Dashboard! 🏢\n\nI'm here to help you with:\n• Client inquiry management\n• Application processing\n• Market insights and analytics\n• Property verification tools\n\nWhat would you like to work on today?`
+        : "Hi there! 👋 I'm PropGuard Assistant, your AI-powered real estate companion.\n\nI can help you with:\n• Property search and recommendations\n• Fraud detection and verification\n• Real estate guidance and market insights\n• Document verification and legal compliance\n• Budget planning and financing options\n\nHow can I assist you today?"
     };
     setMessages([welcomeMessage]);
     setCurrentFlow('greeting');
@@ -763,16 +856,16 @@ function PropGuard() {
                   </div>
 
                   {/* Chat Messages */}
-                  <div className="p-4 h-[400px] overflow-y-auto space-y-4">
+                  <div className="p-6 h-[500px] overflow-y-auto space-y-6 bg-gradient-to-b from-base-50 to-base-100">
                     {messages.map(message => (
                       <ChatMessage key={message.id} message={message} />
                     ))}
 
                     {/* Loading indicator */}
                     {isLoading && (
-                      <div className="flex items-center gap-2 text-base-content/60">
-                        <div className="loading loading-dots loading-sm"></div>
-                        <span>PropGuard is thinking...</span>
+                      <div className="flex items-center gap-3 text-base-content/60 py-4">
+                        <div className="loading loading-dots loading-md text-primary"></div>
+                        <span className="text-sm font-medium">PropGuard is thinking...</span>
                       </div>
                     )}
 
@@ -786,20 +879,29 @@ function PropGuard() {
                   </div>
 
                   {/* Chat Input */}
-                  <div className="p-4 border-t border-base-200">
+                  <div className="p-4 border-t border-base-200 bg-base-50">
                     <form onSubmit={(e) => {
                       e.preventDefault();
                       handleSendMessage();
-                    }} className="flex gap-2">
+                    }} className="flex gap-3">
                       <input
                         type="text"
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Type your message here..."
-                        className="input input-bordered flex-1"
+                        placeholder="Ask me anything about real estate..."
+                        className="input input-bordered flex-1 focus:border-primary focus:outline-none transition-colors duration-200"
+                        disabled={isLoading}
                       />
-                      <button type="submit" className="btn btn-primary" disabled={!newMessage.trim() || isLoading}>
-                        <RiSendPlaneFill className="w-5 h-5" />
+                      <button 
+                        type="submit" 
+                        className="btn btn-primary hover:btn-primary-focus disabled:btn-disabled transition-all duration-200" 
+                        disabled={!newMessage.trim() || isLoading}
+                      >
+                        {isLoading ? (
+                          <RiLoader4Line className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <RiSendPlaneFill className="w-5 h-5" />
+                        )}
                       </button>
                     </form>
                   </div>

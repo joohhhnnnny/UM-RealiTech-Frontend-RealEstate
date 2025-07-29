@@ -101,7 +101,7 @@ function Navbar() {
                 className="btn btn-primary rounded-full cursor-pointer"
               >
                 <RiUserLine className="w-5 h-5" />
-                <span>Profile</span>
+                <span>Login</span>
               </label>
               
               <ul tabIndex={0} className="dropdown-content menu mt-3 z-[1] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-200">
