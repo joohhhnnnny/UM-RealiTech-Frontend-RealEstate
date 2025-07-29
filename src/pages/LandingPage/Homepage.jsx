@@ -197,40 +197,42 @@ function Homepage() {
         
         {/* Main Content */}
         <div className="relative z-10 flex flex-col items-center justify-center flex-grow px-4 lg:px-24 py-4">
-          {/* Hero Content */}
-          <div className="text-center max-w-6xl mx-auto mb-8">
-            {/* Main Heading */}
-            <motion.h1 
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="text-3xl md:text-4xl lg:text-6xl font-bold mb-6 text-base-content leading-tight"
-            >
-              Rebuilding Trust in{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-blue-700">
-                Real Estate
-              </span>
-            </motion.h1>
-            
-            {/* Subtitle */}
-            <motion.p 
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-              className="text-md md:text-xl lg:text-2xl text-base-content/80 mb-3 max-w-4xl mx-auto leading-relaxed"
-            >
-              Protecting buyers. Empowering agents. Regulating developers.
-          Together, we make every real estate journey transparent, fair, and safe.
-            </motion.p>
-            
-            {/* Description */}
-            <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
-              className="text-base md:text-lg text-base-content/60 mb-8 max-w-2xl mx-auto"
-            >
-            </motion.div>
+          <div className="text-center max-w-6xl mx-auto">
+            {/* Hero Content */}
+            <div className="mb-8">
+              {/* Main Heading */}
+              <motion.h1 
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="text-3xl md:text-4xl lg:text-6xl font-bold mb-6 text-base-content leading-tight"
+              >
+                Rebuilding Trust in{' '}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-blue-700">
+                  Real Estate
+                </span>
+              </motion.h1>
+              
+              {/* Subtitle */}
+              <motion.p 
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+                className="text-md md:text-xl lg:text-2xl text-base-content/80 mb-3 max-w-4xl mx-auto leading-relaxed"
+              >
+                Protecting buyers. Empowering agents. Regulating developers.
+            Together, we make every real estate journey transparent, fair, and safe.
+              </motion.p>
+              
+              {/* Description */}
+              <motion.div 
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
+                className="text-base md:text-lg text-base-content/60 mb-8 max-w-2xl mx-auto"
+              >
+              </motion.div>
+            </div>
 
             {/* Search Section */}
             <motion.div 
@@ -251,33 +253,41 @@ function Homepage() {
               />
             </motion.div>
 
-            {/* CTA Button */}
-            <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.8, ease: "easeOut" }}
-              className="flex justify-center mb-8"
-            >
-              <motion.button
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate('/properties')}
-                className="btn btn-lg rounded-2xl font-semibold px-10 py-4 text-lg shadow-xl hover:shadow-2xl 
-                           transition-all duration-300 flex items-center gap-3 
-                           bg-gradient-to-r from-blue-500 to-blue-700 border-none text-white"
+            {/* Group the View Properties button and scroll indicator together */}
+            <div className="flex flex-col items-center gap-8">
+              <motion.div 
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.8, ease: "easeOut" }}
+                className="flex flex-col items-center gap-2"
               >
-                <span>View All Properties</span>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </motion.button>
-            </motion.div>
-          </div>
-        </div>
+                {/* View Properties Button */}
+                <motion.button
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => navigate('/properties')}
+                  className="btn btn-lg rounded-2xl font-semibold px-10 py-4 text-lg shadow-xl hover:shadow-2xl 
+                             transition-all duration-300 flex items-center gap-3 
+                             bg-gradient-to-r from-blue-500 to-blue-700 border-none text-white"
+                >
+                  <span>View All Properties</span>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </motion.button>
 
-        {/* Scroll Indicator */}
-        <div className="relative z-10 mb-8">
-          <ScrollIndicator scrollToSolutions={scrollToSolutions} />
+                {/* Scroll Indicator */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 1.2 }}
+                  className="mt-8"
+                >
+                  <ScrollIndicator scrollToSolutions={scrollToSolutions} />
+                </motion.div>
+              </motion.div>
+            </div>
+          </div>
         </div>
       </section>
     </>
@@ -334,15 +344,20 @@ const ViewAllPropertiesButton = React.memo(({ navigate }) => (
 
 const ScrollIndicator = React.memo(({ scrollToSolutions }) => (
   <motion.div
-    className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pb-4"
+    className="flex flex-col items-center gap-3 cursor-pointer group"
     onClick={scrollToSolutions}
     animate={{ y: [0, -8, 0] }}
     transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
   >
-    <span className="text-sm text-base-content/70 font-medium">Scroll to explore</span>
-    <div className="p-2 rounded-full bg-primary/10 backdrop-blur-sm">
-      <ChevronDownIcon className="w-6 h-6 text-primary" aria-label="Scroll to solutions" />
-    </div>
+    <span className="text-sm text-base-content/70 font-medium group-hover:text-base-content transition-colors duration-300">
+      Scroll to explore
+    </span>
+    <motion.div 
+      className="p-2 rounded-full bg-blue-500/10 backdrop-blur-sm group-hover:bg-blue-500/20 transition-all duration-300"
+      whileHover={{ scale: 1.1 }}
+    >
+      <ChevronDownIcon className="w-5 h-5 text-blue-500" aria-label="Scroll to solutions" />
+    </motion.div>
   </motion.div>
 ));
 
