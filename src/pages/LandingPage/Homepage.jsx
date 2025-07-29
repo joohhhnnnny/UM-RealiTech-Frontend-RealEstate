@@ -47,25 +47,39 @@ const SearchResultItem = React.memo(({ listing, onClick }) => (
 
 // Background pattern component
 const BackgroundPattern = () => (
-  <div className="absolute inset-0 overflow-hidden">
+  <div className="fixed inset-0 w-screen h-screen">
     {/* Wavy lines pattern */}
-    <div className="absolute inset-0 opacity-5">
-      <svg width="100%" height="100%" viewBox="0 0 1200 800" className="w-full h-full">
+    <div className="absolute inset-0 w-full h-full opacity-5">
+      <svg 
+        width="100%" 
+        height="100%" 
+        viewBox="0 0 100 100" 
+        preserveAspectRatio="none" 
+        className="w-full h-full"
+      >
         <defs>
-          <pattern id="wave" x="0" y="0" width="200" height="200" patternUnits="userSpaceOnUse">
-            <path d="M0,100 Q50,50 100,100 T200,100" fill="none" stroke="currentColor" strokeWidth="2"/>
-            <path d="M0,150 Q50,100 100,150 T200,150" fill="none" stroke="currentColor" strokeWidth="2"/>
-            <path d="M0,50 Q50,0 100,50 T200,50" fill="none" stroke="currentColor" strokeWidth="2"/>
+          <pattern 
+            id="wave" 
+            x="0" 
+            y="0" 
+            width="40" 
+            height="40" 
+            patternUnits="userSpaceOnUse"
+            patternContentUnits="userSpaceOnUse"
+          >
+            <path d="M0,20 Q10,10 20,20 T40,20" fill="none" stroke="currentColor" strokeWidth="0.5"/>
+            <path d="M0,30 Q10,20 20,30 T40,30" fill="none" stroke="currentColor" strokeWidth="0.5"/>
+            <path d="M0,10 Q10,0 20,10 T40,10" fill="none" stroke="currentColor" strokeWidth="0.5"/>
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#wave)" className="text-base-content"/>
       </svg>
     </div>
     
-    {/* Floating orbs */}
-    <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
-    <div className="absolute top-3/4 right-1/4 w-48 h-48 bg-secondary/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-    <div className="absolute top-1/2 left-3/4 w-24 h-24 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
+    {/* Floating orbs with adjusted positioning */}
+    <div className="fixed top-1/4 left-1/4 w-32 h-32 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
+    <div className="fixed top-3/4 right-1/4 w-48 h-48 bg-secondary/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+    <div className="fixed top-1/2 left-3/4 w-24 h-24 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
   </div>
 );
 
@@ -182,7 +196,7 @@ function Homepage() {
         <BackgroundPattern />
         
         {/* Main Content */}
-        <div className="relative z-10 flex flex-col items-center justify-center flex-grow px-4 lg:px-24 py-8">
+        <div className="relative z-10 flex flex-col items-center justify-center flex-grow px-4 lg:px-24 py-4">
           {/* Hero Content */}
           <div className="text-center max-w-6xl mx-auto mb-8">
             {/* Main Heading */}
@@ -262,7 +276,7 @@ function Homepage() {
         </div>
 
         {/* Scroll Indicator */}
-        <div className="relative z-10 mb-4">
+        <div className="relative z-10 mb-8">
           <ScrollIndicator scrollToSolutions={scrollToSolutions} />
         </div>
       </section>
@@ -320,7 +334,7 @@ const ViewAllPropertiesButton = React.memo(({ navigate }) => (
 
 const ScrollIndicator = React.memo(({ scrollToSolutions }) => (
   <motion.div
-    className="flex flex-col items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity pb-8"
+    className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity pb-4"
     onClick={scrollToSolutions}
     animate={{ y: [0, -8, 0] }}
     transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
