@@ -370,51 +370,51 @@ function PropGuard() {
 
   // Memoized suggestions based on current flow
   const suggestions = useMemo(() => {
-    switch (currentFlow) {
-      case 'greeting':
-        return [
-          { emoji: '🏠', text: "I'd like to find a property" },
-          { emoji: '⚖️', text: 'What are my rights as a buyer?' },
-          { emoji: '💳', text: 'How do payments work?' },
-          { emoji: '💰', text: 'Help me with financing options' }
-        ];
-      case 'property_search':
-        return [
-          { emoji: '💵', text: 'What is your budget range?' },
-          { emoji: '📍', text: 'Which location are you interested in?' },
-          { emoji: '🏗️', text: 'Do you prefer a house, condo, or apartment?' },
-          { emoji: '🛏️', text: 'How many bedrooms do you need?' }
-        ];
-      case 'rights':
-        return [
-          { emoji: '🛡️', text: 'Property buyer protection laws' },
-          { emoji: '🤝', text: 'Contract and agreement rights' },
-          { emoji: '🏗️', text: 'Construction and development standards' },
-          { emoji: '⚖️', text: 'Legal recourse and remedies' }
-        ];
-      case 'payments':
-        return [
-          { emoji: '💳', text: 'Payment methods accepted' },
-          { emoji: '📅', text: 'Payment schedules and terms' },
-          { emoji: '🏦', text: 'Bank transfer and processing' },
-          { emoji: '📄', text: 'Documentation requirements' }
-        ];
-      case 'financing':
-        return [
-          { emoji: '🏦', text: 'Available loan options' },
-          { emoji: '📊', text: 'Interest rates and terms' },
-          { emoji: '📋', text: 'Loan requirements and eligibility' },
-          { emoji: '💡', text: 'Tips for loan approval' }
-        ];
-      default:
-        return [
-          { emoji: '🏠', text: 'Search for properties' },
-          { emoji: '⚖️', text: 'Legal rights information' },
-          { emoji: '💳', text: 'Payment process' },
-          { emoji: '💰', text: 'Financing guidance' }
-        ];
-    }
-  }, [currentFlow]);
+  switch (currentFlow) {
+    case 'greeting':
+      return [
+        { emoji: '🏠', text: "I'd like to find a property" },
+        { emoji: '⚖️', text: 'What are my rights as a buyer?' },
+        { emoji: '💳', text: 'How do payments work?' },
+        { emoji: '💰', text: 'Help me with financing options' }
+      ];
+    case 'property_search':
+      return [
+        { emoji: '💵', text: 'Can you show me properties within my budget?' },
+        { emoji: '📍', text: 'What are the available locations?' },
+        { emoji: '🏗️', text: 'What’s the difference between house, condo, and apartment?' },
+        { emoji: '🛏️', text: 'What bedroom options are available?' }
+      ];
+    case 'rights':
+      return [
+        { emoji: '🛡️', text: 'What laws protect property buyers?' },
+        { emoji: '🤝', text: 'What should I know about contracts?' },
+        { emoji: '🏗️', text: 'Are there standards for construction quality?' },
+        { emoji: '⚖️', text: 'What legal steps can I take if issues arise?' }
+      ];
+    case 'payments':
+      return [
+        { emoji: '💳', text: 'What payment methods are accepted?' },
+        { emoji: '📅', text: 'How does the payment schedule work?' },
+        { emoji: '🏦', text: 'How do bank transfers work for property payments?' },
+        { emoji: '📄', text: 'What documents are needed for payment?' }
+      ];
+    case 'financing':
+      return [
+        { emoji: '🏦', text: 'What loan options are available?' },
+        { emoji: '📊', text: 'What interest rates should I expect?' },
+        { emoji: '📋', text: 'Am I eligible for a home loan?' },
+        { emoji: '💡', text: 'How can I increase my chances of getting approved?' }
+      ];
+    default:
+      return [
+        { emoji: '🏠', text: 'Can I search for properties here?' },
+        { emoji: '⚖️', text: 'Can you tell me about buyer rights?' },
+        { emoji: '💳', text: 'How does the payment process work?' },
+        { emoji: '💰', text: 'Can I get help with financing?' }
+      ];
+  }
+}, [currentFlow]);
 
   // Stable callback functions
   const handleFileUpload = useCallback((e) => {
