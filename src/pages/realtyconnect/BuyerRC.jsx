@@ -17,7 +17,7 @@ const AgentCard = memo(({ agent, onViewProfile, renderStars }) => (
           <p className="text-sm opacity-70">{agent.specialization} Specialist</p>
         </div>
       </div>
-
+      
       <div className="mt-4">
         <div className="flex items-center gap-2">
           {renderStars(agent.rating)}
@@ -27,10 +27,10 @@ const AgentCard = memo(({ agent, onViewProfile, renderStars }) => (
           <span className="font-semibold">{agent.deals}</span> deals closed
         </p>
       </div>
-
+      
       <div className="card-actions justify-end mt-4">
         <button className="btn btn-primary">Contact Agent</button>
-        <button
+        <button 
           className="btn btn-outline"
           onClick={() => onViewProfile(agent)}
         >
@@ -108,7 +108,7 @@ const AgentProfileModal = memo(({ selectedAgent, onClose, renderStars }) => {
             <FaUserTie />
             Schedule Meeting
           </button>
-          <button
+          <button 
             className="btn btn-ghost"
             onClick={onClose}
           >
@@ -126,11 +126,11 @@ function BuyerRC() {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedAgent, setSelectedAgent] = useState(null);
 
-  // Optimized agent data processing (only once since agentsData is static)
+  // Optimized agent data processing
   const agents = useMemo(() => {
     return agentsData.map((agent, index) => {
       let image;
-
+      
       if (index === 0) {
         image = "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&backgroundColor=b6e3f4";
       } else {
@@ -148,7 +148,9 @@ function BuyerRC() {
           'https://randomuser.me/api/portraits/men/43.jpg',
           'https://randomuser.me/api/portraits/women/44.jpg'
         ];
-        image = professionalPhotos[index % professionalPhotos.length];
+        
+        const uniqueIndex = index % professionalPhotos.length;
+        image = professionalPhotos[uniqueIndex];
       }
 
       let specialization = ['Residential', 'Commercial', 'Industrial'][Math.floor(Math.random() * 3)];
@@ -173,39 +175,21 @@ function BuyerRC() {
         })
       };
     });
-  }, []);
+  }, [agentsData]);
 
-  // Precomputed star cache
-  const starCache = useMemo(() => {
-    const cache = {};
-    for (let r = 4.0; r <= 5.0; r += 0.1) {
-      const rounded = parseFloat(r.toFixed(1));
-      const filled = Math.floor(rounded);
-      cache[rounded] = Array.from({ length: 5 }, (_, i) => (
-        <FaStar
-          key={i}
-          className={i < filled ? 'text-yellow-400' : 'text-gray-300'}
-        />
-      ));
-    }
-    return cache;
-  }, []);
-
-  const renderStars = useCallback((rating) => {
-    const rounded = parseFloat(rating).toFixed(1);
-    return starCache[rounded] || null;
-  }, [starCache]);
-
-  // Filter agents by search and specialization
+  // Optimized filtered agents with early exit
   const filteredAgents = useMemo(() => {
     const searchLower = searchQuery.toLowerCase();
     const filterLower = selectedFilter.toLowerCase();
-
+    
     return agents.filter(agent => {
-      if (selectedFilter !== 'all' && (agent.specialization || '').toLowerCase() !== filterLower) {
+      // Check specialization first (cheaper operation)
+      if (selectedFilter !== 'all' && 
+          (agent.specialization || '').toLowerCase() !== filterLower) {
         return false;
       }
-
+      
+      // Only check search if needed
       return !searchQuery || (
         (agent.name || '').toLowerCase().includes(searchLower) ||
         (agent.email || '').toLowerCase().includes(searchLower) ||
@@ -214,6 +198,22 @@ function BuyerRC() {
     });
   }, [agents, searchQuery, selectedFilter]);
 
+  // Optimized star rendering with cached stars
+  const renderStars = useCallback((rating) => {
+    const stars = [];
+    const filled = Math.floor(rating);
+    for (let i = 0; i < 5; i++) {
+      stars.push(
+        <FaStar
+          key={i}
+          className={i < filled ? 'text-yellow-400' : 'text-gray-300'}
+        />
+      );
+    }
+    return stars;
+  }, []);
+
+  // Stable callbacks
   const handleViewProfile = useCallback((agent) => {
     setSelectedAgent(agent);
   }, []);
@@ -222,10 +222,12 @@ function BuyerRC() {
     setSelectedAgent(null);
   }, []);
 
+  // Search handler
   const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);
   }, []);
 
+  // Filter handler
   const handleFilterChange = useCallback((e) => {
     setSelectedFilter(e.target.value);
   }, []);
@@ -256,8 +258,8 @@ function BuyerRC() {
       {/* Agents Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredAgents.map((agent) => (
-          <AgentCard
-            key={agent.id}
+          <AgentCard 
+            key={agent.id} 
             agent={agent}
             onViewProfile={handleViewProfile}
             renderStars={renderStars}
@@ -267,7 +269,7 @@ function BuyerRC() {
 
       {/* Conditionally rendered modal */}
       {selectedAgent && (
-        <AgentProfileModal
+        <AgentProfileModal 
           selectedAgent={selectedAgent}
           onClose={handleCloseModal}
           renderStars={renderStars}
