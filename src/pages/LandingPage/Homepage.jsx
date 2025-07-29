@@ -203,9 +203,10 @@ function Homepage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-              className="text-xl md:text-2xl lg:text-3xl text-base-content/80 mb-3 max-w-4xl mx-auto leading-relaxed"
+              className="text-md md:text-xl lg:text-2xl text-base-content/80 mb-3 max-w-4xl mx-auto leading-relaxed"
             >
-              Empowering Filipino homebuyers with trust, tech, and transparency.
+              Protecting buyers. Empowering agents. Regulating developers.
+          Together, we make every real estate journey transparent, fair, and safe.
             </motion.p>
             
             {/* Description */}
