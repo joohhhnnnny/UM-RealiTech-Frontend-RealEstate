@@ -1,4 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
+import { useState } from 'react'; // Add this import
+import { LoadingScreen } from './components/Loadingscreen';
 import LandingPage from './pages/landingpage/LandingPage.jsx';
 import Properties from './pages/Properties';
 import AboutUs from './pages/About/AboutUs.jsx';
@@ -19,29 +21,37 @@ import ActivityLog from './pages/quickactions/ActivityLog';
 import DashboardLayout from './layouts/DashboardLayout';
 
 function App() {
+    const [isLoaded, setIsLoaded] = useState(false); // Add this state declaration
+    
     return (
-        <>
-            <Routes>
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/properties" element={<Properties />} />
-                <Route path='/about' element={<AboutUs />} />
-                <Route path="/error" element={<Error />} />
-                <Route path="*" element={<Error />} />
-                <Route path="/dashboard/buyer" element={<BuyerDashboard />} />
-                <Route path="/dashboard/agent" element={<AgentDashboard />} />
-                <Route path="/dashboard/developer" element={<DeveloperDashboard />} />
-                <Route path="/dashboard/buysmartph" element={<BuySmartPH />} />
-                <Route path="/dashboard/realtyconnect" element={<RealtyConnect />} />
-                <Route path="/dashboard/propguard" element={<PropGuard />} />
-                {/* <Route path="/dashboard/chatbot" element={<ChatBot />} /> */}
-                <Route path="/dashboard/devtrackr" element={<DevTrackr />} />
-                <Route path="/dashboard/notifications" element={<Notif />} />
-                <Route path="/dashboard/messages" element={<Msg />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/dashboard/audit-log" element={<ActivityLog />} />
-            </Routes>
-            <ChatbotIcon />
-            
+        <>  
+            {!isLoaded && <LoadingScreen onComplete={() => setIsLoaded(true)} />}
+            <div 
+                className={`min-h-screen transition-opacity duration-700 ${
+                    isLoaded ? "opacity-100" : "opacity-0"
+                } bg-black text-gray-100`}
+            >
+                <Routes>
+                    <Route path="/" element={<LandingPage />} />
+                    <Route path="/properties" element={<Properties />} />
+                    <Route path='/about' element={<AboutUs />} />
+                    <Route path="/error" element={<Error />} />
+                    <Route path="*" element={<Error />} />
+                    <Route path="/dashboard/buyer" element={<BuyerDashboard />} />
+                    <Route path="/dashboard/agent" element={<AgentDashboard />} />
+                    <Route path="/dashboard/developer" element={<DeveloperDashboard />} />
+                    <Route path="/dashboard/buysmartph" element={<BuySmartPH />} />
+                    <Route path="/dashboard/realtyconnect" element={<RealtyConnect />} />
+                    <Route path="/dashboard/propguard" element={<PropGuard />} />
+                    {/* <Route path="/dashboard/chatbot" element={<ChatBot />} /> */}
+                    <Route path="/dashboard/devtrackr" element={<DevTrackr />} />
+                    <Route path="/dashboard/notifications" element={<Notif />} />
+                    <Route path="/dashboard/messages" element={<Msg />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/dashboard/audit-log" element={<ActivityLog />} />
+                </Routes>
+                <ChatbotIcon />
+            </div>
         </>
     );
 }
