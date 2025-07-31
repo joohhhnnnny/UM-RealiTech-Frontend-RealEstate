@@ -1,6 +1,6 @@
 import React, { useState, useMemo, memo, useCallback } from 'react';
 import { FaUserTie, FaStar } from 'react-icons/fa';
-import agentsData from '../../agents.json';
+import agentsData from '../../json/agents.json';
 
 // Memoized Agent Card Component
 const AgentCard = memo(({ agent, onViewProfile, renderStars }) => (

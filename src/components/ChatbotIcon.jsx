@@ -11,7 +11,7 @@ import {
 } from '@heroicons/react/24/solid';
 import { FaRobot } from 'react-icons/fa';
 import { useLocation } from 'react-router-dom';
-import listingsData from '../listings.json';
+import listingsData from '../json/listings.json';
 
 function ChatbotIcon() {
   const location = useLocation();
