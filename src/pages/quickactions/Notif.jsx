@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { RiCheckDoubleLine, RiMailLine, RiMailOpenLine, RiStarLine, RiBookmarkLine, RiTimeLine } from 'react-icons/ri';
-import DashboardNavbar from '../../components/dashboard/DashboardNavbar';
+import DashboardNavbar from '../../components/DashboardNavbar';
 
 const Notif = () => {
   const [activeTab, setActiveTab] = useState('all');

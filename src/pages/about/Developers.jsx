@@ -1,8 +1,8 @@
 
-import robert from '../../assets/robert.jpg';
-import benedict from '../../assets/benedict.jpg';
-import jm from '../../assets/jm.jpg';
-import aaron from '../../assets/aaron.jpg';
+import robert from '../../assets/developers/robert.jpg';
+import benedict from '../../assets/developers/benedict.jpg';
+import jm from '../../assets/developers/jm.jpg';
+import aaron from '../../assets/developers/aaron.jpg';
 import { motion } from 'framer-motion';
 
 function Developers() {
