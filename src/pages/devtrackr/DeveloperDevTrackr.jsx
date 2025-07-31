@@ -6,9 +6,9 @@ import {
 } from 'react-icons/ri';
 
 // Import the components
-import ProjectDashboard from './dev_devtrackr/ProjectDashboard';
-import SmartContracts from './dev_devtrackr/SmartContracts';
-import DiscrepancyLog from './dev_devtrackr/DiscrepancyLog';
+import ProjectDashboard from './devportal/ProjectDashboard';
+import SmartContracts from './devportal/SmartContracts';
+import DiscrepancyLog from './devportal/DiscrepancyLog';
 
 function DeveloperDevTrackr() {
   const [activeTab, setActiveTab] = useState('dashboard');

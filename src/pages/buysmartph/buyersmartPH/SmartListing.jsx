@@ -15,7 +15,7 @@ import {
   RiHotelBedLine,
   RiDropLine
 } from 'react-icons/ri';
-import listingsData from '../../../listings.json';
+import listingsData from '../../../json/listings.json';
 
 function SmartListing({ profileData }) {
   const [listings, setListings] = useState([]);

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { MagnifyingGlassIcon, MapPinIcon, CurrencyDollarIcon, HomeIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
-import listingsData from '../../listings.json';
+import listingsData from '../../json/listings.json';
 
 const formatPrice = (price) => {
   if (!price) return '';
