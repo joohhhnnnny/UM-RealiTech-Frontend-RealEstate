@@ -13,7 +13,7 @@ const SearchResultItem = React.memo(({ listing, onClick }) => (
   <div
     onClick={() => onClick(listing)}
     className="p-4 hover:bg-base-200 cursor-pointer transition-colors 
-              duration-200 border-b border-base-200 last:border-none"
+              duration-200 border-b border-base-300 last:border-none"
   >
     <div className="flex items-start gap-4">
       <div className="flex-1">
@@ -192,7 +192,7 @@ function Homepage() {
 
   return (
     <>
-      <section id="hero" className="relative min-h-screen flex flex-col bg-base-100 overflow-hidden">
+      <section id="hero" className="relative min-h-screen flex flex-col overflow-hidden bg-base-100">        
         <BackgroundPattern />
         
         {/* Main Content */}
@@ -208,7 +208,7 @@ function Homepage() {
                 className="text-3xl md:text-4xl lg:text-6xl font-bold mb-6 text-base-content leading-tight"
               >
                 Rebuilding Trust in{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-blue-700">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-blue-400">
                   Real Estate
                 </span>
               </motion.h1>
@@ -223,15 +223,6 @@ function Homepage() {
                 Protecting buyers. Empowering agents. Regulating developers.
             Together, we make every real estate journey transparent, fair, and safe.
               </motion.p>
-              
-              {/* Description */}
-              <motion.div 
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
-                className="text-base md:text-lg text-base-content/60 mb-8 max-w-2xl mx-auto"
-              >
-              </motion.div>
             </div>
 
             {/* Search Section */}
@@ -266,9 +257,8 @@ function Homepage() {
                   whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => navigate('/properties')}
-                  className="btn btn-lg rounded-2xl font-semibold px-10 py-4 text-lg shadow-xl hover:shadow-2xl 
-                             transition-all duration-300 flex items-center gap-3 
-                             bg-gradient-to-r from-blue-500 to-blue-700 border-none text-white"
+                  className="btn btn-primary btn-lg rounded-2xl font-semibold px-10 py-4 text-lg shadow-xl hover:shadow-2xl 
+                             transition-all duration-300 flex items-center gap-3"
                 >
                   <span>View All Properties</span>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -303,9 +293,9 @@ const SearchInput = React.memo(({ searchTerm, handleSearch, isSearchFocused, set
         onChange={(e) => handleSearch(e.target.value)}
         onFocus={() => setIsSearchFocused(true)}
         placeholder={isSearchFocused ? 'Type to search properties...' : searchPlaceholder}
-        className="input input-lg w-full px-6 py-5 text-lg rounded-2xl transition-all duration-300 pl-16 bg-base-100/80 backdrop-blur-sm border-2 border-base-300 focus:border-primary focus:outline-none shadow-xl hover:shadow-2xl placeholder-base-content/50 text-base-content"
+        className="input input-lg w-full px-6 py-5 text-lg rounded-2xl transition-all duration-300 pl-16 bg-base-200/90 backdrop-blur-sm border-2 border-base-300 focus:border-primary focus:outline-none shadow-xl hover:shadow-2xl placeholder-base-content/50 text-base-content"
       />
-      <MagnifyingGlassIcon className="absolute left-5 top-1/2 transform -translate-y-1/2 w-6 h-6 pointer-events-none text-base-content/70" />
+      <MagnifyingGlassIcon className="absolute left-5 top-1/2 transform -translate-y-1/2 w-6 h-6 pointer-events-none text-base-content/60" />
     </div>
 
     <AnimatePresence>
@@ -315,7 +305,7 @@ const SearchInput = React.memo(({ searchTerm, handleSearch, isSearchFocused, set
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
-          className="absolute z-50 w-full mt-3 bg-base-100/95 backdrop-blur-md rounded-2xl shadow-2xl border border-base-200 overflow-hidden max-h-[60vh] overflow-y-auto"
+          className="absolute z-50 w-full mt-3 bg-base-100/95 backdrop-blur-md rounded-2xl shadow-2xl border border-base-300 overflow-hidden max-h-[60vh] overflow-y-auto"
         >
           {searchResults.map((listing) => (
             <SearchResultItem key={listing.id} listing={listing} onClick={handleResultClick} />
@@ -324,22 +314,6 @@ const SearchInput = React.memo(({ searchTerm, handleSearch, isSearchFocused, set
       )}
     </AnimatePresence>
   </div>
-));
-
-const ViewAllPropertiesButton = React.memo(({ navigate }) => (
-  <motion.button
-    whileHover={{ scale: 1.05, y: -2 }}
-    whileTap={{ scale: 0.95 }}
-    onClick={() => navigate('/properties')}
-    className="btn btn-lg rounded-2xl font-semibold px-10 py-4 text-lg shadow-xl hover:shadow-2xl 
-               transition-all duration-300 flex items-center gap-3 
-               bg-gradient-to-r from-blue-500 to-blue-700 border-none text-white"
-  >
-    <span>View All Properties</span>
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-    </svg>
-  </motion.button>
 ));
 
 const ScrollIndicator = React.memo(({ scrollToSolutions }) => (
@@ -353,10 +327,10 @@ const ScrollIndicator = React.memo(({ scrollToSolutions }) => (
       Scroll to explore
     </span>
     <motion.div 
-      className="p-2 rounded-full bg-blue-500/10 backdrop-blur-sm group-hover:bg-blue-500/20 transition-all duration-300"
+      className="p-2 rounded-full bg-primary/10 backdrop-blur-sm group-hover:bg-primary/20 transition-all duration-300"
       whileHover={{ scale: 1.1 }}
     >
-      <ChevronDownIcon className="w-5 h-5 text-blue-500" aria-label="Scroll to solutions" />
+      <ChevronDownIcon className="w-5 h-5 text-primary" aria-label="Scroll to solutions" />
     </motion.div>
   </motion.div>
 ));

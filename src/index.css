@@ -63,4 +63,64 @@
   scroll-behavior: smooth;
 }
 
+/* Dynamic scrollbar theming using CSS custom properties */
+:root {
+  /* Light mode scrollbar colors */
+  --scrollbar-track: hsl(0 0% 95%);
+  --scrollbar-thumb: hsl(0 0% 80%);
+  --scrollbar-thumb-hover: hsl(0 0% 70%);
+}
+
+[data-theme="dark"], 
+.dark {
+  /* Dark mode scrollbar colors */
+  --scrollbar-track: hsl(220 13% 18%);
+  --scrollbar-thumb: hsl(220 13% 28%);
+  --scrollbar-thumb-hover: hsl(220 13% 38%);
+}
+
+/* Apply dynamic scrollbar styles */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 6px;
+  border: 2px solid var(--scrollbar-track);
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Firefox scrollbar support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* Ensure smooth transitions for theme changes */
+html {
+  transition: color-scheme 0.2s ease;
+}
+
+/* Additional support for different theme attribute patterns */
+[data-theme="light"] {
+  --scrollbar-track: hsl(0 0% 95%);
+  --scrollbar-thumb: hsl(0 0% 80%);
+  --scrollbar-thumb-hover: hsl(0 0% 70%);
+}
+
+[data-theme="dark"] {
+  --scrollbar-track: hsl(220 13% 18%);
+  --scrollbar-thumb: hsl(220 13% 28%);
+  --scrollbar-thumb-hover: hsl(220 13% 38%);
+}
+
 

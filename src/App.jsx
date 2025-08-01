@@ -19,6 +19,7 @@ import Msg from './pages/quickactions/Msg';
 import Settings from './pages/quickactions/Settings';
 import ActivityLog from './pages/quickactions/ActivityLog';
 import DashboardLayout from './layouts/DashboardLayout';
+import AuthContainer from './components/Authentication/AuthContainer.jsx';
 
 function App() {
     const [isLoaded, setIsLoaded] = useState(false); // Add this state declaration
@@ -33,6 +34,8 @@ function App() {
             >
                 <Routes>
                     <Route path="/" element={<LandingPage />} />
+                    <Route path="/login" element={<AuthContainer />} />
+                    <Route path="/signup" element={<AuthContainer />} />
                     <Route path="/properties" element={<Properties />} />
                     <Route path='/about' element={<AboutUs />} />
                     <Route path="/error" element={<Error />} />

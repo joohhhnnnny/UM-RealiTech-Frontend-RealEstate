@@ -33,7 +33,7 @@ function Navbar() {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
-      className="sticky top-0 z-50 border-b backdrop-blur-md bg-base-100/85 border-base-200"
+      className="sticky top-0 z-50 border-b backdrop-blur-md bg-base-100 border-base-200 shadow-sm"
     >
       
       <div className="container mx-auto px-4">
@@ -52,9 +52,7 @@ function Navbar() {
             </motion.div>
           </Link>
 
-
           {/* links center */}
-
           <div className="hidden lg:flex flex-[2] justify-center">
             <ul className="flex items-center space-x-8">
               {navItems.map((item) => (
@@ -78,7 +76,6 @@ function Navbar() {
             </ul>
           </div>
 
-
           {/* right side */}
           <div className="hidden lg:flex items-center gap-4">
             <motion.button
@@ -88,139 +85,91 @@ function Navbar() {
               className="btn btn-circle btn-ghost"
             >
               {isDark ? (
-                <SunIcon className="w-5 h-5 text-amber-500" />
+                <SunIcon className="w-5 h-5 text-yellow-400" />
               ) : (
-                <MoonIcon className="w-5 h-5" />
+                <MoonIcon className="w-5 h-5 text-base-content" />
               )}
             </motion.button>
 
-            <div className="dropdown dropdown-end">
-              <label
-                tabIndex={0}
-                data-profile-button
+            {/* Login Button - Redirect to LoginSignup page */}
+            <Link to="/login">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 className="btn btn-primary rounded-full cursor-pointer"
               >
                 <RiUserLine className="w-5 h-5" />
                 <span>Login</span>
-              </label>
-              
-              <ul tabIndex={0} className="dropdown-content menu mt-3 z-[1] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-200">
-                <li>
-                  <Link to="/dashboard/buyer" className="flex items-center gap-2 text-base-content hover:bg-base-200 rounded-lg">
-                    <i className="fas fa-user-tie"></i>
-                    Buyer
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/dashboard/agent" className="flex items-center gap-2 text-base-content hover:bg-base-200 rounded-lg">
-                    <i className="fas fa-house-user"></i>
-                    Agent
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/dashboard/developer" className="flex items-center gap-2 text-base-content hover:bg-base-200 rounded-lg">
-                    <i className="fas fa-building"></i>
-                    Developer
-                  </Link>
-                </li>
-              </ul>
-            </div>
+              </motion.button>
+            </Link>
           </div>
 
+          {/* Mobile Dropdown */}
+          <div className="dropdown dropdown-end lg:hidden">
+            <motion.label 
+              whileTap={{ scale: 0.9 }}
+              tabIndex={0} 
+              className="btn btn-ghost btn-circle"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none"
+                viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                  d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </motion.label>
 
+            <ul tabIndex={0} className="menu dropdown-content mt-3 z-[1] p-4 shadow-lg bg-base-100 rounded-box w-52 border border-base-200">
+              {/* Dark Theme Toggle */}
+              <li>
+                <button 
+                  onClick={toggleTheme}
+                  className="flex items-center gap-2 text-base-content"
+                >
+                  {isDark ? (
+                    <>
+                      <SunIcon className="w-5 h-5 text-yellow-400" />
+                      Light Mode
+                    </>
+                  ) : (
+                    <>
+                      <MoonIcon className="w-5 h-5 text-base-content" />
+                      Dark Mode
+                    </>
+                  )}
+                </button>
+              </li>
 
+              <div className="divider my-1"></div>
 
-           {/* Mobile Dropdown */}
-            <div className="dropdown dropdown-end lg:hidden">
-              <motion.label 
-                whileTap={{ scale: 0.9 }}
-                tabIndex={0} 
-                className="btn btn-ghost btn-circle"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none"
-                  viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                    d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </motion.label>
-
-              <ul tabIndex={0} className="menu dropdown-content mt-3 z-[1] p-4 shadow-lg bg-base-100 rounded-box w-52">
-                {/* Dark Theme Toggle */}
-                <li>
-                  <button 
-                    onClick={toggleTheme}
-                    className="flex items-center gap-2 text-base-content"
+              {/* Menu Items */}
+              {navItems.map((item) => (
+                <li key={item.name}>
+                  <Link 
+                    to={item.path}
+                    className="text-base-content hover:text-primary"
                   >
-                    {isDark ? (
-                      <>
-                        <SunIcon className="w-5 h-5 text-amber-500" />
-                        Light Mode
-                      </>
-                    ) : (
-                      <>
-                        <MoonIcon className="w-5 h-5" />
-                        Dark Mode
-                      </>
-                    )}
-                  </button>
+                    {item.name}
+                  </Link>
                 </li>
+              ))}
 
-                <div className="divider my-1"></div>
+              <div className="divider my-1"></div>
 
-                {/* Menu Items */}
-                {navItems.map((item) => (
-                  <li key={item.name}>
-                    <Link 
-                      to={item.path}
-                      className="text-base-content hover:text-primary"
-                    >
-                      {item.name}
-                    </Link>
-                  </li>
-                ))}
-
-                <div className="divider my-1"></div>
-
-                {/* Profile Button with Dropdown */}
-                <li>
-                  <div className="dropdown dropdown-bottom">
-                    <label
-                      tabIndex={1}
-                      data-profile-button
-                      className="btn btn-primary rounded-full cursor-pointer w-full"
-                    >
-                      <RiUserLine className="w-5 h-5" />
-                      <span>Profile</span>
-                    </label>
-                    
-                    <ul tabIndex={1} className="dropdown-content menu mt-3 z-[2] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-200">
-                      <li>
-                        <Link to="/dashboard/buyer" className="flex items-center gap-2 text-base-content hover:bg-base-200 rounded-lg">
-                          <i className="fas fa-user-tie"></i>
-                          Buyer
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="/dashboard/agent" className="flex items-center gap-2 text-base-content hover:bg-base-200 rounded-lg">
-                          <i className="fas fa-house-user"></i>
-                          Agent
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="/dashboard/developer" className="flex items-center gap-2 text-base-content hover:bg-base-200 rounded-lg">
-                          <i className="fas fa-building"></i>
-                          Developer
-                        </Link>
-                      </li>
-                    </ul>
-                  </div>
-                </li>
-              </ul>
-            </div>
+              {/* Mobile Login Button */}
+              <li>
+                <Link 
+                  to="/login"
+                  className="btn btn-primary rounded-full cursor-pointer w-full flex items-center gap-2"
+                >
+                  <RiUserLine className="w-5 h-5" />
+                  <span>Login</span>
+                </Link>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
     </motion.nav>
-
   );
 }
 
