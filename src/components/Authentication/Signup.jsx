@@ -16,6 +16,8 @@ import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
 // Import the new notification component
 import SuccessNotification from '../SuccessNotification';
+// Import the new Terms modal
+import TermsModal from '../TermsModal';
 
 // Initialize Firebase (using your config)
 const firebaseConfig = {
@@ -40,6 +42,8 @@ const Signup = ({ onToggle }) => {
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [successData, setSuccessData] = useState({ userNumber: '', userName: '' });
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   
   const [signupData, setSignupData] = useState({
     firstName: '',
@@ -130,10 +134,29 @@ const Signup = ({ onToggle }) => {
     }
   };
 
+  const handleTermsClick = (e) => {
+    e.preventDefault();
+    setShowTermsModal(true);
+  };
+
+  const handleTermsModalClose = () => {
+    setShowTermsModal(false);
+    if (!termsAccepted) {
+      setTermsAccepted(true);
+    }
+  };
+
   const handleSignupSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+
+    // Check if terms are accepted
+    if (!termsAccepted) {
+      setError('Please accept the Terms & Conditions to continue.');
+      setIsLoading(false);
+      return;
+    }
 
     // Enhanced validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -324,6 +347,12 @@ const Signup = ({ onToggle }) => {
         onClose={handleSuccessClose}
         userNumber={successData.userNumber}
         userName={successData.userName}
+      />
+
+      {/* Terms Modal */}
+      <TermsModal
+        isVisible={showTermsModal}
+        onClose={handleTermsModalClose}
       />
 
       {/* Error Message */}
@@ -544,9 +573,23 @@ const Signup = ({ onToggle }) => {
             {/* Terms & Conditions */}
             <div className="form-control">
               <label className="label cursor-pointer justify-start">
-                <input type="checkbox" className="checkbox checkbox-primary checkbox-sm" required disabled={isLoading} />
+                <input 
+                  type="checkbox" 
+                  className="checkbox checkbox-primary checkbox-sm" 
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  disabled={isLoading} 
+                />
                 <span className="label-text ml-3 text-base-content">
-                  I agree to the <a href="#" className="text-primary hover:text-primary/80 font-medium">Terms & Conditions</a>
+                  I agree to the{' '}
+                  <button
+                    type="button"
+                    onClick={handleTermsClick}
+                    className="text-primary hover:text-primary/80 font-medium underline transition-colors"
+                    disabled={isLoading}
+                  >
+                    Terms & Conditions
+                  </button>
                 </span>
               </label>
             </div>
