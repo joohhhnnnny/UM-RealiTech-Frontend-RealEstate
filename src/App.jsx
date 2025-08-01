@@ -2,7 +2,8 @@ import { Routes, Route } from 'react-router-dom';
 import { useState } from 'react'; // Add this import
 import { LoadingScreen } from './components/Loadingscreen';
 import LandingPage from './pages/landingpage/LandingPage.jsx';
-import Properties from './pages/Properties';
+import Properties from './pages/properties/Properties.jsx';
+import ViewProperties from './pages/properties/Viewproperties.jsx'; // Add this import
 import AboutUs from './pages/About/AboutUs.jsx';
 import Error from './components/Error';
 import ChatbotIcon from './components/ChatbotIcon';
@@ -37,6 +38,7 @@ function App() {
                     <Route path="/login" element={<AuthContainer />} />
                     <Route path="/signup" element={<AuthContainer />} />
                     <Route path="/properties" element={<Properties />} />
+                    <Route path="/properties/:id" element={<ViewProperties />} /> {/* Add this new route */}
                     <Route path='/about' element={<AboutUs />} />
                     <Route path="/error" element={<Error />} />
                     <Route path="*" element={<Error />} />
