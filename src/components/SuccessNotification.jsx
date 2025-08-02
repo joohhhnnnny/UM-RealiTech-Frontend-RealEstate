@@ -84,23 +84,26 @@ const SuccessNotification = ({ isVisible, onClose, userNumber, userName, isLogin
                     )}
                   </p>
                   
-                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">Your User ID:</p>
-                    <div className="flex items-center justify-center space-x-2">
-                      <code className="text-lg font-mono font-bold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/40 px-3 py-1 rounded">
-                        {userNumber}
-                      </code>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(userNumber);
-                          // Optional: Show a small "Copied!" feedback
-                        }}
-                        className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm underline"
-                      >
-                        Copy
-                      </button>
+                  {/* Only show User ID for new signups, not for login */}
+                  {!isLogin && (
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4">
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">Your User ID:</p>
+                      <div className="flex items-center justify-center space-x-2">
+                        <code className="text-lg font-mono font-bold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/40 px-3 py-1 rounded">
+                          {userNumber}
+                        </code>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(userNumber);
+                            // Optional: Show a small "Copied!" feedback
+                          }}
+                          className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm underline"
+                        >
+                          Copy
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </motion.div>
 
                 <motion.button

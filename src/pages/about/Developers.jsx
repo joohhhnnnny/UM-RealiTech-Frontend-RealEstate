@@ -7,10 +7,10 @@ import { motion } from 'framer-motion';
 
 function Developers() {
     return (
-        <section id="developers" className="py-16 transition-colors duration-300">
+        <section id="developers" className="py-16 bg-base-100 transition-colors duration-300">
             <div className="mb-16 text-center">
                 <h2 className="text-4xl font-bold mb-4 text-primary">Meet Our Developers</h2>
-                <p className="text-lg text-base-content/70">The team behind RealiTech</p>
+                <p className="text-xl font-bold text-base-content/70">The team behind RealiTech</p>
             </div>
 
             <div className="container mx-auto px-4">
@@ -23,7 +23,7 @@ function Developers() {
                         viewport={{ once: true }}
                         className="group"
                     >
-                        <div className="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300">
+                        <div className="card bg-base-200 shadow-xl hover:shadow-2xl transition-all duration-300 border border-base-300/20">
                             <div className="aspect-square overflow-hidden rounded-t-xl">
                                 <img 
                                     src={robert} 
@@ -31,7 +31,7 @@ function Developers() {
                                     className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
                                 />
                             </div>
-                            <div className="p-6 text-center bg-base-100 rounded-b-xl">
+                            <div className="p-6 text-center bg-base-200 rounded-b-xl">
                                 <h3 className="text-2xl font-bold mb-1 text-base-content">Handler</h3>
                                 <p className="text-lg mb-2 text-primary font-medium">Robert</p>
                                 <p className="text-base-content/70 font-medium">Lead Project Manager</p>
@@ -47,7 +47,7 @@ function Developers() {
                         viewport={{ once: true }}
                         className="group"
                     >
-                        <div className="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300">
+                        <div className="card bg-base-200 shadow-xl hover:shadow-2xl transition-all duration-300 border border-base-300/20">
                             <div className="aspect-square overflow-hidden rounded-t-xl">
                                 <img 
                                     src={benedict} 
@@ -55,7 +55,7 @@ function Developers() {
                                     className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
                                 />
                             </div>
-                            <div className="p-6 text-center bg-base-100 rounded-b-xl">
+                            <div className="p-6 text-center bg-base-200 rounded-b-xl">
                                 <h3 className="text-2xl font-bold mb-1 text-base-content">Hacker</h3>
                                 <p className="text-lg mb-2 text-primary font-medium">Benedict</p>
                                 <p className="text-base-content/70 font-medium">Lead Developer</p>
@@ -71,7 +71,7 @@ function Developers() {
                         viewport={{ once: true }}
                         className="group"
                     >
-                        <div className="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300">
+                        <div className="card bg-base-200 shadow-xl hover:shadow-2xl transition-all duration-300 border border-base-300/20">
                             <div className="aspect-square overflow-hidden rounded-t-xl">
                                 <img 
                                     src={jm} 
@@ -79,7 +79,7 @@ function Developers() {
                                     className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
                                 />
                             </div>
-                            <div className="p-6 text-center bg-base-100 rounded-b-xl">
+                            <div className="p-6 text-center bg-base-200 rounded-b-xl">
                                 <h3 className="text-2xl font-bold mb-1 text-base-content">Hipster</h3>
                                 <p className="text-lg mb-2 text-primary font-medium">JM</p>
                                 <p className="text-base-content/70 font-medium">Lead Designer</p>
@@ -95,7 +95,7 @@ function Developers() {
                         viewport={{ once: true }}
                         className="group"
                     >
-                        <div className="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300">
+                        <div className="card bg-base-200 shadow-xl hover:shadow-2xl transition-all duration-300 border border-base-300/20">
                             <div className="aspect-square overflow-hidden rounded-t-xl">
                                 <img 
                                     src={aaron} 
@@ -103,7 +103,7 @@ function Developers() {
                                     className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
                                 />
                             </div>
-                            <div className="p-6 text-center bg-base-100 rounded-b-xl">
+                            <div className="p-6 text-center bg-base-200 rounded-b-xl">
                                 <h3 className="text-2xl font-bold mb-1 text-base-content">Hustler</h3>
                                 <p className="text-lg mb-2 text-primary font-medium">Aaron</p>
                                 <p className="text-base-content/70 font-medium">Business Developer</p>

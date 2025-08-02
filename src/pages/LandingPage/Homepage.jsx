@@ -49,7 +49,7 @@ const SearchResultItem = React.memo(({ listing, onClick }) => (
 const BackgroundPattern = () => (
   <div className="fixed inset-0 w-screen h-screen">
     {/* Wavy lines pattern */}
-    <div className="absolute inset-0 w-full h-full opacity-5">
+    <div className="absolute inset-0 w-full h-full opacity-20">
       <svg 
         width="100%" 
         height="100%" 
@@ -67,18 +67,18 @@ const BackgroundPattern = () => (
             patternUnits="userSpaceOnUse"
             patternContentUnits="userSpaceOnUse"
           >
-            <path d="M0,20 Q10,10 20,20 T40,20" fill="none" stroke="currentColor" strokeWidth="0.5"/>
-            <path d="M0,30 Q10,20 20,30 T40,30" fill="none" stroke="currentColor" strokeWidth="0.5"/>
-            <path d="M0,10 Q10,0 20,10 T40,10" fill="none" stroke="currentColor" strokeWidth="0.5"/>
+            <path d="M0,20 Q10,10 20,20 T40,20" fill="none" stroke="#3b82f6" strokeWidth="0.3" opacity="0.6"/>
+            <path d="M0,30 Q10,20 20,30 T40,30" fill="none" stroke="#3b82f6" strokeWidth="0.3" opacity="0.4"/>
+            <path d="M0,10 Q10,0 20,10 T40,10" fill="none" stroke="#3b82f6" strokeWidth="0.3" opacity="0.8"/>
           </pattern>
         </defs>
-        <rect width="100%" height="100%" fill="url(#wave)" className="text-base-content"/>
+        <rect width="100%" height="100%" fill="url(#wave)"/>
       </svg>
     </div>
     
     {/* Floating orbs with adjusted positioning */}
-    <div className="fixed top-1/4 left-1/4 w-32 h-32 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
-    <div className="fixed top-3/4 right-1/4 w-48 h-48 bg-secondary/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+    <div className="fixed top-1/4 left-1/4 w-32 h-32 bg-blue-700/10 rounded-full blur-3xl animate-pulse"></div>
+    <div className="fixed top-3/4 right-1/4 w-48 h-48 bg-blue-400/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
     <div className="fixed top-1/2 left-3/4 w-24 h-24 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
   </div>
 );
@@ -205,7 +205,7 @@ function Homepage() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
-                className="text-3xl md:text-4xl lg:text-6xl font-bold mb-6 text-base-content leading-tight"
+                className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 text-base-content leading-tight"
               >
                 Rebuilding Trust in{' '}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-blue-400">
@@ -218,7 +218,7 @@ function Homepage() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-                className="text-md md:text-xl lg:text-2xl text-base-content/80 mb-3 max-w-4xl mx-auto leading-relaxed"
+                className="text-md md:text-xl lg:text-1xl text-base-content/80 mb-3 max-w-4xl mx-auto leading-relaxed"
               >
                 Protecting buyers. Empowering agents. Regulating developers.
             Together, we make every real estate journey transparent, fair, and safe.
@@ -253,18 +253,44 @@ function Homepage() {
                 className="flex flex-col items-center gap-2"
               >
                 {/* View Properties Button */}
-                <motion.button
+                <motion.div
                   whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate('/properties')}
-                  className="btn btn-primary btn-lg rounded-2xl font-semibold px-10 py-4 text-lg shadow-xl hover:shadow-2xl 
-                             transition-all duration-300 flex items-center gap-3"
+                  className="relative group"
                 >
-                  <span>View All Properties</span>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </motion.button>
+                  <button
+                    onClick={() => navigate('/properties')}
+                    className="btn btn-primary btn-lg rounded-2xl font-semibold px-10 py-4 text-lg shadow-xl 
+                               transition-all duration-300 flex items-center gap-3 relative
+                               border-2 border-transparent group-hover:shadow-2xl"
+                  >
+                    <span>View All Properties</span>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </button>
+                  
+                  {/* Animated border overlay */}
+                  <div className="absolute inset-0 rounded-2xl pointer-events-none overflow-hidden">
+                    {/* Complete border frame that starts from corners and expands */}
+                    <div className="absolute inset-0 rounded-2xl transition-all duration-500 ease-out
+                                    border-2 border-transparent
+                                    group-hover:border-white/80
+                                    before:absolute before:inset-0 before:rounded-2xl
+                                    before:border-2 before:border-transparent
+                                    before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent
+                                    before:opacity-0 before:transition-opacity before:duration-500
+                                    group-hover:before:opacity-100"></div>
+                    
+                    {/* Corner accent elements for the expanding effect */}
+                    <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-white/80 rounded-tr-2xl
+                                    transition-all duration-500 ease-out
+                                    group-hover:w-full group-hover:h-full group-hover:border-white/80"></div>
+                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-white/80 rounded-bl-2xl
+                                    transition-all duration-500 ease-out
+                                    group-hover:w-full group-hover:h-full group-hover:border-white/80"></div>
+                  </div>
+                </motion.div>
 
                 {/* Scroll Indicator */}
                 <motion.div

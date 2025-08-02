@@ -3,6 +3,7 @@ import { useState } from 'react'; // Add this import
 import { LoadingScreen } from './components/Loadingscreen';
 import LandingPage from './pages/landingpage/LandingPage.jsx';
 import Properties from './pages/properties/Properties.jsx';
+import ViewProperties from './pages/properties/Viewproperties.jsx'; // Add this import
 import AboutUs from './pages/About/AboutUs.jsx';
 import Error from './components/Error';
 import ChatbotIcon from './components/ChatbotIcon';
@@ -19,7 +20,7 @@ import Msg from './pages/quickactions/Msg';
 import Settings from './pages/quickactions/Settings';
 import ActivityLog from './pages/quickactions/ActivityLog';
 import DashboardLayout from './layouts/DashboardLayout';
-import AuthContainer from './components/Authentication/AuthContainer.jsx';
+import AuthContainer from './pages/Authentication/AuthContainer.jsx';
 
 function App() {
     const [isLoaded, setIsLoaded] = useState(false); // Add this state declaration
@@ -37,6 +38,7 @@ function App() {
                     <Route path="/login" element={<AuthContainer />} />
                     <Route path="/signup" element={<AuthContainer />} />
                     <Route path="/properties" element={<Properties />} />
+                    <Route path="/properties/:id" element={<ViewProperties />} /> {/* Add this new route */}
                     <Route path='/about' element={<AboutUs />} />
                     <Route path="/error" element={<Error />} />
                     <Route path="*" element={<Error />} />

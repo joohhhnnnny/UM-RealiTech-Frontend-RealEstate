@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   RiUserLine, RiLogoutBoxLine, RiNotification3Line,
   RiMessage2Line, RiDashboardLine, RiVerifiedBadgeFill,
@@ -11,13 +11,82 @@ import {
   BuildingOffice2Icon, UserGroupIcon,
   SparklesIcon, ShieldCheckIcon, MoonIcon, SunIcon
 } from '@heroicons/react/24/outline';
+import { getAuth, signOut } from 'firebase/auth';
 
 import lightLogo from '/src/assets/logo/logo-for-light.png';
 import darkLogo from '/src/assets/logo/logo-for-dark.png';
 import PropTypes from 'prop-types';
 
 const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
+  const navigate = useNavigate();
+  const auth = getAuth();
+
   if (!currentUser) return null;
+
+  // Role-specific placeholder avatars
+  const getPlaceholderAvatar = (role) => {
+    const avatarConfigs = {
+      buyer: {
+        seed: 'buyer-user',
+        backgroundColor: 'b6e3f4',
+        accessories: ['prescription02'],
+        clothing: ['blazerShirt'],
+        eyebrows: ['default'],
+        eyes: ['default'],
+        facialHair: ['default'],
+        hair: ['shortWaved'],
+        mouth: ['default'],
+        skinColor: 'tanned'
+      },
+      agent: {
+        seed: 'agent-user',
+        backgroundColor: 'c8f7d4',
+        accessories: ['prescription01'],
+        clothing: ['blazerSweater'],
+        eyebrows: ['defaultNatural'],
+        eyes: ['default'],
+        facialHair: ['default'],
+        hair: ['shortCurly'],
+        mouth: ['smile'],
+        skinColor: 'light'
+      },
+      developer: {
+        seed: 'developer-user',
+        backgroundColor: 'ffd93d',
+        accessories: ['sunglasses'],
+        clothing: ['hoodie'],
+        eyebrows: ['unibrowNatural'],
+        eyes: ['default'],
+        facialHair: ['stubble'],
+        hair: ['shortFlat'],
+        mouth: ['default'],
+        skinColor: 'brown'
+      }
+    };
+
+    const config = avatarConfigs[role] || avatarConfigs.buyer;
+    const params = new URLSearchParams(config);
+    return `https://api.dicebear.com/7.x/avataaars/svg?${params.toString()}`;
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      // Clear localStorage
+      localStorage.removeItem('userData');
+      localStorage.removeItem('currentSession');
+      sessionStorage.clear();
+      
+      // Navigate to home page
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  const avatarSrc = currentUser.profilePicture || getPlaceholderAvatar(userRole);
+  const displayName = currentUser.fullName || `${currentUser.firstName} ${currentUser.lastName}`;
+  const isOnline = true; // You can implement real online status later
 
   return (
     <div className="dropdown dropdown-top w-full">
@@ -26,40 +95,93 @@ const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
         className={`w-full flex items-center gap-3 p-3 rounded-lg hover:bg-base-200 transition-colors cursor-pointer ${
           !isOpen ? 'tooltip tooltip-right font-semibold' : ''
         }`}
-        data-tip={!isOpen ? `${currentUser.name} (${userRole})` : ''}
+        data-tip={!isOpen ? `${displayName} (${userRole})` : ''}
       >
         <div className="avatar">
           <div className="w-8 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
-            <img src={currentUser.avatar} alt={currentUser.name} />
+            <img 
+              src={avatarSrc} 
+              alt={displayName}
+              onError={(e) => {
+                // Fallback to role-specific placeholder if image fails to load
+                e.target.src = getPlaceholderAvatar(userRole);
+              }}
+            />
           </div>
         </div>
         {isOpen && (
-          <div>
-            <p className="text-sm font-medium">{currentUser.name}</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{displayName}</p>
             <div className="flex items-center gap-2">
               <span className="badge badge-primary badge-sm capitalize">{userRole}</span>
-              <span className="text-xs text-base-content/70">• Online</span>
+              {isOnline && (
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-success rounded-full"></div>
+                  <span className="text-xs text-base-content/70">Online</span>
+                </div>
+              )}
             </div>
           </div>
         )}
       </label>
+      
       <ul tabIndex={0} className="dropdown-content menu menu-sm w-64 p-2 shadow-xl bg-base-100 rounded-box border border-base-200">
+        {/* User Info Header */}
         <div className="px-4 py-3 border-b border-base-200">
-          <p className="font-semibold">{currentUser.name}</p>
-          <p className="text-sm text-base-content/70">{currentUser.email}</p>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="avatar">
+              <div className="w-10 rounded-full ring ring-primary ring-offset-base-100 ring-offset-1">
+                <img 
+                  src={avatarSrc} 
+                  alt={displayName}
+                  onError={(e) => {
+                    e.target.src = getPlaceholderAvatar(userRole);
+                  }}
+                />
+              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold truncate">{displayName}</p>
+              <div className="flex items-center gap-2">
+                <span className="badge badge-primary badge-xs capitalize">{userRole}</span>
+                {currentUser.userNumber && (
+                  <span className="text-xs text-base-content/50">#{currentUser.userNumber}</span>
+                )}
+              </div>
+            </div>
+          </div>
+          <p className="text-sm text-base-content/70 truncate">{currentUser.email}</p>
+          {currentUser.phone && (
+            <p className="text-xs text-base-content/50 truncate">{currentUser.phone}</p>
+          )}
         </div>
+
+        {/* Profile Actions */}
         <li>
-          <Link to="/dashboard/settings" className="flex items-center gap-2 py-3">
+          <Link to="/dashboard/profile" className="flex items-center gap-2 py-3 hover:bg-base-200 rounded-lg">
             <RiUserLine className="w-4 h-4" />
-            Profile Settings
+            <span>Profile Settings</span>
           </Link>
         </li>
-        <div className="divider my-0"></div>
+        
         <li>
-          <Link to="/" className="flex items-center gap-2 py-3 text-error">
-            <RiLogoutBoxLine className="w-4 h-4" />
-            Logout
+          <Link to="/dashboard/settings" className="flex items-center gap-2 py-3 hover:bg-base-200 rounded-lg">
+            <RiSettings4Line className="w-4 h-4" />
+            <span>Account Settings</span>
           </Link>
+        </li>
+
+        <div className="divider my-1"></div>
+
+        {/* Logout */}
+        <li>
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-2 py-3 text-error hover:bg-error/10 rounded-lg w-full text-left"
+          >
+            <RiLogoutBoxLine className="w-4 h-4" />
+            <span>Logout</span>
+          </button>
         </li>
       </ul>
     </div>
@@ -146,6 +268,20 @@ const QuickActions = React.memo(({ isOpen }) => (
 function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
   const location = useLocation();
   const [isDark, setIsDark] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Get current user data from localStorage
+  useEffect(() => {
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      try {
+        const parsedData = JSON.parse(userData);
+        setCurrentUser(parsedData);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+  }, []);
 
   const toggleTheme = () => {
     const next = !isDark;
@@ -171,26 +307,6 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
     setIsOpen(next);
     localStorage.setItem('sidebarState', JSON.stringify(next));
   };
-
-  const userData = {
-    buyer: {
-      name: 'Michael Anderson',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Michael&backgroundColor=b6e3f4',
-      email: 'michael@realitech.com'
-    },
-    agent: {
-      name: 'Sarah Garcia',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&backgroundColor=b6e3f4',
-      email: 'sarah@realitech.com'
-    },
-    developer: {
-      name: 'Alex Martinez',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex&backgroundColor=c8f7d4',
-      email: 'alex@realitech.com'
-    }
-  };
-
-  const currentUser = userData[userRole] || userData.buyer;
 
   const solutions = [
     {
