@@ -2,7 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import { useState } from 'react'; // Add this import
 import { LoadingScreen } from './components/Loadingscreen';
 import LandingPage from './pages/landingpage/LandingPage.jsx';
-import Properties from './pages/Properties';
+import Properties from './pages/properties/Properties.jsx';
 import AboutUs from './pages/About/AboutUs.jsx';
 import Error from './components/Error';
 import ChatbotIcon from './components/ChatbotIcon';

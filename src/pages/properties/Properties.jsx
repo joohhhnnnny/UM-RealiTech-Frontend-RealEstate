@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Navbar from '/src/components/Navbar.jsx';
 import Footer from '/src/components/Footer.jsx';
-import listingsData from '../json/listings.json';
+import listingsData from '../../json/listings.json';
 // Add Map imports
 import { 
     MagnifyingGlassIcon, 
