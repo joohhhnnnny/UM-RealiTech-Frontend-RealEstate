@@ -12,6 +12,7 @@ import {
   SparklesIcon, ShieldCheckIcon, MoonIcon, SunIcon
 } from '@heroicons/react/24/outline';
 import { getAuth, signOut } from 'firebase/auth';
+import { auditLogger } from '../utils/AuditLogger';
 
 import lightLogo from '/src/assets/logo/logo-for-light.png';
 import darkLogo from '/src/assets/logo/logo-for-dark.png';
@@ -20,6 +21,20 @@ import PropTypes from 'prop-types';
 const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
   const navigate = useNavigate();
   const auth = getAuth();
+
+  // Monitor auth state
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user) {
+        // Clear local storage and redirect to login
+        localStorage.removeItem('userData');
+        localStorage.removeItem('userRole');
+        navigate('/login');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [auth, navigate]);
 
   if (!currentUser) return null;
 
@@ -71,6 +86,20 @@ const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
 
   const handleLogout = async () => {
     try {
+      // Log the logout event before signing out
+      await auditLogger.logEvent({
+        type: 'AUTH',
+        action: 'LOGOUT',
+        status: 'SUCCESS',
+        userId: currentUser.uid,
+        userEmail: currentUser.email,
+        userRole: userRole,
+        details: {
+          userNumber: currentUser.userNumber,
+          logoutMethod: 'USER_INITIATED'
+        }
+      });
+
       await signOut(auth);
       // Clear localStorage
       localStorage.removeItem('userData');
@@ -81,6 +110,20 @@ const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
       navigate('/');
     } catch (error) {
       console.error('Logout error:', error);
+      
+      // Log the failed logout attempt
+      await auditLogger.logEvent({
+        type: 'AUTH',
+        action: 'LOGOUT',
+        status: 'FAILED',
+        userId: currentUser?.uid,
+        userEmail: currentUser?.email,
+        userRole: userRole,
+        error: error.code,
+        details: {
+          errorMessage: error.message
+        }
+      });
     }
   };
 

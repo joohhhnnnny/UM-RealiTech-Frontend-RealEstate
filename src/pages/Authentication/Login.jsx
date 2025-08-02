@@ -1,18 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { 
-  EyeIcon, 
-  EyeSlashIcon,
-  UserIcon,
-  EnvelopeIcon,
-  LockClosedIcon
-} from '@heroicons/react/24/outline';
-// Firebase imports
-import { getFirestore, doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
-// Import the success notification component
+import { EyeIcon, EyeSlashIcon, UserIcon, EnvelopeIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 import SuccessNotification from '../../components/SuccessNotification';
 
 // Initialize Firebase (using your config)
@@ -32,6 +24,32 @@ const auth = getAuth(app);
 
 const Login = ({ onToggle }) => {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Monitor auth state
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        try {
+          const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+          if (userData && userData.role) {
+            const role = userData.role;
+            const path = role === 'buyer' ? '/dashboard/buyer' 
+                      : role === 'agent' ? '/dashboard/agent'
+                      : role === 'developer' ? '/dashboard/developer'
+                      : '/dashboard';
+            
+            // Use replace: true to prevent going to error page
+            navigate(path, { replace: true });
+          }
+        } catch (error) {
+          console.error('Error checking auth state:', error);
+          // Don't redirect if there's an error, let the login form handle it
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -153,19 +171,14 @@ const Login = ({ onToggle }) => {
 
   const handleSuccessClose = () => {
     setShowSuccess(false);
-    // Navigate based on role after closing the notification
-    switch (successData.role) {
-      case 'buyer':
-        navigate('/dashboard/buyer');
-        break;
-      case 'agent':
-        navigate('/dashboard/agent');
-        break;
-      case 'developer':
-        navigate('/dashboard/developer');
-        break;
-      default:
-        navigate('/');
+    // Navigate based on role immediately
+    const role = successData.role;
+    if (role === 'buyer') {
+      navigate('/dashboard/buyer', { replace: true });
+    } else if (role === 'agent') {
+      navigate('/dashboard/agent', { replace: true });
+    } else if (role === 'developer') {
+      navigate('/dashboard/developer', { replace: true });
     }
   };
 
@@ -219,6 +232,28 @@ const Login = ({ onToggle }) => {
             return;
           }
 
+          // Log the successful login
+          try {
+            await addDoc(collection(db, 'audit_logs'), {
+              timestamp: serverTimestamp(),
+              action: 'LOGIN',
+              status: 'SUCCESS',
+              userEmail: userData.email,
+              userRole: userData.role,
+              userId: user.uid,
+              userAgent: navigator.userAgent,
+              platform: navigator.platform,
+              details: {
+                loginMethod: 'EMAIL_PASSWORD',
+                userNumber: userData.userNumber,
+                timestamp: new Date().toISOString()
+              }
+            });
+          } catch (logError) {
+            console.error('Error logging login:', logError);
+            // Continue with login even if logging fails
+          }
+
           // Create session with remember me option
           const sessionData = createSession({
             uid: user.uid,
@@ -237,13 +272,21 @@ const Login = ({ onToggle }) => {
 
           console.log('Session created:', sessionData);
 
-          // Show success notification
+          // Show success notification and redirect
           setSuccessData({
             userNumber: userData.userNumber,
             userName: userData.fullName || `${userData.firstName} ${userData.lastName}`,
             role: userData.role
           });
           setShowSuccess(true);
+
+          // Immediate navigation with replace to prevent Error.jsx
+          const path = userData.role === 'buyer' ? '/dashboard/buyer'
+                    : userData.role === 'agent' ? '/dashboard/agent'
+                    : userData.role === 'developer' ? '/dashboard/developer'
+                    : '/dashboard';
+          
+          navigate(path, { replace: true });
 
         } else {
           setError(`Invalid role selected. This account is registered as a ${userData.role}.`);
@@ -257,6 +300,27 @@ const Login = ({ onToggle }) => {
       }
     } catch (error) {
       console.error('Login error:', error);
+
+      // Log the failed login attempt
+      try {
+        await addDoc(collection(db, 'audit_logs'), {
+          timestamp: serverTimestamp(),
+          action: 'LOGIN',
+          status: 'FAILED',
+          userEmail: loginData.email,
+          userRole: loginData.role || 'unknown',
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          details: {
+            error: error.message,
+            errorCode: error.code,
+            loginMethod: 'EMAIL_PASSWORD',
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (logError) {
+        console.error('Error logging failed login:', logError);
+      }
       
       switch (error.code) {
         case 'auth/user-not-found':
