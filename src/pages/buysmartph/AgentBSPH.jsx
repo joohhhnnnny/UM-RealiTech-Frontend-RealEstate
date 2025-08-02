@@ -47,7 +47,7 @@ function AgentBSPH() {
   return (
     <div className="space-y-8 p-6">
       {/* Navigation Tabs */}
-      <div className="tabs tabs-boxed bg-base-200 p-1 gap-1"> {/* Added gap-1 */}
+      <div className="text-base-content tabs tabs-boxed bg-base-200 p-1 gap-1"> {/* Added gap-1 */}
             <a 
                 className={`tab ${activeTab === 'dashboard' ? 'tab-active' : ''}`}
                 onClick={() => setActiveTab('dashboard')}

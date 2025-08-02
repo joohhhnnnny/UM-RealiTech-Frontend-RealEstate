@@ -28,7 +28,7 @@ function DeveloperDevTrackr() {
   };
 
   return (
-    <div className="min-h-screen bg-base-100">
+    <div className="min-h-screen bg-base-100 text-base-content">
       <div className="container mx-auto px-4 py-8">
         {/* Header Section */}
         <div className="card bg-base-100 shadow-xl p-6 mb-8 border border-base-200">

@@ -23,7 +23,7 @@ function RealtyConnect() {
 
   return (
     <DashboardLayout userRole={userRole}>
-      <div className="min-h-screen bg-base-100">
+      <div className="min-h-screen bg-base-100 text-base-content">
         <div className="container mx-auto max-w-[1400px] px-4 py-8">
           {/* Hero Section */}
           <div className="card bg-gradient-to-r from-purple-500/90 to-purple-600 shadow-lg overflow-hidden backdrop-blur-xl mb-8">

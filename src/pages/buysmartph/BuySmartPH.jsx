@@ -23,7 +23,7 @@ function BuySmartPH() {
 
   return (
     <DashboardLayout userRole={userRole}>
-      <div className="min-h-screen bg-base-100">
+      <div className="min-h-screen bg-base-100 text-base-content">
         <div className="container mx-auto max-w-[1400px] px-4 py-8">
 
           {/* Hero Section */}

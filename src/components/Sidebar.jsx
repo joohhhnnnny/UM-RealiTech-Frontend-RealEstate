@@ -364,13 +364,13 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
             )}
             <button
               onClick={handleSidebarToggle}
-              className={`btn btn-ghost btn-sm btn-circle ${!isOpen ? 'mx-auto tooltip tooltip-right' : ''}`}
+              className={`text-base-content btn btn-ghost btn-sm btn-circle ${!isOpen ? 'mx-auto tooltip tooltip-right' : ''}`}
               data-tip={!isOpen ? 'Expand Sidebar' : ''}
             >
               {isOpen ? <RiMenuFoldLine className="w-5 h-5" /> : <RiMenuUnfoldLine className="w-5 h-5" />}
             </button>
           </div>
-          <div className="flex justify-center">
+          <div className="flex justify-center text-base-content">
             <button
               onClick={toggleTheme}
               className="btn btn-ghost btn-sm w-full tooltip tooltip-right"
@@ -383,12 +383,12 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
         </div>
 
         {/* Center */}
-        <div className="flex-1 py-4 overflow-visible z-[60]">
+        <div className="text-base-content flex-1 py-4 overflow-visible z-[60]">
           <NavigationLinks filteredSolutions={filteredSolutions} isOpen={isOpen} userRole={userRole} />
         </div>
 
         {/* Bottom */}
-        <div className="p-4 border-t border-base-200 space-y-2">
+        <div className="text-base-content p-4 border-t border-base-200 space-y-2">
           <Link
             to={`/dashboard/${userRole}`}
             className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${

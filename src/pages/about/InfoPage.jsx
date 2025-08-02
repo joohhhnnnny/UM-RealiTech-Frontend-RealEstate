@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { SparklesIcon, ShieldCheckIcon, StarIcon } from '@heroicons/react/24/outline';
@@ -49,12 +48,11 @@ function InfoPage() {
     ];
 
     return (
-        <section className="min-h-screen bg-gradient-to-br from-base-200/30 via-base-100 to-base-200/50 relative overflow-hidden">
-            {/* Background decorative elements */}
-            <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl"></div>
-                <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-400/5 rounded-full blur-3xl"></div>
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-accent/5 rounded-full blur-3xl"></div>
+        <section> {/* Only padding remains */}
+            <div className="container mx-auto px-4 max-w-6xl relative z-10">
+                <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 dark:bg-primary/10 rounded-full blur-3xl"></div>
+                <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-400/5 dark:bg-blue-400/10 rounded-full blur-3xl"></div>
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-accent/5 dark:bg-accent/10 rounded-full blur-3xl"></div>
             </div>
 
             <div className="container mx-auto px-4 py-20 max-w-6xl relative z-10">
@@ -64,17 +62,19 @@ function InfoPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, ease: "easeOut" }}
                 >
-                    <motion.div
-                        className="inline-block p-3 rounded-2xl bg-gray-600/90 mb-6"
+                    <div
+                        className="inline-block p-3 rounded-2xl  mb-6"
                         whileHover={{ scale: 1.05, rotate: 2 }}
                         transition={{ type: "spring", stiffness: 300 }}
                     >
-                        <h1 className="text-5xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-400 to-accent">
-                            About Us
+                        <h1 className="text-5xl md:text-6xl font-bold text-primary dark:text-primary/90">
+                            About Us 
                         </h1>
-                    </motion.div>
+                         
+                    </div>
+                    
                     <motion.p 
-                        className="text-xl text-base-content/60 max-w-1xl mx-auto"
+                        className="text-xl text-base-content/70 dark:text-base-content/80 max-w-1xl mx-auto"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.5, duration: 0.8 }}
@@ -84,14 +84,14 @@ function InfoPage() {
                 </motion.div>
 
                 <motion.div 
-                    className="bg-base-100/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 md:p-16 border border-base-content/5"
+                    className="bg-base-100/80 dark:bg-base-100/90 backdrop-blur-xl rounded-3xl shadow-2xl p-8 md:p-16 border border-base-content/5 dark:border-base-content/10"
                     variants={containerVariants}
                     initial="hidden"
                     animate="visible"
                 >
                     <div className="space-y-8 max-w-4xl mx-auto">
                         <motion.p 
-                            className="text-xl text-base-content/80 leading-relaxed text-center"
+                            className="text-xl text-base-content/80 dark:text-base-content/90 leading-relaxed text-center"
                             variants={itemVariants}
                         >
                             Welcome to our revolutionary real estate platform! We are dedicated to connecting buyers, sellers, and renters 
@@ -104,7 +104,7 @@ function InfoPage() {
                         ></motion.div>
                         
                         <motion.p 
-                            className="text-xl text-base-content/80 leading-relaxed text-center"
+                            className="text-xl text-base-content/80 dark:text-base-content/90 leading-relaxed text-center"
                             variants={itemVariants}
                         >
                             Our mission is to revolutionize the real estate experience by providing cutting-edge solutions 
@@ -123,9 +123,9 @@ function InfoPage() {
                                     whileHover={{ y: -8, scale: 1.02 }}
                                     transition={{ type: "spring", stiffness: 300 }}
                                 >
-                                    <div className="relative p-8 bg-base-100 rounded-2xl shadow-lg border border-base-content/5 hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                                    <div className="relative p-8 bg-base-100 dark:bg-base-200 rounded-2xl shadow-lg border border-base-content/5 dark:border-base-content/10 hover:shadow-2xl transition-all duration-300 overflow-hidden">
                                         {/* Gradient overlay on hover */}
-                                        <div className={`absolute inset-0 bg-gradient-to-br ${value.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
+                                        <div className={`absolute inset-0 bg-gradient-to-br ${value.gradient} opacity-0 group-hover:opacity-5 dark:group-hover:opacity-10 transition-opacity duration-300`}></div>
                                         
                                         {/* Icon */}
                                         <motion.div 
@@ -136,10 +136,10 @@ function InfoPage() {
                                             <value.icon className="w-8 h-8 text-white" />
                                         </motion.div>
                                         
-                                        <h3 className="text-2xl font-bold mb-4 text-base-content group-hover:text-primary transition-colors duration-300">
+                                        <h3 className="text-2xl font-bold mb-4 text-base-content dark:text-base-content/90 group-hover:text-primary transition-colors duration-300">
                                             {value.title}
                                         </h3>
-                                        <p className="text-base-content/70 leading-relaxed">
+                                        <p className="text-base-content/70 dark:text-base-content/80 leading-relaxed">
                                             {value.description}
                                         </p>
                                         

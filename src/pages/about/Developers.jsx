@@ -7,10 +7,10 @@ import { motion } from 'framer-motion';
 
 function Developers() {
     return (
-        <section id="developers" className="py-16 bg-base-100 transition-colors duration-300">
+        <section id="developers" className="py-16 ">
             <div className="mb-16 text-center">
-                <h2 className="text-4xl font-bold mb-4 text-primary">Meet Our Developers</h2>
-                <p className="text-xl font-bold text-base-content/70">The team behind RealiTech</p>
+                <h2 className="text-4xl md:text-5xl font-bold mb-4 text-primary dark:text-primary/90">Meet Our Developers</h2>
+                <p className="text-xl font-bold text-base-content/70 dark:text-base-content/80">The team behind RealiTech</p>
             </div>
 
             <div className="container mx-auto px-4">

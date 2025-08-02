@@ -99,7 +99,7 @@ function BuyerDevTrackr() {
   if (selectedProject) {
     const project = myProperties.find(p => p.id === selectedProject);
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 text-base-content">
         <div className="flex items-center justify-between">
           <button 
             onClick={() => setSelectedProject(null)}

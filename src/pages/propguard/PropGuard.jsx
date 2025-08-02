@@ -824,7 +824,7 @@ function PropGuard() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="min-h-screen bg-base-100 p-4"
+        className="min-h-screen bg-base-100 p-4 text-base-content"
       >
         <div className="container mx-auto max-w-[1400px] space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
