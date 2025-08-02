@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import DashboardNavbar from '../components/DashboardNavbar.jsx';
+import DashboardNavbar from '../components/Sidebar.jsx';
 
 function DashboardLayout({ children, userRole }) {
   // Single source of truth for sidebar state

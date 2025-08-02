@@ -20,7 +20,7 @@ import Msg from './pages/quickactions/Msg';
 import Settings from './pages/quickactions/Settings';
 import ActivityLog from './pages/quickactions/ActivityLog';
 import DashboardLayout from './layouts/DashboardLayout';
-import AuthContainer from './components/Authentication/AuthContainer.jsx';
+import AuthContainer from './pages/Authentication/AuthContainer.jsx';
 
 function App() {
     const [isLoaded, setIsLoaded] = useState(false); // Add this state declaration

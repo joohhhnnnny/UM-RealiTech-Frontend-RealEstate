@@ -15,9 +15,9 @@ import { getFirestore, collection, query, where, getDocs, setDoc, doc } from 'fi
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
 // Import the new notification component
-import SuccessNotification from '../SuccessNotification';
+import SuccessNotification from '../../components/SuccessNotification';
 // Import the new Terms modal
-import TermsModal from '../TermsModal';
+import TermsModal from '../../components/TermsModal';
 
 // Initialize Firebase (using your config)
 const firebaseConfig = {
@@ -62,7 +62,21 @@ const Signup = ({ onToggle }) => {
     { value: 'developer', label: 'Developer' }
   ];
 
-  // Helper function to generate unique user number
+  // Role-specific collection mapping
+  const getCollectionName = (role) => {
+    switch (role) {
+      case 'buyer':
+        return 'buyers';
+      case 'agent':
+        return 'agents';
+      case 'developer':
+        return 'developers';
+      default:
+        throw new Error('Invalid role specified');
+    }
+  };
+
+  // Helper function to generate unique user number based on role
   const generateUserNumber = (role) => {
     const timestamp = Date.now().toString();
     const rolePrefix = {
@@ -74,37 +88,225 @@ const Signup = ({ onToggle }) => {
     return `${rolePrefix[role]}${timestamp.slice(-6)}${random}`;
   };
 
-  // Helper function to check if email or phone already exists
-  const checkUserExists = async (email, phone) => {
+  // Enhanced function to check if user exists across all collections
+  const checkUserExists = async (email, phone, validId) => {
     try {
-      // Check by email
-      const emailQuery = query(collection(db, 'users'), where('email', '==', email.toLowerCase()));
-      const emailSnapshot = await getDocs(emailQuery);
+      const collections = ['buyers', 'agents', 'developers'];
       
-      if (!emailSnapshot.empty) {
-        return { exists: true, type: 'email' };
-      }
+      for (const collectionName of collections) {
+        try {
+          // Check by email
+          const emailQuery = query(collection(db, collectionName), where('email', '==', email.toLowerCase()));
+          const emailSnapshot = await getDocs(emailQuery);
+          
+          if (!emailSnapshot.empty) {
+            return { exists: true, type: 'email', collection: collectionName };
+          }
 
-      // Check by phone (normalized)
-      const phoneQuery = query(collection(db, 'users'), where('phone', '==', phone));
-      const phoneSnapshot = await getDocs(phoneQuery);
-      
-      if (!phoneSnapshot.empty) {
-        return { exists: true, type: 'phone' };
-      }
+          // Check by phone
+          const phoneQuery = query(collection(db, collectionName), where('phone', '==', phone));
+          const phoneSnapshot = await getDocs(phoneQuery);
+          
+          if (!phoneSnapshot.empty) {
+            return { exists: true, type: 'phone', collection: collectionName };
+          }
 
-      // Check by validId
-      const validIdQuery = query(collection(db, 'users'), where('validId', '==', signupData.validId));
-      const validIdSnapshot = await getDocs(validIdQuery);
-      
-      if (!validIdSnapshot.empty) {
-        return { exists: true, type: 'validId' };
+          // Check by validId
+          const validIdQuery = query(collection(db, collectionName), where('validId', '==', validId));
+          const validIdSnapshot = await getDocs(validIdQuery);
+          
+          if (!validIdSnapshot.empty) {
+            return { exists: true, type: 'validId', collection: collectionName };
+          }
+        } catch (collectionError) {
+          console.warn(`Error checking collection ${collectionName}:`, collectionError);
+          // Continue with other collections even if one fails
+          continue;
+        }
       }
 
       return { exists: false };
     } catch (error) {
       console.error('Error checking user existence:', error);
-      throw error;
+      // For now, if we can't check, assume user doesn't exist and let signup proceed
+      // The uniqueness will be enforced at the Auth level for email
+      return { exists: false };
+    }
+  };
+
+  // Helper function to create role-specific user data
+  const createRoleSpecificData = (baseUserData, role) => {
+    const baseData = {
+      ...baseUserData,
+      role,
+      profilePicture: null, // Added profile picture field as string (file path)
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isActive: true,
+      emailVerified: false,
+      lastLoginAt: null,
+      profileCompleted: false
+    };
+
+    switch (role) {
+      case 'buyer':
+        return {
+          ...baseData,
+          buyerProfile: {
+            preferences: {
+              propertyTypes: [],
+              priceRange: { min: null, max: null },
+              locations: [],
+              bedrooms: null,
+              bathrooms: null,
+              amenities: []
+            },
+            savedProperties: [],
+            propertyInquiries: [],
+            viewedProperties: [],
+            purchaseHistory: [],
+            financialInfo: {
+              preApprovalStatus: 'not_started', // not_started, pending, approved, rejected
+              budget: null,
+              loanType: null
+            },
+            notifications: {
+              newProperties: true,
+              priceUpdates: true,
+              savedSearchAlerts: true,
+              marketUpdates: false
+            }
+          },
+          stats: {
+            totalInquiries: 0,
+            savedProperties: 0,
+            viewedProperties: 0
+          }
+        };
+
+      case 'agent':
+        return {
+          ...baseData,
+          agentProfile: {
+            license: {
+              number: '',
+              issueDate: null,
+              expiryDate: null,
+              issuingAuthority: '',
+              status: 'pending' // pending, active, expired, suspended
+            },
+            agency: {
+              name: '',
+              address: '',
+              website: '',
+              contactNumber: ''
+            },
+            specializations: [], // residential, commercial, luxury, etc.
+            serviceAreas: [], // geographical areas they serve
+            experience: {
+              yearsInBusiness: 0,
+              totalSales: 0,
+              certifications: []
+            },
+            commission: {
+              rate: null,
+              structure: 'percentage' // percentage, flat_fee, mixed
+            },
+            availability: {
+              workingHours: {
+                start: '09:00',
+                end: '18:00'
+              },
+              workingDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+              timeZone: 'Asia/Manila'
+            }
+          },
+          properties: {
+            listed: [],
+            sold: [],
+            pending: []
+          },
+          clients: {
+            buyers: [],
+            sellers: []
+          },
+          stats: {
+            totalListings: 0,
+            activeListing: 0,
+            soldProperties: 0,
+            totalCommissionEarned: 0,
+            averageRating: 0,
+            totalReviews: 0
+          }
+        };
+
+      case 'developer':
+        return {
+          ...baseData,
+          developerProfile: {
+            company: {
+              name: '',
+              registrationNumber: '',
+              establishedYear: null,
+              headquarters: '',
+              website: '',
+              description: ''
+            },
+            licenses: {
+              businessPermit: {
+                number: '',
+                issueDate: null,
+                expiryDate: null
+              },
+              developmentLicense: {
+                number: '',
+                issueDate: null,
+                expiryDate: null
+              },
+              environmentalCompliance: {
+                number: '',
+                issueDate: null,
+                expiryDate: null
+              }
+            },
+            specializations: [], // residential, commercial, mixed-use, etc.
+            operatingAreas: [], // geographical areas of operation
+            team: {
+              totalEmployees: 0,
+              architects: 0,
+              engineers: 0,
+              projectManagers: 0
+            },
+            certifications: [], // ISO, LEED, etc.
+            bankingPartners: [],
+            insurance: {
+              provider: '',
+              policyNumber: '',
+              coverage: null
+            }
+          },
+          projects: {
+            active: [],
+            completed: [],
+            planned: []
+          },
+          properties: {
+            available: [],
+            sold: [],
+            reserved: []
+          },
+          stats: {
+            totalProjects: 0,
+            activeProjects: 0,
+            completedProjects: 0,
+            totalUnitsBuilt: 0,
+            totalUnitsSold: 0,
+            averageProjectValue: 0
+          }
+        };
+
+      default:
+        throw new Error(`Invalid role: ${role}`);
     }
   };
 
@@ -179,7 +381,7 @@ const Signup = ({ onToggle }) => {
     }
 
     // Updated phone validation for Philippine numbers and international formats
-    const phoneInput = signupData.phone.replace(/[\s\-\(\)]/g, ''); // Remove spaces, dashes, parentheses
+    const phoneInput = signupData.phone.replace(/[\s\-\(\)]/g, '');
     
     // Philippine phone number patterns:
     const philippinePhoneRegex = /^(\+63|0)([0-9]{10,11})$/;
@@ -207,26 +409,7 @@ const Signup = ({ onToggle }) => {
     }
 
     try {
-      // Check if user already exists before creating Firebase Auth account
-      const userExists = await checkUserExists(signupData.email.trim(), normalizedPhone);
-      
-      if (userExists.exists) {
-        switch (userExists.type) {
-          case 'email':
-            setError('An account with this email already exists.');
-            break;
-          case 'phone':
-            setError('An account with this phone number already exists.');
-            break;
-          case 'validId':
-            setError('An account with this ID number already exists.');
-            break;
-        }
-        setIsLoading(false);
-        return;
-      }
-
-      // Create user with Firebase Auth
+      // First, create user with Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(
         auth, 
         signupData.email.trim(), 
@@ -237,8 +420,8 @@ const Signup = ({ onToggle }) => {
       // Generate unique user number
       const userNumber = generateUserNumber(signupData.role);
 
-      // Prepare user data for Firestore
-      const userData = {
+      // Prepare base user data
+      const baseUserData = {
         uid: user.uid,
         userNumber: userNumber,
         email: signupData.email.trim().toLowerCase(),
@@ -247,77 +430,51 @@ const Signup = ({ onToggle }) => {
         firstName: signupData.firstName.trim(),
         lastName: signupData.lastName.trim(),
         fullName: `${signupData.firstName.trim()} ${signupData.lastName.trim()}`,
-        role: signupData.role,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isActive: true,
         emailVerified: user.emailVerified,
-        roleSpecific: {
-          ...(signupData.role === 'buyer' && {
-            buyerProfile: {
-              preferences: {},
-              savedProperties: [],
-              inquiries: []
-            }
-          }),
-          ...(signupData.role === 'agent' && {
-            agentProfile: {
-              license: '',
-              agency: '',
-              specializations: [],
-              properties: []
-            }
-          }),
-          ...(signupData.role === 'developer' && {
-            developerProfile: {
-              companyName: '',
-              projects: [],
-              certifications: []
-            }
-          })
-        }
+        profilePicture: null // Initialize profile picture as null
       };
 
-      // Use setDoc with user.uid as document ID
-      await setDoc(doc(db, 'users', user.uid), userData);
-      console.log('User document created with UID:', user.uid);
+      // Create role-specific user data
+      const roleSpecificData = createRoleSpecificData(baseUserData, signupData.role);
+
+      // Get appropriate collection name
+      const collectionName = getCollectionName(signupData.role);
+
+      // Store in role-specific collection using user.uid as document ID
+      await setDoc(doc(db, collectionName, user.uid), roleSpecificData);
+      
+      console.log(`${signupData.role} document created in ${collectionName} collection with UID:`, user.uid);
       console.log('User Number:', userNumber);
 
-      // Store user data in localStorage
+      // Store user data in localStorage with role information
       localStorage.setItem('userData', JSON.stringify({
         uid: user.uid,
         userNumber: userNumber,
-        email: userData.email,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        fullName: userData.fullName,
-        role: userData.role,
-        phone: userData.phone,
-        validId: userData.validId,
-        isActive: userData.isActive,
-        createdAt: userData.createdAt
+        email: roleSpecificData.email,
+        firstName: roleSpecificData.firstName,
+        lastName: roleSpecificData.lastName,
+        fullName: roleSpecificData.fullName,
+        role: roleSpecificData.role,
+        phone: roleSpecificData.phone,
+        validId: roleSpecificData.validId,
+        isActive: roleSpecificData.isActive,
+        createdAt: roleSpecificData.createdAt,
+        collection: collectionName,
+        profilePicture: roleSpecificData.profilePicture // Include profile picture in localStorage
       }));
 
-      // Show modern success notification instead of alert
+      // Show modern success notification
       setSuccessData({
         userNumber: userNumber,
-        userName: userData.fullName,
-        role: userData.role
+        userName: roleSpecificData.fullName,
+        role: roleSpecificData.role
       });
       setShowSuccess(true);
 
     } catch (error) {
       console.error('Signup error:', error);
       
-      // If user was created but Firestore failed, clean up
-      if (error.code === 'permission-denied' && auth.currentUser) {
-        try {
-          await auth.currentUser.delete();
-        } catch (deleteError) {
-          console.error('Failed to cleanup user after error:', deleteError);
-        }
-      }
-      
+      // Enhanced error handling
       switch (error.code) {
         case 'auth/email-already-in-use':
           setError('An account with this email already exists.');
@@ -329,10 +486,30 @@ const Signup = ({ onToggle }) => {
           setError('Password is too weak. Please use a stronger password.');
           break;
         case 'permission-denied':
-          setError('Database access denied. Please check your internet connection and try again.');
+        case 'auth/insufficient-permission':
+          setError('Database permissions error. Please try again or contact support.');
+          break;
+        case 'auth/network-request-failed':
+          setError('Network error. Please check your internet connection and try again.');
+          break;
+        case 'auth/too-many-requests':
+          setError('Too many signup attempts. Please wait a moment and try again.');
           break;
         default:
           setError(`Account creation failed: ${error.message}`);
+      }
+
+      // Only attempt cleanup if user was actually created
+      if (auth.currentUser && error.code === 'permission-denied') {
+        try {
+          console.log('Attempting to clean up user due to permission error...');
+          // Note: This might also fail due to insufficient permissions
+          await auth.currentUser.delete();
+          console.log('User cleanup successful');
+        } catch (deleteError) {
+          console.error('Failed to cleanup user after error:', deleteError);
+          // Don't show this error to user as it's not critical
+        }
       }
     } finally {
       setIsLoading(false);

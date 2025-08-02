@@ -9,7 +9,7 @@ import {
   RiCheckDoubleLine, 
   RiSendPlaneLine 
 } from 'react-icons/ri';
-import DashboardNavbar from '../../components/DashboardNavbar';
+import DashboardNavbar from '../../components/Sidebar';
 
 const Msg = () => {
   const [isOpen, setIsOpen] = useState(true);
