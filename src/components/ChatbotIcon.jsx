@@ -441,7 +441,7 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
             initial={{ opacity: 0, y: 100, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 100, scale: 0.9 }}
-            className="fixed w-96 bg-base-100 rounded-lg shadow-xl z-40 border border-base-200"
+            className="fixed w-96 bg-base-100 rounded-lg shadow-xl z-40 border border-base-200 text-base-content"
             style={{
               bottom: `${chatPosition.bottom}px`,
               right: `${chatPosition.right}px`,
