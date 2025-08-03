@@ -93,8 +93,9 @@ function ActivityLog() {
 
           // Apply type filter in memory if needed
           if (typeFilter !== 'all') {
-            logsData = logsData.filter(log => log.action === typeFilter);
+              logsData = logsData.filter(log => log.action?.toLowerCase() === typeFilter.toLowerCase());
           }
+
 
           // Apply search filter in memory if needed
           if (searchQuery.trim()) {
@@ -128,7 +129,7 @@ function ActivityLog() {
       case 'login':
         return { class: 'badge-success', text: 'LOGIN' };
       case 'logout':
-        return { class: 'badge-info', text: 'LOGOUT' };
+        return { class: 'badge-error', text: 'LOGOUT' };
       case 'create':
         return { class: 'badge-primary', text: 'CREATE' };
       case 'update':
@@ -268,11 +269,9 @@ function ActivityLog() {
                         </div>
                       </td>
                       <td>
-                        <span className={`badge ${
-                          log.status === 'SUCCESS' ? 'badge-success' : 'badge-error'
-                        }`}>
-                          {log.action?.toUpperCase()}
-                        </span>
+                          <span className={`badge ${getActivityBadge(log.action).class}`}>
+                            {getActivityBadge(log.action).text}
+                          </span>
                       </td>
                       <td>
                         <span className="badge badge-primary">{log.userRole}</span>
