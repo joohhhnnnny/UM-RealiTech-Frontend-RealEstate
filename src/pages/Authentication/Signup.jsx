@@ -11,7 +11,7 @@ import {
   IdentificationIcon
 } from '@heroicons/react/24/outline';
 // Firebase imports
-import { getFirestore, collection, query, where, getDocs, setDoc, doc } from 'firebase/firestore';
+import { getFirestore, collection, query, where, getDocs, setDoc, doc, addDoc, serverTimestamp   } from 'firebase/firestore';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
 // Import the new notification component
@@ -336,6 +336,8 @@ const Signup = ({ onToggle }) => {
     }
   };
 
+
+  
   const handleTermsClick = (e) => {
     e.preventDefault();
     setShowTermsModal(true);
@@ -408,7 +410,7 @@ const Signup = ({ onToggle }) => {
       }
     }
 
-    try {
+      try {
       // First, create user with Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(
         auth, 
@@ -431,7 +433,7 @@ const Signup = ({ onToggle }) => {
         lastName: signupData.lastName.trim(),
         fullName: `${signupData.firstName.trim()} ${signupData.lastName.trim()}`,
         emailVerified: user.emailVerified,
-        profilePicture: null // Initialize profile picture as null
+        profilePicture: null
       };
 
       // Create role-specific user data
@@ -440,13 +442,23 @@ const Signup = ({ onToggle }) => {
       // Get appropriate collection name
       const collectionName = getCollectionName(signupData.role);
 
-      // Store in role-specific collection using user.uid as document ID
+      // Store in role-specific collection
       await setDoc(doc(db, collectionName, user.uid), roleSpecificData);
       
-      console.log(`${signupData.role} document created in ${collectionName} collection with UID:`, user.uid);
-      console.log('User Number:', userNumber);
+      // CREATE AUDIT LOG ENTRY
+      await addDoc(collection(db, 'audit_logs'), {
+        userId: user.uid,
+        userEmail: user.email,
+        userRole: signupData.role,
+        action: 'SIGNUP',
+        timestamp: serverTimestamp(),
+        details: {
+          userNumber: userNumber,
+          method: 'EMAIL_PASSWORD'
+        }
+      });
 
-      // Store user data in localStorage with role information
+      // Store user data in localStorage
       localStorage.setItem('userData', JSON.stringify({
         uid: user.uid,
         userNumber: userNumber,
@@ -460,10 +472,10 @@ const Signup = ({ onToggle }) => {
         isActive: roleSpecificData.isActive,
         createdAt: roleSpecificData.createdAt,
         collection: collectionName,
-        profilePicture: roleSpecificData.profilePicture // Include profile picture in localStorage
+        profilePicture: roleSpecificData.profilePicture
       }));
 
-      // Show modern success notification
+      // Show success notification
       setSuccessData({
         userNumber: userNumber,
         userName: roleSpecificData.fullName,
