@@ -124,8 +124,8 @@ const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
         }`}
         data-tip={!isOpen ? `${displayName} (${userRole})` : ''}
       >
-        <div className="avatar">
-          <div className="w-8 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
+        <div className="avatar flex-shrink-0">
+          <div className="w-6 h-6 rounded-full ring ring-primary ring-offset-base-100 ring-offset-1">
             <img 
               src={avatarSrc} 
               alt={displayName}
@@ -137,13 +137,13 @@ const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
           </div>
         </div>
         {isOpen && (
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 mr-2 ml-1">
             <p className="text-sm font-medium truncate">{displayName}</p>
             <div className="flex items-center gap-2">
-              <span className="badge badge-primary badge-sm capitalize">{userRole}</span>
+              <span className="badge badge-primary badge-xs capitalize">{userRole}</span>
               {isOnline && (
                 <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-success rounded-full"></div>
+                  <div className="w-1.5 h-1.5 bg-success rounded-full"></div>
                   <span className="text-xs text-base-content/70">Online</span>
                 </div>
               )}
@@ -157,7 +157,7 @@ const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
         <div className="px-6 py-4 bg-gradient-to-r from-base-50 to-base-100 border-b border-base-300">
           <div className="flex items-center gap-4">
             <div className="avatar">
-              <div className="w-12 rounded-full ring-2 ring-primary ring-offset-2 ring-offset-base-100">
+              <div className="w-14 rounded-full ring-2 ring-primary ring-offset-2 ring-offset-base-100">
                 <img 
                   src={avatarSrc} 
                   alt={displayName}
