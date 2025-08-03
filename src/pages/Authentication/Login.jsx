@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { getFirestore, doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
-import { EyeIcon, EyeSlashIcon, UserIcon, EnvelopeIcon, LockClosedIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, EyeSlashIcon, EnvelopeIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 import SuccessNotification from '../../components/SuccessNotification';
 
 // Initialize Firebase (using your config)
@@ -59,15 +59,8 @@ const Login = ({ onToggle }) => {
   
   const [loginData, setLoginData] = useState({
     email: '',
-    password: '',
-    role: ''
+    password: ''
   });
-
-  const roles = [
-    { value: 'buyer', label: 'Buyer' },
-    { value: 'agent', label: 'Agent' },
-    { value: 'developer', label: 'Developer' }
-  ];
 
   // Helper function to get collection name based on role
   const getCollectionName = (role) => {
@@ -200,12 +193,6 @@ const Login = ({ onToggle }) => {
       return;
     }
 
-    if (!loginData.role) {
-      setError('Please select your role.');
-      setIsLoading(false);
-      return;
-    }
-
     try {
       // Sign in with Firebase Auth
       const userCredential = await signInWithEmailAndPassword(
@@ -217,84 +204,77 @@ const Login = ({ onToggle }) => {
 
       console.log('Firebase Auth successful for user:', user.uid);
 
-      // Find user data in the appropriate collection
-      const userData = await findUserData(user.uid, loginData.role);
+      // Find user data across all collections (no role specified)
+      const userData = await findUserData(user.uid);
       
       if (userData) {
-        // Verify the role matches what was selected
-        if (userData.role === loginData.role) {
-          console.log('Login successful:', { ...userData, uid: user.uid });
-          
-          // Check if account is active
-          if (userData.isActive === false) {
-            setError('Your account has been deactivated. Please contact support.');
-            setIsLoading(false);
-            return;
-          }
-
-          // Log the successful login
-          try {
-            await addDoc(collection(db, 'audit_logs'), {
-              timestamp: serverTimestamp(),
-              action: 'LOGIN',
-              status: 'SUCCESS',
-              userEmail: userData.email,
-              userRole: userData.role,
-              userId: user.uid,
-              userAgent: navigator.userAgent,
-              platform: navigator.platform,
-              details: {
-                loginMethod: 'EMAIL_PASSWORD',
-                userNumber: userData.userNumber,
-                timestamp: new Date().toISOString()
-              }
-            });
-          } catch (logError) {
-            console.error('Error logging login:', logError);
-            // Continue with login even if logging fails
-          }
-
-          // Create session with remember me option
-          const sessionData = createSession({
-            uid: user.uid,
-            userNumber: userData.userNumber,
-            email: userData.email,
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            fullName: userData.fullName || `${userData.firstName} ${userData.lastName}`,
-            role: userData.role,
-            phone: userData.phone,
-            validId: userData.validId,
-            isActive: userData.isActive,
-            createdAt: userData.createdAt,
-            collection: userData.collection
-          }, rememberMe);
-
-          console.log('Session created:', sessionData);
-
-          // Show success notification and redirect
-          setSuccessData({
-            userNumber: userData.userNumber,
-            userName: userData.fullName || `${userData.firstName} ${userData.lastName}`,
-            role: userData.role
-          });
-          setShowSuccess(true);
-
-          // Immediate navigation with replace to prevent Error.jsx
-          const path = userData.role === 'buyer' ? '/dashboard/buyer'
-                    : userData.role === 'agent' ? '/dashboard/agent'
-                    : userData.role === 'developer' ? '/dashboard/developer'
-                    : '/dashboard';
-          
-          navigate(path, { replace: true });
-
-        } else {
-          setError(`Invalid role selected. This account is registered as a ${userData.role}.`);
-          // Sign out the user since role doesn't match
-          await auth.signOut();
+        console.log('Login successful:', { ...userData, uid: user.uid });
+        
+        // Check if account is active
+        if (userData.isActive === false) {
+          setError('Your account has been deactivated. Please contact support.');
+          setIsLoading(false);
+          return;
         }
+
+        // Log the successful login
+        try {
+          await addDoc(collection(db, 'audit_logs'), {
+            timestamp: serverTimestamp(),
+            action: 'LOGIN',
+            status: 'SUCCESS',
+            userEmail: userData.email,
+            userRole: userData.role,
+            userId: user.uid,
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            details: {
+              loginMethod: 'EMAIL_PASSWORD',
+              userNumber: userData.userNumber,
+              timestamp: new Date().toISOString()
+            }
+          });
+        } catch (logError) {
+          console.error('Error logging login:', logError);
+          // Continue with login even if logging fails
+        }
+
+        // Create session with remember me option
+        const sessionData = createSession({
+          uid: user.uid,
+          userNumber: userData.userNumber,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          fullName: userData.fullName || `${userData.firstName} ${userData.lastName}`,
+          role: userData.role,
+          phone: userData.phone,
+          validId: userData.validId,
+          isActive: userData.isActive,
+          createdAt: userData.createdAt,
+          collection: userData.collection
+        }, rememberMe);
+
+        console.log('Session created:', sessionData);
+
+        // Show success notification and redirect
+        setSuccessData({
+          userNumber: userData.userNumber,
+          userName: userData.fullName || `${userData.firstName} ${userData.lastName}`,
+          role: userData.role
+        });
+        setShowSuccess(true);
+
+        // Immediate navigation with replace to prevent Error.jsx
+        const path = userData.role === 'buyer' ? '/dashboard/buyer'
+                  : userData.role === 'agent' ? '/dashboard/agent'
+                  : userData.role === 'developer' ? '/dashboard/developer'
+                  : '/dashboard';
+        
+        navigate(path, { replace: true });
+
       } else {
-        setError(`No ${loginData.role} account found with this email. Please check your role selection or sign up.`);
+        setError('No account found with this email address. Please check your email or sign up.');
         // Sign out the user since no data found
         await auth.signOut();
       }
@@ -308,7 +288,6 @@ const Login = ({ onToggle }) => {
           action: 'LOGIN',
           status: 'FAILED',
           userEmail: loginData.email,
-          userRole: loginData.role || 'unknown',
           userAgent: navigator.userAgent,
           platform: navigator.platform,
           details: {
@@ -404,31 +383,6 @@ const Login = ({ onToggle }) => {
             </div>
           </div>
 
-          {/* Role Dropdown - Moved before password for better UX */}
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium text-base-content">Role</span>
-            </label>
-            <div className="relative">
-              <select
-                name="role"
-                value={loginData.role}
-                onChange={handleLoginChange}
-                className="select select-bordered w-full pl-12 focus:select-primary transition-colors duration-300 bg-base-200 text-base-content"
-                required
-                disabled={isLoading}
-              >
-                <option value="" disabled>Select your role</option>
-                {roles.map((role) => (
-                  <option key={role.value} value={role.value}>
-                    {role.label}
-                  </option>
-                ))}
-              </select>
-              <UserIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-base-content/60 pointer-events-none" />
-            </div>
-          </div>
-
           {/* Password Field */}
           <div className="form-control">
             <label className="label">
@@ -501,19 +455,6 @@ const Login = ({ onToggle }) => {
               Sign up
             </button>
           </div>
-
-          {/* Role Info */}
-          {loginData.role && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="text-center pt-2"
-            >
-              <div className="text-xs text-base-content/60 bg-base-200/50 px-3 py-2 rounded-lg">
-                Signing in as: <span className="font-medium text-primary">{roles.find(r => r.value === loginData.role)?.label}</span>
-              </div>
-            </motion.div>
-          )}
         </motion.form>
       </div>
     </>

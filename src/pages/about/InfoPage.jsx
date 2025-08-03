@@ -67,7 +67,7 @@ function InfoPage() {
                         whileHover={{ scale: 1.05, rotate: 2 }}
                         transition={{ type: "spring", stiffness: 300 }}
                     >
-                        <h1 className="text-5xl md:text-6xl font-bold text-primary dark:text-primary/90">
+                        <h1 className="text-5xl md:text-5xl font-bold text-primary dark:text-primary/90">
                             About Us 
                         </h1>
                          
