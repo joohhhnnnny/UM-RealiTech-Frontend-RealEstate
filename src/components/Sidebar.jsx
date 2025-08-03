@@ -19,6 +19,8 @@ import darkLogo from '/src/assets/logo/logo-for-dark.png';
 import PropTypes from 'prop-types';
 
 const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
+  // Get role from currentUser if available
+  const actualRole = currentUser?.role || userRole || 'user';
   const navigate = useNavigate();
   const auth = getAuth();
 
@@ -308,21 +310,30 @@ const QuickActions = React.memo(({ isOpen }) => (
   </div>
 ));
 
-function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
+function DashboardNavbar({ userRole: propUserRole = 'buyer', isOpen, setIsOpen }) {
   const location = useLocation();
   const [isDark, setIsDark] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentUserRole, setCurrentUserRole] = useState(propUserRole);
 
-  // Get current user data from localStorage
   useEffect(() => {
     const userData = localStorage.getItem('userData');
+    const storedRole = localStorage.getItem('userRole');
+    
     if (userData) {
       try {
         const parsedData = JSON.parse(userData);
         setCurrentUser(parsedData);
+        if (parsedData.role) {
+          setCurrentUserRole(parsedData.role);
+        }
       } catch (error) {
         console.error('Error parsing user data:', error);
       }
+    }
+    
+    if (storedRole) {
+      setCurrentUserRole(storedRole);
     }
   }, []);
 
@@ -387,7 +398,7 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
   ];
 
   const filteredSolutions = useMemo(() =>
-    solutions.filter(s => s.allowedRoles.includes(userRole)), [userRole]);
+    solutions.filter(s => s.allowedRoles.includes(currentUserRole)), [currentUserRole]);
 
   return (
     <motion.div className={`fixed left-0 top-0 h-screen bg-base-100 border-r border-base-200 shadow-lg z-50 ${isOpen ? 'w-64' : 'w-20'} transition-all duration-300`}>
@@ -427,26 +438,34 @@ function DashboardNavbar({ userRole = 'buyer', isOpen, setIsOpen }) {
 
         {/* Center */}
         <div className="text-base-content flex-1 py-4 overflow-visible z-[60]">
-          <NavigationLinks filteredSolutions={filteredSolutions} isOpen={isOpen} userRole={userRole} />
+          <NavigationLinks 
+            filteredSolutions={filteredSolutions} 
+            isOpen={isOpen} 
+            userRole={currentUserRole} 
+          />
         </div>
 
         {/* Bottom */}
         <div className="text-base-content p-4 border-t border-base-200 space-y-2">
           <Link
-            to={`/dashboard/${userRole}`}
+            to={`/dashboard/${currentUserRole}`}
             className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
-              location.pathname === `/dashboard/${userRole}`
+              location.pathname === `/dashboard/${currentUserRole}`
                 ? 'bg-primary/10 text-primary font-semibold border-l-4 border-primary'
                 : 'hover:bg-base-200'
             } ${!isOpen ? 'tooltip tooltip-right font-semibold' : ''}`}
             data-tip={!isOpen ? 'Dashboard' : ''}
           >
             <RiDashboardLine className="w-6 h-6 text-primary" />
-            {isOpen && <span className="text-sm font-medium capitalize">{userRole} Dashboard</span>}
+            {isOpen && <span className="text-sm font-medium capitalize">{currentUserRole} Dashboard</span>}
           </Link>
 
           <QuickActions isOpen={isOpen} />
-          <ProfileSection isOpen={isOpen} currentUser={currentUser} userRole={userRole} />
+          <ProfileSection 
+            isOpen={isOpen} 
+            currentUser={currentUser} 
+            userRole={currentUserRole} 
+          />
         </div>
       </div>
     </motion.div>

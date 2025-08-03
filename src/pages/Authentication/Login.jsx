@@ -89,11 +89,11 @@ const Login = ({ onToggle }) => {
   };
 
   const createSession = (userData, rememberMe = false) => {
-    const sessionId = generateSessionId();
-    const expirationHours = rememberMe ? 24 * 30 : 24; // 30 days if remember me, otherwise 24 hours
-    const expiresAt = new Date(Date.now() + (expirationHours * 60 * 60 * 1000)).toISOString();
-    
-    const sessionData = {
+  const sessionId = generateSessionId();
+  const expirationHours = rememberMe ? 24 * 30 : 24; // 30 days if remember me, otherwise 24 hours
+  const expiresAt = new Date(Date.now() + (expirationHours * 60 * 60 * 1000)).toISOString();
+  
+  const sessionData = {
       sessionId,
       uid: userData.uid,
       userNumber: userData.userNumber,
@@ -101,7 +101,7 @@ const Login = ({ onToggle }) => {
       firstName: userData.firstName,
       lastName: userData.lastName,
       fullName: userData.fullName,
-      role: userData.role,
+      role: userData.role, // Changed from user.role to userData.role
       phone: userData.phone,
       validId: userData.validId,
       isActive: userData.isActive,
@@ -115,7 +115,7 @@ const Login = ({ onToggle }) => {
 
     // Store in localStorage for persistence
     localStorage.setItem('userData', JSON.stringify(sessionData));
-    
+    localStorage.setItem('userRole', userData.role); // Changed from user.role to userData.role
     // Also store in sessionStorage for validation
     sessionStorage.setItem('currentSession', sessionId);
     
