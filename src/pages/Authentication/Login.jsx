@@ -121,13 +121,21 @@ const Login = ({ onToggle }) => {
       if (role) {
         // If role is specified, check only that collection
         const collectionName = getCollectionName(role);
-        const userDoc = await getDoc(doc(db, collectionName, uid));
-        
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          if (userData.role === role) {
-            return { ...userData, collection: collectionName };
+        try {
+          const userDoc = await getDoc(doc(db, collectionName, uid));
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            if (userData.role === role) {
+              return { ...userData, collection: collectionName };
+            }
           }
+        } catch (collectionError) {
+          console.error(`Error checking collection ${collectionName}:`, collectionError);
+          if (collectionError.code === 'permission-denied') {
+            throw new Error('Database access denied. Please ensure you have proper permissions.');
+          }
+          throw collectionError;
         }
         return null;
       } else {
@@ -139,10 +147,17 @@ const Login = ({ onToggle }) => {
             const userDoc = await getDoc(doc(db, collectionName, uid));
             if (userDoc.exists()) {
               const userData = userDoc.data();
+              console.log(`Found user data in ${collectionName}:`, userData);
               return { ...userData, collection: collectionName };
             }
           } catch (collectionError) {
             console.warn(`Error checking collection ${collectionName}:`, collectionError);
+            if (collectionError.code === 'permission-denied') {
+              console.error(`Permission denied for collection ${collectionName}. Check Firestore rules.`);
+              // Continue to next collection instead of throwing
+              continue;
+            }
+            // For other errors, continue to next collection
             continue;
           }
         }
@@ -164,15 +179,21 @@ const Login = ({ onToggle }) => {
 
   const handleSuccessClose = () => {
     setShowSuccess(false);
-    // Navigate based on role immediately
+    
+    // Navigate based on role when user clicks continue
     const role = successData.role;
+    let path = '/dashboard'; // Default fallback
+    
     if (role === 'buyer') {
-      navigate('/dashboard/buyer', { replace: true });
+      path = '/dashboard/buyer';
     } else if (role === 'agent') {
-      navigate('/dashboard/agent', { replace: true });
+      path = '/dashboard/agent';
     } else if (role === 'developer') {
-      navigate('/dashboard/developer', { replace: true });
+      path = '/dashboard/developer';
     }
+    
+    // Use replace: true to prevent going back to login
+    navigate(path, { replace: true });
   };
 
   const handleLoginSubmit = async (e) => {
@@ -257,21 +278,18 @@ const Login = ({ onToggle }) => {
 
         console.log('Session created:', sessionData);
 
-        // Show success notification and redirect
+        // Show success notification and let user click to continue
         setSuccessData({
           userNumber: userData.userNumber,
           userName: userData.fullName || `${userData.firstName} ${userData.lastName}`,
           role: userData.role
         });
         setShowSuccess(true);
-
-        // Immediate navigation with replace to prevent Error.jsx
-        const path = userData.role === 'buyer' ? '/dashboard/buyer'
-                  : userData.role === 'agent' ? '/dashboard/agent'
-                  : userData.role === 'developer' ? '/dashboard/developer'
-                  : '/dashboard';
         
-        navigate(path, { replace: true });
+        // Reset loading state so user can interact with the success notification
+        setIsLoading(false);
+
+        // Note: Navigation will be handled by the success notification when user clicks "Continue"
 
       } else {
         setError('No account found with this email address. Please check your email or sign up.');

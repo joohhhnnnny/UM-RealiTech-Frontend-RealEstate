@@ -82,10 +82,10 @@ function Navbar() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={toggleTheme}
-              className="btn btn-circle btn-ghost"
+              className="btn btn-circle btn-ghost hover:bg-base-200 border border-base-300"
             >
               {isDark ? (
-                <SunIcon className="w-5 h-5 text-yellow-400" />
+                <SunIcon className="w-5 h-5 text-yellow-500" />
               ) : (
                 <MoonIcon className="w-5 h-5 text-base-content" />
               )}
@@ -96,10 +96,10 @@ function Navbar() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="btn btn-primary rounded-full cursor-pointer"
+                className="btn btn-primary rounded-full cursor-pointer shadow-md hover:shadow-lg transition-all duration-200"
               >
                 <RiUserLine className="w-5 h-5" />
-                <span>Login</span>
+                <span className="font-medium">Login</span>
               </motion.button>
             </Link>
           </div>
@@ -109,60 +109,60 @@ function Navbar() {
             <motion.label 
               whileTap={{ scale: 0.9 }}
               tabIndex={0} 
-              className="btn btn-ghost btn-circle"
+              className="btn btn-ghost btn-circle hover:bg-base-200"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none"
-                viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+              <svg xmlns="http://www.w3.org/2000/svg" className={`w-6 h-6 ${isDark ? 'text-white' : 'text-gray-800'}`} fill="none"
+                viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round"
                   d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </motion.label>
 
-            <ul tabIndex={0} className="menu dropdown-content mt-3 z-[1] p-4 shadow-lg bg-base-100 rounded-box w-52 border border-base-200">
+            <ul tabIndex={0} className="menu dropdown-content mt-3 z-[1] p-4 shadow-2xl bg-base-100 rounded-box w-52 border border-base-300">
               {/* Dark Theme Toggle */}
               <li>
                 <button 
                   onClick={toggleTheme}
-                  className="flex items-center gap-2 text-base-content"
+                  className="flex items-center gap-3 text-base-content hover:text-primary hover:bg-base-200 rounded-lg transition-all duration-200"
                 >
                   {isDark ? (
                     <>
-                      <SunIcon className="w-5 h-5 text-yellow-400" />
-                      Light Mode
+                      <SunIcon className="w-5 h-5 text-yellow-500" />
+                      <span className="font-medium">Light Mode</span>
                     </>
                   ) : (
                     <>
                       <MoonIcon className="w-5 h-5 text-base-content" />
-                      Dark Mode
+                      <span className="font-medium">Dark Mode</span>
                     </>
                   )}
                 </button>
               </li>
 
-              <div className="divider my-1"></div>
+              <div className="divider my-2"></div>
 
               {/* Menu Items */}
               {navItems.map((item) => (
                 <li key={item.name}>
                   <Link 
                     to={item.path}
-                    className="text-base-content hover:text-primary"
+                    className="text-base-content hover:text-primary hover:bg-base-200 rounded-lg transition-all duration-200 font-medium"
                   >
                     {item.name}
                   </Link>
                 </li>
               ))}
 
-              <div className="divider my-1"></div>
+              <div className="divider my-2"></div>
 
               {/* Mobile Login Button */}
               <li>
                 <Link 
                   to="/login"
-                  className="btn btn-primary rounded-full cursor-pointer w-full flex items-center gap-2"
+                  className="btn btn-primary rounded-full cursor-pointer w-full flex items-center gap-2 shadow-md hover:shadow-lg transition-all duration-200"
                 >
                   <RiUserLine className="w-5 h-5" />
-                  <span>Login</span>
+                  <span className="font-medium">Login</span>
                 </Link>
               </li>
             </ul>
