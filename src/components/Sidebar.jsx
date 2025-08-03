@@ -19,8 +19,6 @@ import darkLogo from '/src/assets/logo/logo-for-dark.png';
 import PropTypes from 'prop-types';
 
 const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
-  // Get role from currentUser if available
-  const actualRole = currentUser?.role || userRole || 'user';
   const navigate = useNavigate();
   const auth = getAuth();
 
@@ -42,48 +40,32 @@ const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
 
   // Role-specific placeholder avatars
   const getPlaceholderAvatar = (role) => {
+    // Using UI Avatars as a more reliable service with role-specific styling
     const avatarConfigs = {
       buyer: {
-        seed: 'buyer-user',
-        backgroundColor: 'b6e3f4',
-        accessories: ['prescription02'],
-        clothing: ['blazerShirt'],
-        eyebrows: ['default'],
-        eyes: ['default'],
-        facialHair: ['default'],
-        hair: ['shortWaved'],
-        mouth: ['default'],
-        skinColor: 'tanned'
+        name: 'Buyer',
+        background: '3b82f6',
+        color: 'ffffff',
+        size: '400'
       },
       agent: {
-        seed: 'agent-user',
-        backgroundColor: 'c8f7d4',
-        accessories: ['prescription01'],
-        clothing: ['blazerSweater'],
-        eyebrows: ['defaultNatural'],
-        eyes: ['default'],
-        facialHair: ['default'],
-        hair: ['shortCurly'],
-        mouth: ['smile'],
-        skinColor: 'light'
+        name: 'Agent',
+        background: '10b981',
+        color: 'ffffff',
+        size: '400'
       },
       developer: {
-        seed: 'developer-user',
-        backgroundColor: 'ffd93d',
-        accessories: ['sunglasses'],
-        clothing: ['hoodie'],
-        eyebrows: ['unibrowNatural'],
-        eyes: ['default'],
-        facialHair: ['stubble'],
-        hair: ['shortFlat'],
-        mouth: ['default'],
-        skinColor: 'brown'
+        name: 'Developer',
+        background: 'f59e0b',
+        color: 'ffffff',
+        size: '400'
       }
     };
 
     const config = avatarConfigs[role] || avatarConfigs.buyer;
-    const params = new URLSearchParams(config);
-    return `https://api.dicebear.com/7.x/avataaars/svg?${params.toString()}`;
+    
+    // Using UI Avatars - more reliable and professional looking
+    return `https://ui-avatars.com/api/?name=${config.name}&background=${config.background}&color=${config.color}&size=${config.size}&font-size=0.6&rounded=true&bold=true`;
   };
 
   const handleLogout = async () => {
@@ -170,12 +152,12 @@ const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
         )}
       </label>
       
-      <ul tabIndex={0} className="dropdown-content menu menu-sm w-64 p-2 shadow-xl bg-base-100 rounded-box border border-base-200">
+      <ul tabIndex={0} className="dropdown-content menu p-0 w-72 shadow-2xl bg-base-100 rounded-xl border border-base-300 overflow-hidden">
         {/* User Info Header */}
-        <div className="px-4 py-3 border-b border-base-200">
-          <div className="flex items-center gap-3 mb-2">
+        <div className="px-6 py-4 bg-gradient-to-r from-base-50 to-base-100 border-b border-base-300">
+          <div className="flex items-center gap-4">
             <div className="avatar">
-              <div className="w-10 rounded-full ring ring-primary ring-offset-base-100 ring-offset-1">
+              <div className="w-12 rounded-full ring-2 ring-primary ring-offset-2 ring-offset-base-100">
                 <img 
                   src={avatarSrc} 
                   alt={displayName}
@@ -186,48 +168,78 @@ const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold truncate">{displayName}</p>
-              <div className="flex items-center gap-2">
-                <span className="badge badge-primary badge-xs capitalize">{userRole}</span>
-                {currentUser.userNumber && (
-                  <span className="text-xs text-base-content/50">#{currentUser.userNumber}</span>
-                )}
+              <h3 className="font-semibold text-base text-base-content truncate">{displayName}</h3>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="badge badge-primary badge-sm capitalize font-medium">{userRole}</span>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
+                  <span className="text-xs text-success font-medium">Online</span>
+                </div>
               </div>
             </div>
           </div>
-          <p className="text-sm text-base-content/70 truncate">{currentUser.email}</p>
-          {currentUser.phone && (
-            <p className="text-xs text-base-content/50 truncate">{currentUser.phone}</p>
-          )}
+          
+          {/* Contact Information */}
+          <div className="mt-3 space-y-1">
+            <p className="text-sm text-base-content/80 truncate flex items-center gap-2">
+              <svg className="w-4 h-4 text-base-content/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              {currentUser.email}
+            </p>
+            {currentUser.phone && (
+              <p className="text-sm text-base-content/80 truncate flex items-center gap-2">
+                <svg className="w-4 h-4 text-base-content/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+                {currentUser.phone}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Profile Actions */}
-        <li>
-          <Link to="/dashboard/profile" className="flex items-center gap-2 py-3 hover:bg-base-200 rounded-lg">
-            <RiUserLine className="w-4 h-4" />
-            <span>Profile Settings</span>
-          </Link>
-        </li>
-        
-        <li>
-          <Link to="/dashboard/settings" className="flex items-center gap-2 py-3 hover:bg-base-200 rounded-lg">
-            <RiSettings4Line className="w-4 h-4" />
-            <span>Account Settings</span>
-          </Link>
-        </li>
+        <div className="p-3">
+          <div className="space-y-1">
+            <Link 
+              to="/dashboard/profile" 
+              className="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content group"
+            >
+              <RiUserLine className="w-5 h-5 text-base-content/70 group-hover:text-primary transition-colors" />
+              <span className="text-sm font-medium">Profile Settings</span>
+              <svg className="w-4 h-4 ml-auto text-base-content/40 group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+            
+            <Link 
+              to="/dashboard/settings" 
+              className="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content group"
+            >
+              <RiSettings4Line className="w-5 h-5 text-base-content/70 group-hover:text-primary transition-colors" />
+              <span className="text-sm font-medium">Account Settings</span>
+              <svg className="w-4 h-4 ml-auto text-base-content/40 group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        </div>
 
-        <div className="divider my-1"></div>
+        <div className="divider my-1 mx-4"></div>
 
         {/* Logout */}
-        <li>
+        <div className="p-3">
           <button 
             onClick={handleLogout}
-            className="flex items-center gap-2 py-3 text-error hover:bg-error/10 rounded-lg w-full text-left"
+            className="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-error/10 text-error hover:text-error w-full text-left group"
           >
-            <RiLogoutBoxLine className="w-4 h-4" />
-            <span>Logout</span>
+            <RiLogoutBoxLine className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <span className="text-sm font-medium">Sign Out</span>
+            <svg className="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
           </button>
-        </li>
+        </div>
       </ul>
     </div>
   );
@@ -275,37 +287,55 @@ const QuickActions = React.memo(({ isOpen }) => (
       <RiMoreLine className="w-6 h-6" />
       {isOpen && <span className="text-sm font-medium">Quick Actions</span>}
     </label>
-    <ul tabIndex={0} className={`dropdown-content menu menu-sm ${isOpen ? 'w-50 translate-x-3' : 'w-13 translate-x-10'} p-2 shadow-xl bg-base-100 rounded-box border border-base-200`}>
-      <li>
-        <Link to="/dashboard/notifications" className="flex items-center gap-2 py-3">
-          <RiNotification3Line className="w-4 h-4" />
-          {isOpen && <>
-            <span>Notifications</span>
-            <span className="badge badge-primary badge-sm ml-auto">2</span>
-          </>}
-        </Link>
-      </li>
-      <li>
-        <Link to="/dashboard/messages" className="flex items-center gap-2 py-3">
-          <RiMessage2Line className="w-4 h-4" />
-          {isOpen && <>
-            <span>Messages</span>
-            <span className="badge badge-primary badge-sm ml-auto">3</span>
-          </>}
-        </Link>
-      </li>
-      <li>
-        <Link to="/settings" className="flex items-center gap-3 p-2 hover:bg-base-200 rounded-lg">
-          <RiSettings4Line className="w-5 h-5" />
-          {isOpen && <span>Settings</span>}
-        </Link>
-      </li>
-      <li>
-        <Link to="/dashboard/audit-log" className="flex items-center gap-2 py-3">
-          <RiHistoryLine className="w-4 h-4" />
-          {isOpen && <span>Activity Log</span>}
-        </Link>
-      </li>
+    <ul tabIndex={0} className={`dropdown-content menu p-0 ${isOpen ? 'w-50 translate-x-3' : 'w-13 translate-x-10'} shadow-xl bg-base-100 rounded-box border border-base-200 overflow-hidden`}>
+      <div className="p-2">
+        <li className="list-none">
+          <Link 
+            to="/dashboard/notifications" 
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content hover:text-base-content"
+          >
+            <RiNotification3Line className="w-4 h-4 flex-shrink-0" />
+            {isOpen && (
+              <>
+                <span className="text-sm font-medium">Notifications</span>
+                <span className="badge badge-primary badge-sm ml-auto">2</span>
+              </>
+            )}
+          </Link>
+        </li>
+        <li className="list-none">
+          <Link 
+            to="/dashboard/messages" 
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content hover:text-base-content"
+          >
+            <RiMessage2Line className="w-4 h-4 flex-shrink-0" />
+            {isOpen && (
+              <>
+                <span className="text-sm font-medium">Messages</span>
+                <span className="badge badge-primary badge-sm ml-auto">3</span>
+              </>
+            )}
+          </Link>
+        </li>
+        <li className="list-none">
+          <Link 
+            to="/settings" 
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content hover:text-base-content"
+          >
+            <RiSettings4Line className="w-4 h-4 flex-shrink-0" />
+            {isOpen && <span className="text-sm font-medium">Settings</span>}
+          </Link>
+        </li>
+        <li className="list-none">
+          <Link 
+            to="/dashboard/audit-log" 
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content hover:text-base-content"
+          >
+            <RiHistoryLine className="w-4 h-4 flex-shrink-0" />
+            {isOpen && <span className="text-sm font-medium">Activity Log</span>}
+          </Link>
+        </li>
+      </div>
     </ul>
   </div>
 ));
@@ -362,43 +392,43 @@ function DashboardNavbar({ userRole: propUserRole = 'buyer', isOpen, setIsOpen }
     localStorage.setItem('sidebarState', JSON.stringify(next));
   };
 
-  const solutions = [
-    {
-      title: 'BuySmart PH',
-      path: '/dashboard/buysmartph',
-      icon: SparklesIcon,
-      color: 'text-teal-500 hover:text-teal-600',
-      tooltip: 'BuySmart PH',
-      allowedRoles: ['buyer', 'agent', 'developer']
-    },
-    {
-      title: 'DevTrackr',
-      path: '/dashboard/devtrackr',
-      icon: BuildingOffice2Icon,
-      color: 'text-blue-500 hover:text-blue-600',
-      tooltip: 'DevTrackr',
-      allowedRoles: ['buyer', 'agent', 'developer']
-    },
-    {
-      title: 'RealtyConnect',
-      path: '/dashboard/realtyconnect',
-      icon: UserGroupIcon,
-      color: 'text-purple-500 hover:text-purple-600',
-      tooltip: 'RealtyConnect',
-      allowedRoles: ['buyer', 'agent', 'developer']
-    },
-    {
-      title: 'PropGuard',
-      path: '/dashboard/propguard',
-      icon: ShieldCheckIcon,
-      color: 'text-rose-500 hover:text-rose-600',
-      tooltip: 'PropGuard',
-      allowedRoles: ['buyer', 'agent', 'developer']
-    }
-  ];
-
-  const filteredSolutions = useMemo(() =>
-    solutions.filter(s => s.allowedRoles.includes(currentUserRole)), [currentUserRole]);
+  const filteredSolutions = useMemo(() => {
+    const solutionsList = [
+      {
+        title: 'BuySmart PH',
+        path: '/dashboard/buysmartph',
+        icon: SparklesIcon,
+        color: 'text-teal-500 hover:text-teal-600',
+        tooltip: 'BuySmart PH',
+        allowedRoles: ['buyer', 'agent', 'developer']
+      },
+      {
+        title: 'DevTrackr',
+        path: '/dashboard/devtrackr',
+        icon: BuildingOffice2Icon,
+        color: 'text-blue-500 hover:text-blue-600',
+        tooltip: 'DevTrackr',
+        allowedRoles: ['buyer', 'agent', 'developer']
+      },
+      {
+        title: 'RealtyConnect',
+        path: '/dashboard/realtyconnect',
+        icon: UserGroupIcon,
+        color: 'text-purple-500 hover:text-purple-600',
+        tooltip: 'RealtyConnect',
+        allowedRoles: ['buyer', 'agent', 'developer']
+      },
+      {
+        title: 'PropGuard',
+        path: '/dashboard/propguard',
+        icon: ShieldCheckIcon,
+        color: 'text-rose-500 hover:text-rose-600',
+        tooltip: 'PropGuard',
+        allowedRoles: ['buyer', 'agent', 'developer']
+      }
+    ];
+    return solutionsList.filter(s => s.allowedRoles.includes(currentUserRole));
+  }, [currentUserRole]);
 
   return (
     <motion.div className={`fixed left-0 top-0 h-screen bg-base-100 border-r border-base-200 shadow-lg z-50 ${isOpen ? 'w-64' : 'w-20'} transition-all duration-300`}>

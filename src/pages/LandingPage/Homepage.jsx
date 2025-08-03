@@ -274,21 +274,21 @@ function Homepage() {
                   <div className="absolute inset-0 rounded-2xl pointer-events-none overflow-hidden">
                     {/* Complete border frame that starts from corners and expands */}
                     <div className="absolute inset-0 rounded-2xl transition-all duration-500 ease-out
-                                    border-2 border-transparent
-                                    group-hover:border-white/80
+                                    border-3 border-transparent
+                                    group-hover:border-blue-400/80 dark:group-hover:border-white/80
                                     before:absolute before:inset-0 before:rounded-2xl
-                                    before:border-2 before:border-transparent
-                                    before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent
+                                    before:border-4 before:border-transparent
+                                    before:bg-gradient-to-r before:from-transparent before:via-blue-400/30 dark:before:via-white/20 before:to-transparent
                                     before:opacity-0 before:transition-opacity before:duration-500
                                     group-hover:before:opacity-100"></div>
                     
                     {/* Corner accent elements for the expanding effect */}
-                    <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-white/80 rounded-tr-2xl
+                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-400/80 dark:border-white/80 rounded-tr-2xl
                                     transition-all duration-500 ease-out
-                                    group-hover:w-full group-hover:h-full group-hover:border-white/80"></div>
-                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-white/80 rounded-bl-2xl
+                                    group-hover:w-full group-hover:h-full group-hover:border-blue-400/80 dark:group-hover:border-white/80"></div>
+                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-400/80 dark:border-white/80 rounded-bl-2xl
                                     transition-all duration-500 ease-out
-                                    group-hover:w-full group-hover:h-full group-hover:border-white/80"></div>
+                                    group-hover:w-full group-hover:h-full group-hover:border-blue-400/80 dark:group-hover:border-white/80"></div>
                   </div>
                 </motion.div>
 
