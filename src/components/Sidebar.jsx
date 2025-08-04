@@ -340,7 +340,7 @@ const QuickActions = React.memo(({ isOpen }) => (
   </div>
 ));
 
-function DashboardNavbar({ userRole: propUserRole = 'buyer', isOpen, setIsOpen }) {
+function Sidebar({ userRole: propUserRole = 'buyer', isOpen, setIsOpen }) {
   const location = useLocation();
   const [isDark, setIsDark] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
@@ -502,10 +502,10 @@ function DashboardNavbar({ userRole: propUserRole = 'buyer', isOpen, setIsOpen }
   );
 }
 
-DashboardNavbar.propTypes = {
+Sidebar.propTypes = {
   userRole: PropTypes.oneOf(['buyer', 'agent', 'developer']),
   isOpen: PropTypes.bool.isRequired,
   setIsOpen: PropTypes.func.isRequired
 };
 
-export default React.memo(DashboardNavbar);
+export default React.memo(Sidebar);

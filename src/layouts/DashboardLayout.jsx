@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import DashboardNavbar from '../components/Sidebar.jsx';
+import Sidebar from '../components/Sidebar.jsx';
 
 function DashboardLayout({ children, userRole }) {
   // Single source of truth for sidebar state
@@ -8,7 +8,7 @@ function DashboardLayout({ children, userRole }) {
 
   return (
     <div className="min-h-screen bg-base-200 relative text-base-content">
-      <DashboardNavbar 
+      <Sidebar 
         userRole={userRole} 
         isOpen={isOpen} 
         setIsOpen={setIsOpen} 

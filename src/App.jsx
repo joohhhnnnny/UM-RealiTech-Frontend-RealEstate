@@ -14,7 +14,7 @@ import BuySmartPH from './pages/buysmartph/BuySmartPH';
 import RealtyConnect from './pages/realtyconnect/RealtyConnect';
 import PropGuard from './pages/propguard/PropGuard';
 // import ChatBot from './pages/propguard/ChatBot.jsx';
-import BuildSafe from './pages/devtrackr/BuildSafe.jsx';
+import BuildSafe from './pages/buildsafe/BuildSafe.jsx';
 import Notif from './pages/quickactions/Notif';
 import Msg from './pages/quickactions/Msg';
 import Settings from './pages/quickactions/Settings';
