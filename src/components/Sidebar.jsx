@@ -403,11 +403,11 @@ function DashboardNavbar({ userRole: propUserRole = 'buyer', isOpen, setIsOpen }
         allowedRoles: ['buyer', 'agent', 'developer']
       },
       {
-        title: 'DevTrackr',
+        title: 'BuildSafe',
         path: '/dashboard/devtrackr',
         icon: BuildingOffice2Icon,
         color: 'text-blue-500 hover:text-blue-600',
-        tooltip: 'DevTrackr',
+        tooltip: 'BuildSafe',
         allowedRoles: ['buyer', 'agent', 'developer']
       },
       {

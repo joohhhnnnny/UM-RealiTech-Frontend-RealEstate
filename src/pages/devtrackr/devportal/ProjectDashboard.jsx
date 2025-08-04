@@ -9,16 +9,23 @@ import {
   RiDeleteBinLine,
   RiSaveLine,
   RiCloseLine,
+  RiMoneyDollarCircleLine,
+  RiFileTextLine,
+  RiShieldCheckLine,
+  RiAlertLine
 } from 'react-icons/ri';
 
 // Memoized Stats Component
 const ProjectStats = React.memo(({ projects }) => {
   const stats = useMemo(() => ({
     total: projects.length,
-    onSchedule: projects.filter(p => p.progress >= 30).length,
-    pendingReviews: projects.reduce((acc, proj) => 
-      acc + proj.comments.filter(c => c.status === 'pending').length, 0
-    )
+    onSchedule: projects.filter(p => p.status === 'On Track').length,
+    pendingVerifications: projects.reduce((acc, proj) => 
+      acc + proj.milestones.filter(m => m.completed && !m.verified).length, 0
+    ),
+    escrowFunds: projects.reduce((acc, proj) => 
+      acc + parseFloat(proj.escrowStatus.held.replace(/[^\d.]/g, '')), 0
+    ).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })
   }), [projects]);
 
   return (
@@ -36,28 +43,42 @@ const ProjectStats = React.memo(({ projects }) => {
       </div>
       
       <div className="stat">
-        <div className="stat-title">Pending Reviews</div>
-        <div className="stat-value text-warning">{stats.pendingReviews}</div>
-        <div className="stat-desc">Requiring attention</div>
+        <div className="stat-title">Pending Verifications</div>
+        <div className="stat-value text-warning">{stats.pendingVerifications}</div>
+        <div className="stat-desc">Milestones needing review</div>
+      </div>
+
+      <div className="stat">
+        <div className="stat-title">Escrow Funds</div>
+        <div className="stat-value text-secondary">{stats.escrowFunds}</div>
+        <div className="stat-desc">Held for milestones</div>
       </div>
     </div>
   );
 });
 
 // Memoized Milestone Component
-const MilestoneCard = React.memo(({ milestone }) => (
+const MilestoneCard = React.memo(({ milestone, onVerify }) => (
   <div className={`card bg-base-200 ${milestone.completed ? 'border-success' : ''}`}>
     <div className="card-body p-4">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between">
         {milestone.completed ? (
-          <div className="badge badge-success gap-2">
+          <div className={`badge gap-2 ${milestone.verified ? 'badge-success' : 'badge-warning'}`}>
             <RiCheckboxCircleLine />
-            Completed
+            {milestone.verified ? 'Verified' : 'Pending Verification'}
           </div>
         ) : (
           <div className="badge badge-outline gap-2">
             Pending
           </div>
+        )}
+        {milestone.completed && !milestone.verified && (
+          <button 
+            className="btn btn-xs btn-primary"
+            onClick={() => onVerify(milestone.id)}
+          >
+            Verify
+          </button>
         )}
       </div>
       <h3 className="font-medium mt-2">{milestone.name}</h3>
@@ -65,11 +86,19 @@ const MilestoneCard = React.memo(({ milestone }) => (
       {milestone.completedDate && (
         <div className="text-xs text-success">Completed: {milestone.completedDate}</div>
       )}
+      {milestone.verifiedDate && (
+        <div className="text-xs text-info">Verified: {milestone.verifiedDate}</div>
+      )}
       <progress 
         className="progress progress-success w-full mt-2" 
         value={milestone.completed ? milestone.progressPercentage : 0} 
         max="100"
       />
+      {milestone.paymentAmount && (
+        <div className="text-xs mt-1">
+          Payment: <span className="font-bold">{milestone.paymentAmount}</span>
+        </div>
+      )}
     </div>
   </div>
 ));
@@ -100,46 +129,78 @@ const UpdateCard = React.memo(({ update, index }) => (
   </div>
 ));
 
-// Memoized Comment Component
-const CommentCard = React.memo(({ comment, onCommentAction }) => {
-  const handleApprove = useCallback(() => {
-    onCommentAction(comment.id, 'approved');
-  }, [comment.id, onCommentAction]);
-
-  const handleFlag = useCallback(() => {
-    onCommentAction(comment.id, 'flagged');
-  }, [comment.id, onCommentAction]);
-
-  return (
-    <div className={`alert shadow-lg mb-4 ${
-      comment.status === 'pending' ? 'alert-warning' : 
-      comment.status === 'approved' ? 'alert-success' : 'alert-error'
-    }`}>
-      <div className="flex-1">
+// Memoized Escrow Status Component
+const EscrowStatus = React.memo(({ project }) => (
+  <div className="card bg-base-200 mt-4">
+    <div className="card-body p-4">
+      <h3 className="font-bold flex items-center gap-2">
+        <RiMoneyDollarCircleLine className="text-primary" />
+        Escrow Status
+      </h3>
+      <div className="grid grid-cols-2 gap-4 mt-2">
         <div>
-          <h3 className="font-bold">{comment.user}</h3>
-          <div className="text-xs opacity-70">{comment.date}</div>
+          <p className="text-sm">Funds Released</p>
+          <p className="font-bold text-success">{project.escrowStatus.released}</p>
         </div>
-        <div className="py-2">{comment.text}</div>
-        {comment.status === 'pending' && (
-          <div className="flex gap-2">
-            <button className="btn btn-sm btn-success" onClick={handleApprove}>
-              Approve
-            </button>
-            <button className="btn btn-sm btn-error" onClick={handleFlag}>
-              Flag Issue
-            </button>
-          </div>
-        )}
-        {comment.status !== 'pending' && (
-          <div className="badge badge-outline mt-2">
-            Status: {comment.status}
-          </div>
-        )}
+        <div>
+          <p className="text-sm">Held in Escrow</p>
+          <p className="font-bold text-info">{project.escrowStatus.held}</p>
+        </div>
+        <div>
+          <p className="text-sm">Next Release</p>
+          <p className="font-bold text-warning">{project.escrowStatus.nextRelease}</p>
+        </div>
+        <div>
+          <p className="text-sm">Total Investment</p>
+          <p className="font-bold">{project.totalInvestment}</p>
+        </div>
       </div>
     </div>
-  );
-});
+  </div>
+));
+
+// Memoized Document Status Component
+const DocumentStatus = React.memo(({ documents }) => (
+  <div className="card bg-base-200 mt-4">
+    <div className="card-body p-4">
+      <h3 className="font-bold flex items-center gap-2">
+        <RiFileTextLine className="text-primary" />
+        Document Status
+      </h3>
+      <div className="overflow-x-auto">
+        <table className="table table-zebra">
+          <thead>
+            <tr>
+              <th>Document</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {documents.map((doc, idx) => (
+              <tr key={idx}>
+                <td>{doc.name}</td>
+                <td>
+                  <span className={`badge ${
+                    doc.status === 'verified' ? 'badge-success' : 
+                    doc.status === 'pending' ? 'badge-warning' : 'badge-error'
+                  }`}>
+                    {doc.status}
+                  </span>
+                </td>
+                <td>
+                  {doc.status === 'pending' && (
+                    <button className="btn btn-xs btn-primary">Upload</button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+));
 
 // Memoized Project Card Component
 const ProjectCard = React.memo(({ 
@@ -150,7 +211,7 @@ const ProjectCard = React.memo(({
   onCancelEdit, 
   onDelete, 
   onUpload, 
-  onCommentAction,
+  onVerifyMilestone,
   onEditChange 
 }) => {
   const isEditing = editingProject && editingProject.id === project.id;
@@ -167,9 +228,9 @@ const ProjectCard = React.memo(({
     onUpload(project);
   }, [project, onUpload]);
 
-  const handleCommentActionForProject = useCallback((commentId, action) => {
-    onCommentAction(project.id, commentId, action);
-  }, [project.id, onCommentAction]);
+  const handleVerifyMilestone = useCallback((milestoneId) => {
+    onVerifyMilestone(project.id, milestoneId);
+  }, [project.id, onVerifyMilestone]);
 
   const handleNameChange = useCallback((e) => {
     onEditChange({ ...editingProject, name: e.target.value });
@@ -184,7 +245,7 @@ const ProjectCard = React.memo(({
   }, [editingProject, onEditChange]);
 
   return (
-    <div className="card bg-base-100 shadow-xl">
+    <div className="card bg-base-100 shadow-xl mb-6">
       <div className="card-body">
         <div className="flex justify-between items-start">
           <div className="flex-1">
@@ -212,7 +273,12 @@ const ProjectCard = React.memo(({
               <div>
                 <h2 className="card-title">
                   {project.name}
-                  <div className="badge badge-primary">{project.status}</div>
+                  <div className={`badge ${
+                    project.status === 'On Track' ? 'badge-success' : 
+                    project.status === 'Delayed' ? 'badge-warning' : 'badge-info'
+                  }`}>
+                    {project.status}
+                  </div>
                 </h2>
                 <p className="flex items-center gap-2 text-base-content/70">
                   <RiBuildingLine />
@@ -271,13 +337,21 @@ const ProjectCard = React.memo(({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <EscrowStatus project={project} />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
           {project.milestones.map((milestone) => (
-            <MilestoneCard key={milestone.id} milestone={milestone} />
+            <MilestoneCard 
+              key={milestone.id} 
+              milestone={milestone}
+              onVerify={handleVerifyMilestone}
+            />
           ))}
         </div>
 
-        <div className="collapse collapse-plus bg-base-200">
+        <DocumentStatus documents={project.documents} />
+
+        <div className="collapse collapse-plus bg-base-200 mt-4">
           <input type="checkbox" /> 
           <div className="collapse-title text-xl font-medium">
             Recent Updates ({project.updates.length})
@@ -290,22 +364,6 @@ const ProjectCard = React.memo(({
             </div>
           </div>
         </div>
-
-        {project.comments.length > 0 && (
-          <>
-            <div className="divider"></div>
-            <div className="mt-6">
-              <h3 className="text-xl font-medium mb-3">Buyer Comments</h3>
-              {project.comments.map((comment) => (
-                <CommentCard 
-                  key={comment.id} 
-                  comment={comment} 
-                  onCommentAction={handleCommentActionForProject}
-                />
-              ))}
-            </div>
-          </>
-        )}
       </div>
     </div>
   );
@@ -315,18 +373,57 @@ function ProjectDashboard() {
   const [projects, setProjects] = useState([
     {
       id: 1,
-      name: "Green Residences Tower A",
+      name: "Horizon Residences",
       location: "Makati City",
       description: "Luxury residential tower with 30 floors",
       startDate: "2025-01-15",
       expectedCompletion: "2026-12-31",
       progress: 65,
-      status: "in-progress",
+      status: "On Track",
       milestones: [
-        { id: 1, name: 'Foundation', progressPercentage: 25, completed: true, completedDate: '2025-03-20' },
-        { id: 2, name: 'Structure', progressPercentage: 50, completed: true, completedDate: '2025-06-15' },
-        { id: 3, name: 'Finishing', progressPercentage: 75, completed: false, completedDate: null },
-        { id: 4, name: 'Completion', progressPercentage: 100, completed: false, completedDate: null }
+        { 
+          id: 1, 
+          name: 'Land Development', 
+          progressPercentage: 15, 
+          completed: true, 
+          completedDate: '2025-01-30',
+          verified: true,
+          verifiedDate: '2025-02-05',
+          paymentAmount: '₱500,000'
+        },
+        { 
+          id: 2, 
+          name: 'Foundation', 
+          progressPercentage: 25, 
+          completed: true, 
+          completedDate: '2025-03-20',
+          verified: true,
+          verifiedDate: '2025-03-25',
+          paymentAmount: '₱750,000'
+        },
+        { 
+          id: 3, 
+          name: 'Structure', 
+          progressPercentage: 50, 
+          completed: true, 
+          completedDate: '2025-06-15',
+          verified: false,
+          paymentAmount: '₱1,200,000'
+        },
+        { 
+          id: 4, 
+          name: 'Electrical & Plumbing', 
+          progressPercentage: 75, 
+          completed: false, 
+          paymentAmount: '₱900,000'
+        },
+        { 
+          id: 5, 
+          name: 'Interior Finishing', 
+          progressPercentage: 100, 
+          completed: false, 
+          paymentAmount: '₱650,000'
+        }
       ],
       updates: [
         {
@@ -337,62 +434,20 @@ function ProjectDashboard() {
             "https://images.unsplash.com/photo-1574958269340-fa927503f3dd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y29uc3RydWN0aW9uJTIwcHJvZ3Jlc3N8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60",
             "https://images.unsplash.com/photo-1590644365607-4cf4ce0034a8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8Y29uc3RydWN0aW9uJTIwcHJvZ3Jlc3N8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60"
           ]
-        },
-        {
-          date: "2025-07-20",
-          description: "Structural work completed for floors 11-15",
-          progress: 60,
-          media: [
-            "https://images.unsplash.com/photo-1603720913673-4e5bab3a1c7c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8Y29uc3RydWN0aW9uJTIwcHJvZ3Jlc3N8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60",
-            "https://images.unsplash.com/photo-1621155475465-462f53acbbf7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fGNvbnN0cnVjdGlvbiUyMHByb2dyZXNzfGVufDB8fDB8fHww&auto=format&fit=crop&w=800&q=60"
-          ]
         }
       ],
-      comments: [
-        {
-          id: 1,
-          user: "Buyer A",
-          text: "Question about the window installations on floor 8",
-          date: "2025-07-24",
-          status: "pending"
-        }
-      ]
-    },
-    {
-      id: 2,
-      name: "Blue Ocean Condominiums",
-      location: "Pasig City",
-      description: "Seaside condominiums with premium amenities",
-      startDate: "2025-03-01",
-      expectedCompletion: "2026-08-31",
-      progress: 30,
-      status: "in-progress",
-      milestones: [
-        { id: 1, name: 'Foundation', progressPercentage: 25, completed: true, completedDate: '2025-05-15' },
-        { id: 2, name: 'Structure', progressPercentage: 50, completed: false, completedDate: null },
-        { id: 3, name: 'Finishing', progressPercentage: 75, completed: false, completedDate: null },
-        { id: 4, name: 'Completion', progressPercentage: 100, completed: false, completedDate: null }
+      documents: [
+        { name: "Building Permit", status: "verified" },
+        { name: "Environmental Clearance", status: "verified" },
+        { name: "Fire Safety Certificate", status: "pending" },
+        { name: "Occupancy Permit", status: "pending" }
       ],
-      updates: [
-        {
-          date: "2025-07-23",
-          description: "Foundation work completed",
-          progress: 30,
-          media: [
-            "https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=60"
-          ]
-        },
-        {
-          date: "2025-07-15",
-          description: "Site preparation and initial groundwork",
-          progress: 25,
-          media: [
-            "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=60",
-            "https://images.unsplash.com/photo-1503387762-592deb58ef4e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=60"
-          ]
-        }
-      ],
-      comments: []
+      escrowStatus: {
+        released: "₱1,250,000",
+        held: "₱2,750,000",
+        nextRelease: "₱1,200,000"
+      },
+      totalInvestment: "₱4,000,000"
     }
   ]);
 
@@ -412,7 +467,8 @@ function ProjectDashboard() {
   
   const [newMilestone, setNewMilestone] = useState({
     name: '',
-    progressPercentage: ''
+    progressPercentage: '',
+    paymentAmount: ''
   });
 
   const [progressUpdate, setProgressUpdate] = useState({
@@ -422,10 +478,11 @@ function ProjectDashboard() {
   });
 
   const milestoneTemplates = useMemo(() => [
-    { id: 1, name: 'Foundation', progressPercentage: 25 },
-    { id: 2, name: 'Structure', progressPercentage: 50 },
-    { id: 3, name: 'Finishing', progressPercentage: 75 },
-    { id: 4, name: 'Completion', progressPercentage: 100 }
+    { id: 1, name: 'Land Development', progressPercentage: 15, paymentAmount: '₱500,000' },
+    { id: 2, name: 'Foundation', progressPercentage: 25, paymentAmount: '₱750,000' },
+    { id: 3, name: 'Structure', progressPercentage: 50, paymentAmount: '₱1,200,000' },
+    { id: 4, name: 'Electrical & Plumbing', progressPercentage: 75, paymentAmount: '₱900,000' },
+    { id: 5, name: 'Interior Finishing', progressPercentage: 100, paymentAmount: '₱650,000' }
   ], []);
 
   // Memoized handlers
@@ -440,15 +497,30 @@ function ProjectDashboard() {
       id: Date.now(),
       ...newProject,
       progress: 0,
-      status: "in-progress",
+      status: "On Track",
       milestones: newProject.milestones.map((milestone, index) => ({
         id: index + 1,
         ...milestone,
         completed: false,
-        completedDate: null
+        completedDate: null,
+        verified: false,
+        verifiedDate: null
       })),
       updates: [],
-      comments: []
+      documents: [
+        { name: "Building Permit", status: "pending" },
+        { name: "Environmental Clearance", status: "pending" }
+      ],
+      escrowStatus: {
+        released: "₱0",
+        held: newProject.milestones.reduce((sum, m) => 
+          sum + parseFloat(m.paymentAmount.replace(/[^\d.]/g, '')), 0
+        ).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' }),
+        nextRelease: newProject.milestones[0]?.paymentAmount || "₱0"
+      },
+      totalInvestment: newProject.milestones.reduce((sum, m) => 
+        sum + parseFloat(m.paymentAmount.replace(/[^\d.]/g, '')), 0
+      ).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })
     };
 
     setProjects(prev => [projectData, ...prev]);
@@ -464,8 +536,8 @@ function ProjectDashboard() {
   }, [newProject]);
 
   const handleAddMilestone = useCallback(() => {
-    if (!newMilestone.name || !newMilestone.progressPercentage) {
-      alert('Please fill milestone details');
+    if (!newMilestone.name || !newMilestone.progressPercentage || !newMilestone.paymentAmount) {
+      alert('Please fill all milestone details');
       return;
     }
 
@@ -473,7 +545,7 @@ function ProjectDashboard() {
       ...prev,
       milestones: [...prev.milestones, { ...newMilestone }]
     }));
-    setNewMilestone({ name: '', progressPercentage: '' });
+    setNewMilestone({ name: '', progressPercentage: '', paymentAmount: '' });
   }, [newMilestone]);
 
   const handleRemoveMilestone = useCallback((index) => {
@@ -525,22 +597,47 @@ function ProjectDashboard() {
     setSelectedProject(null);
   }, [progressUpdate, selectedProject]);
 
-  const handleCommentAction = useCallback((projectId, commentId, action) => {
-    setProjects(prev => prev.map(project => {
-      if (project.id === projectId) {
-        return {
-          ...project,
-          comments: project.comments.map(comment => {
-            if (comment.id === commentId) {
-              return { ...comment, status: action };
-            }
-            return comment;
-          })
-        };
-      }
-      return project;
-    }));
-  }, []);
+  const handleVerifyMilestone = useCallback((projectId, milestoneId) => {
+  setProjects(prev => prev.map(project => {
+    if (project.id === projectId) {
+      const updatedMilestones = project.milestones.map(milestone => {
+        if (milestone.id === milestoneId) {
+          return { 
+            ...milestone, 
+            verified: true,
+            verifiedDate: new Date().toISOString().split('T')[0]
+          };
+        }
+        return milestone;
+      });
+
+      // Find the next milestone to release funds for
+      const nextMilestone = updatedMilestones.find(m => !m.verified && !m.completed);
+      
+      // Get the payment amount for the verified milestone
+      const paymentAmount = parseFloat(
+        project.milestones.find(m => m.id === milestoneId)?.paymentAmount.replace(/[^\d.]/g, '') || 0
+      );
+      
+      // Calculate new escrow values
+      const currentReleased = parseFloat(project.escrowStatus.released.replace(/[^\d.]/g, ''));
+      const currentHeld = parseFloat(project.escrowStatus.held.replace(/[^\d.]/g, ''));
+      
+      return {
+        ...project,
+        milestones: updatedMilestones,
+        escrowStatus: {
+          released: (currentReleased + paymentAmount)
+                    .toLocaleString('en-PH', { style: 'currency', currency: 'PHP' }),
+          held: (currentHeld - paymentAmount)
+                .toLocaleString('en-PH', { style: 'currency', currency: 'PHP' }),
+          nextRelease: nextMilestone?.paymentAmount || "₱0"
+        }
+      };
+    }
+    return project;
+  }));
+}, []);
 
   const handleEditProject = useCallback((project) => {
     setEditingProject({ ...project });
@@ -566,8 +663,8 @@ function ProjectDashboard() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Project Dashboard</h1>
-          <p className="text-base-content/70">Manage and track your real estate development projects</p>
+          <h1 className="text-2xl font-bold">BuildSafe Developer Portal</h1>
+          <p className="text-base-content/70">Manage projects with transparent tracking and escrow management</p>
         </div>
         <button
           onClick={() => setShowNewProject(true)}
@@ -663,7 +760,7 @@ function ProjectDashboard() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4">
               <input 
                 type="text" 
                 className="input input-bordered" 
@@ -675,8 +772,17 @@ function ProjectDashboard() {
                 type="number" 
                 className="input input-bordered" 
                 placeholder="Progress %"
+                min="0"
+                max="100"
                 value={newMilestone.progressPercentage}
                 onChange={(e) => setNewMilestone({...newMilestone, progressPercentage: e.target.value})}
+              />
+              <input 
+                type="text" 
+                className="input input-bordered" 
+                placeholder="Payment Amount"
+                value={newMilestone.paymentAmount}
+                onChange={(e) => setNewMilestone({...newMilestone, paymentAmount: e.target.value})}
               />
               <button 
                 type="button" 
@@ -692,7 +798,7 @@ function ProjectDashboard() {
                 <h4 className="font-semibold">Added Milestones:</h4>
                 {newProject.milestones.map((milestone, index) => (
                   <div key={index} className="flex items-center justify-between p-2 bg-base-200 rounded">
-                    <span>{milestone.name} - {milestone.progressPercentage}%</span>
+                    <span>{milestone.name} - {milestone.progressPercentage}% ({milestone.paymentAmount})</span>
                     <button 
                       type="button"
                       className="btn btn-ghost btn-xs text-error"
@@ -764,7 +870,20 @@ function ProjectDashboard() {
               <div className="border-2 border-dashed border-base-300 rounded-lg p-6 text-center">
                 <RiUploadCloud2Line className="text-4xl mx-auto mb-2 text-base-content/50" />
                 <p className="text-base-content/70">Click to upload photos/videos</p>
-                <input type="file" className="file-input file-input-ghost w-full max-w-xs mt-2" multiple accept="image/*,video/*" />
+                <input 
+                  type="file" 
+                  className="file-input file-input-ghost w-full max-w-xs mt-2" 
+                  multiple 
+                  accept="image/*,video/*" 
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files);
+                    const mediaUrls = files.map(file => URL.createObjectURL(file));
+                    setProgressUpdate(prev => ({
+                      ...prev,
+                      media: [...prev.media, ...mediaUrls]
+                    }));
+                  }}
+                />
               </div>
             </div>
 
@@ -800,7 +919,7 @@ function ProjectDashboard() {
             onCancelEdit={handleCancelEdit}
             onDelete={handleDeleteProject}
             onUpload={handleUploadProject}
-            onCommentAction={handleCommentAction}
+            onVerifyMilestone={handleVerifyMilestone}
             onEditChange={setEditingProject}
           />
         ))}

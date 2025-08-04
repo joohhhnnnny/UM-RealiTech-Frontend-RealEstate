@@ -1,23 +1,23 @@
 import { RiBuildingLine } from 'react-icons/ri';
 import { useLocation } from 'react-router-dom';
-import BuyerDevTrackr from './BuyerDevTrackr';
-import AgentDevTrackr from './AgentDevTrackr';
-import DeveloperDevTrackr from './DeveloperDevTrackr';
+import BuyerBuildSafe from './BuyerBuildSafe';
+import AgentBuildSafe from './AgentBuildSafe';
+import DeveloperBuildSafe from './DeveloperBuildSafe';
 import DashboardLayout from '../../layouts/DashboardLayout';
 
-// Main DevTrackr Component
-function DevTrackr() {
+// Main BuildSafe Component
+function BuildSafe() {
   const location = useLocation();
   const userRole = location.state?.userRole || 'buyer';
 
   const renderContent = () => {
     switch(userRole) {
       case 'agent':
-        return <AgentDevTrackr />;
+        return <AgentBuildSafe />;
       case 'developer':
-        return <DeveloperDevTrackr />;
+        return <DeveloperBuildSafe />;
       default:
-        return <BuyerDevTrackr />;
+        return <BuyerBuildSafe />;
     }
   };
 
@@ -30,10 +30,10 @@ function DevTrackr() {
             <div className="card-body p-8">
               <div className="flex items-center gap-4">
                 <RiBuildingLine className="w-8 h-8 text-primary-content" />
-                <h1 className="text-3xl font-bold text-primary-content">DevTrackr</h1>
+                <h1 className="text-3xl font-bold text-primary-content">BuildSafe</h1>
               </div>
               <p className="text-xl text-primary-content/90 max-w-2xl mt-4">
-                Transparent development progress tracking for real estate projects.
+                Trust-building construction oversight with verified progress tracking and secure payments.
               </p>
             </div>
           </div>
@@ -46,4 +46,4 @@ function DevTrackr() {
   );
 }
 
-export default DevTrackr;
+export default BuildSafe;
