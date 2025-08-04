@@ -44,8 +44,8 @@ function Solutions() {
             bgColor: "bg-gradient-to-br from-teal-500 to-teal-600",
         },
         {
-            title: "DevTrackr",
-            description: "Transparency Platform for Developers",
+            title: "BuildSafe",
+            description: "Trust-Building Construction Oversight Platform",
             icon: BuildingOffice2Icon,
             bgColor: "bg-gradient-to-br from-blue-500 to-blue-600",
         },
