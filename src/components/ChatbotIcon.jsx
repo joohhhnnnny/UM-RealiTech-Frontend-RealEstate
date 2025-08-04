@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   PaperAirplaneIcon,
@@ -28,39 +28,71 @@ function ChatbotIcon() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [buttonPosition, setButtonPosition] = useState({ x: 0, y: 0 });
+  const messageSequenceRef = useRef(0);
+  const [windowSize, setWindowSize] = useState({ 
+    width: typeof window !== 'undefined' ? window.innerWidth : 1200,
+    height: typeof window !== 'undefined' ? window.innerHeight : 800
+  });
 
-  // Calculate chat window position based on button position
+  // Handle window resize for responsive behavior
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Calculate chat window position based on screen size and device type
   const getChatWindowPosition = () => {
-    const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
-    const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
-    const chatWidth = 384; // 96 * 4 (w-96)
-    const chatHeight = 500;
+    const windowWidth = windowSize.width;
+    const windowHeight = windowSize.height;
+    const isMobile = windowWidth < 768; // Mobile breakpoint
     
-    // Default position (bottom-right)
-    let bottom = 100;
-    let right = 32;
-    
-    // If button has been dragged, calculate relative position
-    if (buttonPosition.x !== 0 || buttonPosition.y !== 0) {
-      // Position chat window near the button but ensure it stays on screen
-      const buttonCenterX = buttonPosition.x;
-      const buttonCenterY = buttonPosition.y;
+    if (isMobile) {
+      // On mobile, always center the chat window using CSS classes
+      return {
+        position: 'centered'
+      };
+    } else {
+      // Desktop behavior - position relative to button or default bottom-right
+      const chatWidth = 384; // 96 * 4 (w-96)
+      const chatHeight = 500;
       
-      // Try to position chat to the left of button first
-      right = Math.max(16, windowWidth - buttonCenterX + 40);
-      if (right + chatWidth > windowWidth) {
-        // If not enough space on the right, try left
-        right = Math.max(16, windowWidth - (buttonCenterX - chatWidth - 40));
+      // Default position (bottom-right)
+      let bottom = 100;
+      let right = 32;
+      
+      // If button has been dragged, calculate relative position
+      if (buttonPosition.x !== 0 || buttonPosition.y !== 0) {
+        // Position chat window near the button but ensure it stays on screen
+        const buttonCenterX = buttonPosition.x;
+        const buttonCenterY = buttonPosition.y;
+        
+        // Try to position chat to the left of button first
+        right = Math.max(16, windowWidth - buttonCenterX + 40);
+        if (right + chatWidth > windowWidth) {
+          // If not enough space on the right, try left
+          right = Math.max(16, windowWidth - (buttonCenterX - chatWidth - 40));
+        }
+        
+        // Position vertically
+        bottom = Math.max(16, windowHeight - buttonCenterY - chatHeight / 2);
+        if (bottom + chatHeight > windowHeight) {
+          bottom = Math.max(16, windowHeight - chatHeight - 16);
+        }
       }
       
-      // Position vertically
-      bottom = Math.max(16, windowHeight - buttonCenterY - chatHeight / 2);
-      if (bottom + chatHeight > windowHeight) {
-        bottom = Math.max(16, windowHeight - chatHeight - 16);
-      }
+      return { 
+        position: 'absolute',
+        bottom, 
+        right 
+      };
     }
-    
-    return { bottom, right };
   };
 
   const chatPosition = getChatWindowPosition();
@@ -98,15 +130,9 @@ function ChatbotIcon() {
   };
 
   // Initialize chat when component mounts
-  useEffect(() => {
-    if (isOpen) {
-      initializeChat();
-    }
-  }, [userRole, isOpen]);
-
-  const initializeChat = () => {
+  const initializeChat = useCallback(() => {
     const welcomeMessage = {
-      id: Date.now(),
+      id: `welcome-${Date.now()}`,
       sender: 'bot',
       message: chatMode === 'client' 
         ? "Hi! I'm PropGuard Assistant. I'm here to help you with property inquiries, fraud detection, and real estate guidance. How can I assist you today?"
@@ -119,7 +145,13 @@ function ChatbotIcon() {
     setUserType(null);
     setBudget('');
     setShowPresets(true);
-  };
+  }, [chatMode, userRole]);
+
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      initializeChat();
+    }
+  }, [isOpen, messages.length, initializeChat]);
 
   const getPresetMessages = () => {
     if (chatMode === 'agent') {
@@ -261,7 +293,7 @@ function ChatbotIcon() {
     if (!text.trim()) return;
 
     const userMessage = {
-      id: Date.now(),
+      id: `user-${Date.now()}-${messageSequenceRef.current++}`,
       sender: 'user',
       message: text,
       timestamp: new Date()
@@ -352,7 +384,7 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
 
       // Send the bot's text response
       const botMessage = {
-        id: Date.now() + 1,
+        id: `bot-${Date.now()}-${messageSequenceRef.current++}`,
         sender: 'bot',
         message: botResponse,
         timestamp: new Date()
@@ -366,9 +398,10 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Send property suggestions
-        for (const property of matchingProperties) {
+        for (let i = 0; i < matchingProperties.length; i++) {
+          const property = matchingProperties[i];
           const propertyMessage = {
-            id: Date.now() + matchingProperties.indexOf(property) + 2,
+            id: `property-${Date.now()}-${messageSequenceRef.current++}-${i}`,
             sender: 'bot',
             type: 'property',
             content: formatPropertyCard(property).content,
@@ -376,7 +409,9 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
           };
           setMessages(prev => [...prev, propertyMessage]);
           // Add small delay between property cards
-          await new Promise(resolve => setTimeout(resolve, 300));
+          if (i < matchingProperties.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
         }
       }
 
@@ -422,7 +457,7 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
 
     // Send fallback response as a bot message
     const fallbackBotMessage = {
-      id: Date.now() + 1,
+      id: `fallback-${Date.now()}-${messageSequenceRef.current++}`,
       sender: 'bot',
       message: fallbackMessage,
       timestamp: new Date()
@@ -436,25 +471,44 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
   return (
     <>
       <AnimatePresence>
+        {isOpen && chatPosition.position === 'centered' && (
+          <motion.div
+            key="mobile-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 md:hidden"
+            onClick={() => setIsOpen(false)}
+          />
+        )}
         {isOpen && (
           <motion.div
+            key="chat-modal"
             initial={{ opacity: 0, y: 100, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 100, scale: 0.9 }}
-            className="fixed w-96 bg-base-100 rounded-lg shadow-xl z-40 border border-base-200 text-base-content"
-            style={{
-              bottom: `${chatPosition.bottom}px`,
-              right: `${chatPosition.right}px`,
-            }}
+            className={`bg-base-100 rounded-lg shadow-xl z-40 border border-base-200 text-base-content
+              ${chatPosition.position === 'centered' 
+                ? 'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100vw-2rem)] max-w-sm h-[85vh] max-h-[600px]' 
+                : 'fixed w-96'
+              }`}
+            style={
+              chatPosition.position !== 'centered'
+                ? {
+                    bottom: `${chatPosition.bottom}px`,
+                    right: `${chatPosition.right}px`,
+                  }
+                : {}
+            }
           >
             {/* Chat Header */}
-            <div className="p-4 border-b border-base-200 bg-primary rounded-t-lg">
+            <div className="p-3 sm:p-4 border-b border-base-200 bg-primary rounded-t-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <FaRobot className="w-6 h-6 text-primary-content" />
                   <div>
-                    <h3 className="text-lg font-semibold text-primary-content">PropGuard Assistant</h3>
-                    <p className="text-sm text-primary-content/80">AI-powered real estate assistant</p>
+                    <h3 className="text-base sm:text-lg font-semibold text-primary-content">PropGuard Assistant</h3>
+                    <p className="text-xs sm:text-sm text-primary-content/80">AI-powered real estate assistant</p>
                   </div>
                 </div>
                 <button 
@@ -467,7 +521,11 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
             </div>
 
             {/* Chat Messages */}
-            <div className="h-[300px] overflow-y-auto p-4 bg-base-100">
+            <div className={`overflow-y-auto p-3 sm:p-4 bg-base-100 ${
+              chatPosition.position === 'centered' 
+                ? 'h-[calc(85vh-200px)] max-h-[400px]' 
+                : 'h-[300px]'
+            }`}>
               {messages.length === 0 ? (
                 <div className="text-center text-base-content/60 mt-16">
                   <FaRobot className="w-16 h-16 mx-auto mb-4 opacity-50" />
@@ -476,8 +534,15 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {messages.map((msg) => (
-                    <div key={msg.id} className={`chat ${msg.sender === 'user' ? 'chat-end' : 'chat-start'}`}>
+                  {messages.map((msg) => {
+                    // Ensure the message has a valid ID
+                    if (!msg.id) {
+                      console.warn('Message without ID found:', msg);
+                      return null;
+                    }
+                    
+                    return (
+                      <div key={msg.id} className={`chat ${msg.sender === 'user' ? 'chat-end' : 'chat-start'}`}>
                       <div className="chat-image avatar">
                         <div className="w-8 rounded-full">
                           {msg.sender === 'user' ? (
@@ -497,7 +562,7 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
                           : 'bg-base-200'
                       }`}>
                         {msg.type === 'property' ? (
-                          <div className="card bg-base-100 shadow-md w-64">
+                          <div className="card bg-base-100 shadow-md w-full max-w-[240px] sm:max-w-[280px]">
                             <figure className="relative h-32">
                               <img 
                                 src={msg.content.images?.[0] || "https://via.placeholder.com/400x300?text=No+Image"}
@@ -541,11 +606,12 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
                         {msg.timestamp.toLocaleTimeString()}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
 
                   {/* Loading indicator */}
                   {isLoading && (
-                    <div className="chat chat-start">
+                    <div key="loading-indicator" className="chat chat-start">
                       <div className="chat-image avatar">
                         <div className="w-8 rounded-full">
                           <div className="bg-neutral text-neutral-content rounded-full w-8 h-8 flex items-center justify-center">
@@ -564,12 +630,12 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
 
                   {/* Preset Messages */}
                   {showPresets && getPresetMessages().length > 0 && (
-                    <div className="space-y-2 mt-6 pt-4 border-t border-base-200">
+                    <div key="preset-messages" className="space-y-2 mt-6 pt-4 border-t border-base-200">
                       <p className="text-sm text-base-content/60 text-center font-medium">Quick options:</p>
-                      <div className="grid grid-cols-1 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-1 gap-2">
                         {getPresetMessages().map((preset, index) => (
                           <motion.button
-                            key={index}
+                            key={`preset-${preset.text.replace(/\s+/g, '-').toLowerCase()}-${index}`}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 }}
@@ -588,7 +654,7 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
             </div>
 
             {/* Chat Input */}
-            <div className="p-4 border-t border-base-200">
+            <div className="p-3 sm:p-4 border-t border-base-200">
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -621,10 +687,10 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
         dragMomentum={false}
         dragElastic={0.1}
         dragConstraints={{
-          top: -window.innerHeight + 150,
-          left: -window.innerWidth + 150,
-          right: window.innerWidth - 150,
-          bottom: window.innerHeight - 150,
+          top: -windowSize.height + 150,
+          left: -windowSize.width + 150,
+          right: windowSize.width - 150,
+          bottom: windowSize.height - 150,
         }}
         onDrag={(event, info) => {
           setButtonPosition({
@@ -643,7 +709,8 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
         }}
       >
         <button
-          className="btn btn-primary btn-circle btn-lg shadow-lg transition-all duration-200 hover:shadow-xl relative"
+          className="btn btn-primary btn-circle shadow-lg transition-all duration-200 hover:shadow-xl relative
+                     w-14 h-14 sm:w-16 sm:h-16 lg:btn-lg"
           onClick={(e) => {
             e.preventDefault();
             // Only open/close chat if not dragging
@@ -658,11 +725,11 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
           }}
         >
           {isOpen ? (
-            <XMarkIcon className="w-6 h-6 pointer-events-none" />
+            <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6 pointer-events-none" />
           ) : (
             <>
-              <ChatBubbleOvalLeftEllipsisIcon className="w-6 h-6 pointer-events-none" />
-              <span className="absolute -top-2 -right-2 bg-error text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse pointer-events-none">
+              <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5 sm:w-6 sm:h-6 pointer-events-none" />
+              <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-error text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center animate-pulse pointer-events-none text-[10px] sm:text-xs">
                 1
               </span>
             </>

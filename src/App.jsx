@@ -1,6 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import { useState } from 'react'; // Add this import
-import { LoadingScreen } from './components/Loadingscreen';
+import LoadingScreen from './components/Loadingscreen';
 import LandingPage from './pages/landingpage/LandingPage.jsx';
 import Properties from './pages/properties/Properties.jsx';
 import ViewProperties from './pages/properties/Viewproperties.jsx'; // Add this import

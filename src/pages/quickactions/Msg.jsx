@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   RiSearchLine, 
@@ -15,6 +15,25 @@ const Msg = () => {
   const [isOpen, setIsOpen] = useState(true);
   const [selectedChat, setSelectedChat] = useState(null);
   const [message, setMessage] = useState('');
+
+  // Watch for theme changes to ensure components adapt properly
+  useEffect(() => {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+          // Force re-render when theme changes
+          setSelectedChat(prev => prev); // This triggers a re-render
+        }
+      });
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   // Dummy conversations data
   const conversations = [
@@ -102,18 +121,18 @@ const Msg = () => {
   };
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen bg-base-100">
       <DashboardNavbar userRole="buyer" isOpen={isOpen} setIsOpen={setIsOpen} />
       
-      <main className={`flex-1 transition-all duration-300 ${isOpen ? 'ml-64' : 'ml-20'}`}>
-        <div className="flex h-screen">
+      <main className={`flex-1 transition-all duration-300 bg-base-100 ${isOpen ? 'ml-64' : 'ml-20'}`}>
+        <div className="flex h-screen bg-base-100">
           {/* Left Section - Conversations List */}
-          <div className="w-1/3 border-r border-base-200">
+          <div className="w-1/3 border-r border-base-200/60 bg-base-100 backdrop-blur-sm">
             {/* Header */}
-            <div className="p-4 border-b border-base-200">
+            <div className="p-4 border-b border-base-200/60 bg-base-100/80 backdrop-blur-sm">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Messages</h2>
-                <button className="btn btn-ghost btn-sm btn-circle">
+                <h2 className="text-xl font-bold text-base-content">Messages</h2>
+                <button className="btn btn-ghost btn-sm btn-circle hover:bg-base-200 text-base-content">
                   <RiSortDesc className="w-5 h-5" />
                 </button>
               </div>
@@ -121,40 +140,40 @@ const Msg = () => {
                 <input 
                   type="text"
                   placeholder="Search conversations..."
-                  className="input input-bordered w-full pr-10"
+                  className="input input-bordered w-full pr-10 bg-base-100 border-base-300/60 text-base-content placeholder:text-base-content/50 focus:border-primary"
                 />
                 <RiSearchLine className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-base-content/50" />
               </div>
             </div>
 
             {/* Conversations List */}
-            <div className="overflow-y-auto h-[calc(100vh-180px)]">
+            <div className="overflow-y-auto h-[calc(100vh-180px)] bg-base-100 scrollbar-thin scrollbar-thumb-base-300 scrollbar-track-base-100">
               {conversations.map((chat) => (
                 <div
                   key={chat.id}
                   onClick={() => setSelectedChat(chat)}
-                  className={`flex items-center gap-3 p-4 hover:bg-base-200 cursor-pointer transition-colors
-                    ${selectedChat?.id === chat.id ? 'bg-base-200' : ''}`}
+                  className={`flex items-center gap-3 p-4 hover:bg-base-200/80 cursor-pointer transition-all duration-200 border-b border-base-200/30
+                    ${selectedChat?.id === chat.id ? 'bg-base-200/60 border-l-4 border-primary shadow-sm' : ''}`}
                 >
                   <div className="relative">
                     <div className="avatar">
-                      <div className="w-12 rounded-full">
+                      <div className="w-12 rounded-full ring ring-primary/20 ring-offset-2 ring-offset-base-100">
                         <img src={chat.avatar} alt={chat.name} />
                       </div>
                     </div>
                     {chat.isOnline && (
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-success rounded-full border-2 border-base-100"></div>
+                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-success rounded-full border-2 border-base-100 shadow-sm"></div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start">
-                      <h3 className="font-medium truncate">{chat.name}</h3>
+                      <h3 className="font-medium truncate text-base-content">{chat.name}</h3>
                       <span className="text-xs text-base-content/70">{chat.time}</span>
                     </div>
                     <p className="text-sm text-base-content/70 truncate">{chat.lastMessage}</p>
                   </div>
                   {chat.unread > 0 && (
-                    <div className="badge badge-primary badge-sm">{chat.unread}</div>
+                    <div className="badge badge-primary badge-sm animate-pulse">{chat.unread}</div>
                   )}
                 </div>
               ))}
@@ -162,51 +181,51 @@ const Msg = () => {
           </div>
 
           {/* Right Section - Chat Window */}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col bg-base-100">
             {selectedChat ? (
               <>
                 {/* Chat Header */}
-                <div className="p-4 border-b border-base-200 flex justify-between items-center">
+                <div className="p-4 border-b border-base-200/60 flex justify-between items-center bg-base-100/80 backdrop-blur-sm">
                   <div className="flex items-center gap-3">
                     <div className="avatar">
-                      <div className="w-10 rounded-full">
+                      <div className="w-10 rounded-full ring ring-primary/20 ring-offset-1 ring-offset-base-100">
                         <img src={selectedChat.avatar} alt={selectedChat.name} />
                       </div>
                     </div>
                     <div>
-                      <h3 className="font-medium">{selectedChat.name}</h3>
+                      <h3 className="font-medium text-base-content">{selectedChat.name}</h3>
                       {selectedChat.isOnline && (
-                        <span className="text-xs text-success">Online</span>
+                        <span className="text-xs text-success font-medium">Online</span>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button className="btn btn-ghost btn-sm btn-circle">
+                    <button className="btn btn-ghost btn-sm btn-circle hover:bg-base-200 text-base-content">
                       <RiPhoneLine className="w-5 h-5" />
                     </button>
-                    <button className="btn btn-ghost btn-sm btn-circle">
+                    <button className="btn btn-ghost btn-sm btn-circle hover:bg-base-200 text-base-content">
                       <RiVideoLine className="w-5 h-5" />
                     </button>
-                    <button className="btn btn-ghost btn-sm btn-circle">
+                    <button className="btn btn-ghost btn-sm btn-circle hover:bg-base-200 text-base-content">
                       <RiMoreLine className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-base-50/30 scrollbar-thin scrollbar-thumb-base-300 scrollbar-track-base-100">
                   {selectedChat.messages.map((msg) => (
                     <div
                       key={msg.id}
                       className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`max-w-[70%] ${
+                      <div className={`max-w-[70%] transition-all duration-200 ${
                         msg.sender === 'me' 
-                          ? 'bg-primary text-primary-content' 
-                          : 'bg-base-200'
-                        } rounded-lg px-4 py-2`}
+                          ? 'bg-primary text-primary-content shadow-lg shadow-primary/20' 
+                          : 'bg-base-200/80 text-base-content shadow-md'
+                        } rounded-lg px-4 py-2 backdrop-blur-sm`}
                       >
-                        <p>{msg.text}</p>
+                        <p className="leading-relaxed">{msg.text}</p>
                         <span className="text-xs opacity-70 mt-1 block">{msg.time}</span>
                       </div>
                     </div>
@@ -214,24 +233,34 @@ const Msg = () => {
                 </div>
 
                 {/* Message Input */}
-                <form onSubmit={handleSendMessage} className="p-4 border-t border-base-200">
+                <form onSubmit={handleSendMessage} className="p-4 border-t border-base-200/60 bg-base-100/80 backdrop-blur-sm">
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder="Type a message..."
-                      className="input input-bordered flex-1"
+                      className="input input-bordered flex-1 bg-base-100 border-base-300/60 text-base-content placeholder:text-base-content/50 focus:border-primary"
                     />
-                    <button type="submit" className="btn btn-primary btn-circle">
+                    <button 
+                      type="submit" 
+                      className="btn btn-primary btn-circle hover:scale-105 transition-transform shadow-lg"
+                      disabled={!message.trim()}
+                    >
                       <RiSendPlaneLine className="w-5 h-5" />
                     </button>
                   </div>
                 </form>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-base-content/50">
-                Select a conversation to start messaging
+              <div className="flex-1 flex items-center justify-center text-base-content/50 bg-base-50/30">
+                <div className="text-center">
+                  <div className="bg-base-200/50 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                    <RiSendPlaneLine className="w-8 h-8 text-base-content/40" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-base-content mb-2">Start a conversation</h3>
+                  <p className="text-base-content/60 text-sm">Select a conversation to start messaging</p>
+                </div>
               </div>
             )}
           </div>
