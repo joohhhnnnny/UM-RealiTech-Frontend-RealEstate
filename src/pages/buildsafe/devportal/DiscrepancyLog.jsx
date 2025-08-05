@@ -19,55 +19,61 @@ import {
   RiErrorWarningLine,
   RiMoneyDollarCircleLine  // Added this import
 } from 'react-icons/ri';
+import { discrepancyService, STATIC_GUIDELINES } from '../../../services/buildsafeService.js';
 
 
 function DiscrepancyLog({ projects, onIssueCountChange }) {
-  // Sample data aligned with construction project needs
-  const [discrepancies, setDiscrepancies] = useState([
-    {
-      id: 1,
-      issue: 'Foundation concrete strength below specification',
-      description: 'Core test results show 28MPa strength vs required 35MPa for Block A foundation',
-      source: 'Quality Control',
-      category: 'Structural',
-      priority: 'critical',
-      date: new Date().toISOString().split('T')[0],
-      reportedBy: 'Site Engineer',
-      assignedTo: 'Concrete Supplier',
-      status: 'pending',
-      explanation: '',
-      documents: [
-        { name: 'core_test_results.pdf', type: 'pdf', size: '2.4 MB' },
-        { name: 'foundation_photos.jpg', type: 'image', size: '3.2 MB' }
-      ],
-      relatedProject: 'Horizon Residences',
-      location: 'Block A, Foundation Level',
-      estimatedCost: '₱1,200,000',
-      deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      requiresEscrowHold: true
-    },
-    {
-      id: 2,
-      issue: 'Window installation not per architectural specs',
-      description: 'Window dimensions deviate by 2cm from approved plans in units 15A-15E',
-      source: 'Architect Review',
-      category: 'Installation',
-      priority: 'high',
-      date: new Date().toISOString().split('T')[0],
-      reportedBy: 'Project Architect',
-      assignedTo: 'Window Contractor',
-      status: 'in-progress',
-      explanation: 'Replacement windows ordered, expected delivery in 5 days',
-      documents: [
-        { name: 'window_spec_deviation.pdf', type: 'pdf', size: '1.8 MB' }
-      ],
-      relatedProject: 'Sky Gardens Tower',
-      location: 'Floor 15, Units A-E',
-      estimatedCost: '₱350,000',
-      deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      requiresEscrowHold: false
+  const [discrepancies, setDiscrepancies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Load discrepancies from Firebase
+  useEffect(() => {
+    const loadDiscrepancies = async () => {
+      try {
+        setLoading(true);
+        const projectIds = projects.map(p => p.name); // Use project names as IDs for now
+        const discrepanciesData = await discrepancyService.getDiscrepancies(projectIds);
+        setDiscrepancies(discrepanciesData);
+        setError(null);
+      } catch (err) {
+        console.error('Error loading discrepancies:', err);
+        setError('Failed to load discrepancies');
+        
+        // Fallback to static data
+        setDiscrepancies([
+          {
+            id: 1,
+            issue: 'Foundation concrete strength below specification (Fallback)',
+            description: 'Core test results show 28MPa strength vs required 35MPa for Block A foundation',
+            source: 'Quality Control',
+            category: 'Structural',
+            priority: 'critical',
+            date: new Date().toISOString().split('T')[0],
+            reportedBy: 'Site Engineer',
+            assignedTo: 'Concrete Supplier',
+            status: 'pending',
+            explanation: '',
+            documents: [
+              { name: 'core_test_results.pdf', type: 'pdf', size: '2.4 MB' },
+              { name: 'foundation_photos.jpg', type: 'image', size: '3.2 MB' }
+            ],
+            relatedProject: 'Horizon Residences',
+            location: 'Block A, Foundation Level',
+            estimatedCost: '₱1,200,000',
+            deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            requiresEscrowHold: true
+          }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (projects.length > 0) {
+      loadDiscrepancies();
     }
-  ]);
+  }, [projects]);
 
   const [filters, setFilters] = useState({
     search: '',
@@ -115,36 +121,56 @@ function DiscrepancyLog({ projects, onIssueCountChange }) {
     }
   }, [discrepancies, onIssueCountChange]);
 
-  const handleStatusChange = (id, newStatus) => {
-    const updated = discrepancies.map(d => 
-      d.id === id ? { ...d, status: newStatus } : d
-    );
-    setDiscrepancies(updated);
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      await discrepancyService.updateDiscrepancyStatus(id, newStatus);
+      // Update local state optimistically
+      const updated = discrepancies.map(d => 
+        d.id === id ? { ...d, status: newStatus } : d
+      );
+      setDiscrepancies(updated);
+    } catch (error) {
+      console.error('Error updating discrepancy status:', error);
+      // You could show an error notification here
+    }
   };
 
-  const handleCreateIssue = (e) => {
+  const handleCreateIssue = async (e) => {
     e.preventDefault();
-    const newDiscrepancy = {
-      ...newIssue,
-      id: Math.max(...discrepancies.map(d => d.id), 0) + 1,
-      date: new Date().toISOString().split('T')[0],
-      status: 'pending',
-      documents: [],
-      reportedBy: 'Site Manager'
-    };
-    setDiscrepancies([newDiscrepancy, ...discrepancies]);
-    setShowCreateModal(false);
-    setNewIssue({
-      issue: '',
-      description: '',
-      category: 'Structural',
-      priority: 'medium',
-      location: '',
-      estimatedCost: '',
-      assignedTo: '',
-      relatedProject: projects?.[0]?.name || '',
-      requiresEscrowHold: false
-    });
+    try {
+      const newDiscrepancyData = {
+        ...newIssue,
+        date: new Date().toISOString().split('T')[0],
+        status: 'pending',
+        documents: [],
+        reportedBy: 'Site Manager'
+      };
+      
+      const newId = await discrepancyService.createDiscrepancy(newDiscrepancyData);
+      
+      // Add to local state with the new ID
+      const newDiscrepancy = {
+        ...newDiscrepancyData,
+        id: newId
+      };
+      
+      setDiscrepancies([newDiscrepancy, ...discrepancies]);
+      setShowCreateModal(false);
+      setNewIssue({
+        issue: '',
+        description: '',
+        category: 'Structural',
+        priority: 'medium',
+        location: '',
+        estimatedCost: '',
+        assignedTo: '',
+        relatedProject: projects?.[0]?.name || '',
+        requiresEscrowHold: false
+      });
+    } catch (error) {
+      console.error('Error creating discrepancy:', error);
+      // You could show an error notification here
+    }
   };
 
   const handleEscrowHoldToggle = (id) => {
@@ -168,8 +194,29 @@ function DiscrepancyLog({ projects, onIssueCountChange }) {
     { value: 'Safety', label: 'Safety', icon: <RiErrorWarningLine /> }
   ];
 
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="p-4 bg-base-100 rounded-lg">
+        <div className="text-center py-12">
+          <div className="loading loading-spinner loading-lg text-primary"></div>
+          <p className="mt-4 text-base-content/70">Loading discrepancies...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 bg-base-100 rounded-lg">
+      {/* Error Alert */}
+      {error && (
+        <div className="alert alert-warning mb-4">
+          <div>
+            <strong>Warning:</strong> {error}. Showing fallback data.
+          </div>
+        </div>
+      )}
+
       {/* Header and Controls */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
@@ -373,7 +420,7 @@ function DiscrepancyLog({ projects, onIssueCountChange }) {
                 </div>
 
                 {/* Documents */}
-                {issue.documents.length > 0 && (
+                {issue.documents && issue.documents.length > 0 && (
                   <div className="mt-4">
                     <h4 className="font-medium mb-2">Attachments:</h4>
                     <div className="flex flex-wrap gap-2">

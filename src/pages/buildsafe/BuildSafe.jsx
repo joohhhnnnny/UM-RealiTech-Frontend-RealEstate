@@ -28,13 +28,17 @@ function BuildSafe() {
           {/* Hero Section */}
           <div className="card bg-gradient-to-r from-blue-500/90 to-blue-600 shadow-lg overflow-hidden backdrop-blur-xl mb-8">
             <div className="card-body p-8">
-              <div className="flex items-center gap-4">
-                <RiBuildingLine className="w-8 h-8 text-primary-content" />
-                <h1 className="text-3xl font-bold text-primary-content">BuildSafe</h1>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <RiBuildingLine className="w-8 h-8 text-primary-content" />
+                  <div>
+                    <h1 className="text-3xl font-bold text-primary-content">BuildSafe</h1>
+                    <p className="text-xl text-primary-content/90 max-w-2xl mt-2">
+                      Trust-building construction oversight with verified progress tracking and secure payments.
+                    </p>
+                  </div>
+                </div>
               </div>
-              <p className="text-xl text-primary-content/90 max-w-2xl mt-4">
-                Trust-building construction oversight with verified progress tracking and secure payments.
-              </p>
             </div>
           </div>
 

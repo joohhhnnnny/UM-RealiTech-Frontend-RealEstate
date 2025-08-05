@@ -1,91 +1,172 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   RiBuildingLine, 
   RiErrorWarningLine,
   RiMoneyDollarCircleLine,
-  RiNotificationLine
+  RiNotificationLine,
+  RiVipCrownFill
 } from 'react-icons/ri';
 import ProjectDashboard from './devportal/ProjectDashboard.jsx';
 import SmartContract from './devportal/SmartContracts.jsx';
 import DiscrepancyLog from './devportal/DiscrepancyLog.jsx';
+import SubscriptionManager from './devportal/SubscriptionManager.jsx';
+import { 
+  projectService, 
+  notificationService, 
+  subscriptionService,
+  realtimeService 
+} from '../../services/buildsafeService.js';
 
 function DeveloperBuildSafe() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [flaggedIssuesCount, setFlaggedIssuesCount] = useState(3);
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'milestone',
-      message: 'Foundation milestone requires verification',
-      project: 'Horizon Residences',
-      date: '2025-08-15',
-      read: false
-    },
-    {
-      id: 2,
-      type: 'document',
-      message: '3 buyers awaiting contract signing',
-      project: 'Sky Gardens Tower',
-      date: '2025-08-14',
-      read: false
-    }
-  ]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Dynamic state from Firebase
+  const [projects, setProjects] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [subscription, setSubscription] = useState(null);
+  
+  // Mock developer ID - in real app, get from authentication
+  const developerId = 'dev-001';
 
-  // Sample projects data that will be passed to child components
-  const [projects] = useState([
-    {
-      id: 1,
-      name: "Horizon Residences",
-      progress: 76,
-      status: "On Track",
-      unitsSold: 42,
-      totalUnits: 60,
-      milestones: [
-        { id: 1, name: "Land Development", completed: true, date: "Jan 2024", verified: true },
-        { id: 2, name: "Foundation Complete", completed: true, date: "Mar 2024", verified: true },
-        { id: 3, name: "Structure Complete", completed: true, date: "Sep 2024", verified: true },
-        { id: 4, name: "Electrical & Plumbing", completed: false, date: "Oct 2025", verified: false },
-        { id: 5, name: "Interior Finishing", completed: false, date: "Dec 2025", verified: false }
-      ],
-      pendingDocuments: 2,
-      escrowStatus: {
-        released: "₱12,450,000",
-        held: "₱8,550,000",
-        nextRelease: "₱3,200,000"
+  // Load initial data
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        
+        // Load projects
+        const projectsData = await projectService.getProjects(developerId);
+        setProjects(projectsData);
+        
+        // Load notifications
+        const notificationsData = await notificationService.getNotifications(developerId);
+        setNotifications(notificationsData);
+        
+        // Load subscription
+        const subscriptionData = await subscriptionService.getSubscription(developerId);
+        setSubscription(subscriptionData);
+        
+        setError(null);
+      } catch (err) {
+        console.error('Error loading data:', err);
+        setError('Failed to load data. Please try again.');
+        
+        // Fallback to static data on error
+        setProjects([{
+          id: 1,
+          name: "Horizon Residences (Static Fallback)",
+          progress: 76,
+          status: "On Track",
+          unitsSold: 42,
+          totalUnits: 60,
+          subscription: "premium",
+          projectLimit: 10,
+          milestones: [
+            { id: 1, name: "Land Development", completed: true, date: "Jan 2024", verified: true },
+            { id: 2, name: "Foundation Complete", completed: true, date: "Mar 2024", verified: true },
+            { id: 3, name: "Structure Complete", completed: true, date: "Sep 2024", verified: true },
+            { id: 4, name: "Ready for Interior Designing", completed: false, date: "Oct 2025", verified: false },
+            { id: 5, name: "Ready for Occupation", completed: false, date: "Dec 2025", verified: false }
+          ],
+          pendingDocuments: 2,
+          escrowStatus: {
+            released: "₱12,450,000",
+            held: "₱8,550,000",
+            nextRelease: "₱3,200,000"
+          }
+        }]);
+        
+        setNotifications([{
+          id: 1,
+          type: 'milestone',
+          message: 'Foundation milestone requires verification (Static)',
+          project: 'Horizon Residences',
+          date: '2025-08-15',
+          read: false
+        }]);
+      } finally {
+        setLoading(false);
       }
-    },
-    {
-      id: 2,
-      name: "Sky Gardens Tower",
-      progress: 92,
-      status: "Ahead of Schedule",
-      unitsSold: 35,
-      totalUnits: 50,
-      milestones: [
-        { id: 1, name: "Land Development", completed: true, date: "Feb 2024", verified: true },
-        { id: 2, name: "Foundation Complete", completed: true, date: "Apr 2024", verified: true },
-        { id: 3, name: "Structure Complete", completed: true, date: "Aug 2024", verified: true },
-        { id: 4, name: "Electrical & Plumbing", completed: true, date: "Sep 2025", verified: true },
-        { id: 5, name: "Interior Finishing", completed: false, date: "Nov 2025", verified: false }
-      ],
-      pendingDocuments: 3,
-      escrowStatus: {
-        released: "₱9,750,000",
-        held: "₱6,250,000",
-        nextRelease: "₱2,500,000"
-      }
+    };
+
+    loadData();
+  }, [developerId]);
+
+  // Set up real-time listeners
+  useEffect(() => {
+    let unsubscribeProjects;
+    let unsubscribeNotifications;
+
+    if (!loading && !error) {
+      // Listen to projects changes
+      unsubscribeProjects = realtimeService.subscribeToProjects(developerId, (updatedProjects) => {
+        setProjects(updatedProjects);
+      });
+
+      // Listen to notifications changes
+      unsubscribeNotifications = realtimeService.subscribeToNotifications(developerId, (updatedNotifications) => {
+        setNotifications(updatedNotifications);
+      });
     }
-  ]);
+
+    return () => {
+      if (unsubscribeProjects) unsubscribeProjects();
+      if (unsubscribeNotifications) unsubscribeNotifications();
+    };
+  }, [developerId, loading, error]);
 
   const handleIssueCountChange = (counts) => {
     setFlaggedIssuesCount(counts.pending);
   };
 
-  const markNotificationAsRead = (id) => {
-    setNotifications(notifications.map(notification => 
-      notification.id === id ? { ...notification, read: true } : notification
-    ));
+  const markNotificationAsRead = async (id) => {
+    try {
+      await notificationService.markAsRead(id);
+      // Update local state optimistically
+      setNotifications(notifications.map(notification => 
+        notification.id === id ? { ...notification, read: true } : notification
+      ));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-base-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="loading loading-spinner loading-lg text-primary"></div>
+          <p className="mt-4 text-base-content/70">Loading BuildSafe data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-base-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="alert alert-error max-w-md">
+            <div>
+              <h3 className="font-bold">Connection Error</h3>
+              <div className="text-xs">{error}</div>
+            </div>
+          </div>
+          <button 
+            className="btn btn-primary mt-4"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const renderActiveTab = () => {
     switch (activeTab) {
@@ -93,6 +174,8 @@ function DeveloperBuildSafe() {
         return <ProjectDashboard projects={projects} />;
       case 'smart-contracts':
         return <SmartContract projects={projects} />;
+      case 'subscription':
+        return <SubscriptionManager projects={projects} />;
       case 'issues':
         return <DiscrepancyLog 
                  projects={projects} 
@@ -176,6 +259,13 @@ function DeveloperBuildSafe() {
           >
             <RiMoneyDollarCircleLine className="w-4 h-4 mr-2" />
             Escrow & Contracts
+          </button>
+          <button 
+            className={`tab flex-1 ${activeTab === 'subscription' ? 'tab-active' : ''}`}
+            onClick={() => setActiveTab('subscription')}
+          >
+            <RiVipCrownFill className="w-4 h-4 mr-2" />
+            Subscription
           </button> 
           <button 
             className={`tab flex-1 ${activeTab === 'issues' ? 'tab-active' : ''}`}

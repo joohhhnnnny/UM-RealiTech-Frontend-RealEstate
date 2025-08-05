@@ -42,5 +42,38 @@ service cloud.firestore {
         && request.resource.data.timestamp is timestamp;
       allow update, delete: if false;
     }
+
+    // BuildSafe Collections - TEMPORARY: Allow all access for testing
+    // In production, these should have proper authentication rules
+    
+    // BuildSafe Projects
+    match /buildsafe_projects/{projectId} {
+      allow read, write: if true; // TEMPORARY: Open access for testing
+    }
+    
+    // BuildSafe Milestones
+    match /buildsafe_milestones/{milestoneId} {
+      allow read, write: if true; // TEMPORARY: Open access for testing
+    }
+    
+    // BuildSafe Contracts
+    match /buildsafe_contracts/{contractId} {
+      allow read, write: if true; // TEMPORARY: Open access for testing
+    }
+    
+    // BuildSafe Discrepancies
+    match /buildsafe_discrepancies/{discrepancyId} {
+      allow read, write: if true; // TEMPORARY: Open access for testing
+    }
+    
+    // BuildSafe Notifications
+    match /buildsafe_notifications/{notificationId} {
+      allow read, write: if true; // TEMPORARY: Open access for testing
+    }
+    
+    // BuildSafe Subscriptions
+    match /buildsafe_subscriptions/{subscriptionId} {
+      allow read, write: if true; // TEMPORARY: Open access for testing
+    }
   }
 }

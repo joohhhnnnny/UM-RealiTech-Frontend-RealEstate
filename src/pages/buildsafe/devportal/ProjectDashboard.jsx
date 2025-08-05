@@ -14,19 +14,27 @@ import {
   RiShieldCheckLine,
   RiAlertLine
 } from 'react-icons/ri';
+import VerifiedBadge from '../../../components/VerifiedBadge';
 
 // Memoized Stats Component
 const ProjectStats = React.memo(({ projects }) => {
-  const stats = useMemo(() => ({
-    total: projects.length,
-    onSchedule: projects.filter(p => p.status === 'On Track').length,
-    pendingVerifications: projects.reduce((acc, proj) => 
-      acc + proj.milestones.filter(m => m.completed && !m.verified).length, 0
-    ),
-    escrowFunds: projects.reduce((acc, proj) => 
-      acc + parseFloat(proj.escrowStatus.held.replace(/[^\d.]/g, '')), 0
-    ).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })
-  }), [projects]);
+  const stats = useMemo(() => {
+    const premiumProjects = projects.filter(p => p.subscription === 'premium').length;
+    const basicProjects = projects.filter(p => p.subscription === 'basic').length;
+    
+    return {
+      total: projects.length,
+      onSchedule: projects.filter(p => p.status === 'On Track').length,
+      pendingVerifications: projects.reduce((acc, proj) => 
+        acc + proj.milestones.filter(m => m.completed && !m.verified).length, 0
+      ),
+      escrowFunds: projects.reduce((acc, proj) => 
+        acc + parseFloat(proj.escrowStatus.held.replace(/[^\d.]/g, '')), 0
+      ).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' }),
+      premiumProjects,
+      basicProjects
+    };
+  }, [projects]);
 
   return (
     <div className="stats stats-vertical lg:stats-horizontal shadow w-full mb-8">
@@ -37,9 +45,9 @@ const ProjectStats = React.memo(({ projects }) => {
       </div>
       
       <div className="stat">
-        <div className="stat-title">On Schedule</div>
-        <div className="stat-value text-success">{stats.onSchedule}</div>
-        <div className="stat-desc">Projects meeting timeline</div>
+        <div className="stat-title">Subscription Status</div>
+        <div className="stat-value text-warning">{stats.premiumProjects}</div>
+        <div className="stat-desc">{stats.basicProjects} Basic, {stats.premiumProjects} Premium</div>
       </div>
       
       <div className="stat">
@@ -215,6 +223,7 @@ const ProjectCard = React.memo(({
   onEditChange 
 }) => {
   const isEditing = editingProject && editingProject.id === project.id;
+  const isBasicSubscription = project.subscription === 'basic';
 
   const handleEdit = useCallback(() => {
     onEdit(project);
@@ -273,12 +282,18 @@ const ProjectCard = React.memo(({
               <div>
                 <h2 className="card-title">
                   {project.name}
+                  <VerifiedBadge subscription={project.subscription} />
                   <div className={`badge ${
                     project.status === 'On Track' ? 'badge-success' : 
                     project.status === 'Delayed' ? 'badge-warning' : 'badge-info'
                   }`}>
                     {project.status}
                   </div>
+                  {isBasicSubscription && (
+                    <div className="badge badge-outline badge-sm">
+                      Limited: {project.projectLimit} max
+                    </div>
+                  )}
                 </h2>
                 <p className="flex items-center gap-2 text-base-content/70">
                   <RiBuildingLine />
@@ -324,6 +339,18 @@ const ProjectCard = React.memo(({
             )}
           </div>
         </div>
+
+        {/* Subscription Warning for Basic Users */}
+        {isBasicSubscription && (
+          <div className="alert alert-warning mb-4">
+            <div className="flex-1">
+              <label className="text-sm">
+                <strong>Basic Plan:</strong> Limited to {project.projectLimit} projects. 
+                <a href="#upgrade" className="link link-primary ml-1">Upgrade to Premium</a> for unlimited projects and premium badges.
+              </label>
+            </div>
+          </div>
+        )}
 
         <div className="my-6">
           <div className="flex justify-between mb-2">

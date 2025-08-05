@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   RiStarFill,
   RiFlag2Line,
@@ -14,96 +14,179 @@ import {
   RiFileTextLine,
   RiAlertLine
 } from 'react-icons/ri';
+import { projectService, STATIC_GUIDELINES } from '../../services/buildsafeService.js';
 
 function BuyerBuildSafe() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [viewMode, setViewMode] = useState('timeline'); // timeline, escrow, documents
   const [showReportModal, setShowReportModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [myProperties, setMyProperties] = useState([]);
 
-  const myProperties = [
-    {
-      id: 1,
-      name: "Horizon Residences",
-      unit: "Unit 12A - 2BR Deluxe",
-      developer: "Premier Development Corp",
-      developerLogo: "https://via.placeholder.com/60x40/3B82F6/FFFFFF?text=PDC",
-      agent: "Maria Santos",
-      agentContact: "+63 917 123 4567",
-      agentEmail: "maria.santos@premier.com",
-      progress: 76,
-      expectedTurnover: "Q1 2025",
-      lastUpdate: "July 25, 2025",
-      image: "https://pueblodeoro.com/wp-content/uploads/2017/12/Sakura-1.jpg",
-      status: "On Track",
-      promisedLayout: "https://via.placeholder.com/400x300/E5E7EB/374151?text=Promised+Layout",
-      actualPhotos: [
-        "https://via.placeholder.com/400x300/10B981/FFFFFF?text=Actual+Photo+1",
-        "https://via.placeholder.com/400x300/3B82F6/FFFFFF?text=Actual+Photo+2"
-      ],
-      milestones: [
-        { 
-          title: "Land Development Complete", 
-          completed: true, 
-          date: "Jan 2024", 
-          percentage: 15,
-          paymentReleased: true,
-          amount: "₱500,000",
-          verification: { verified: true, date: "Jan 15, 2024", by: "BuildSafe Inspector" },
-          media: ["https://via.placeholder.com/400x300/10B981/FFFFFF?text=Land+Complete"]
-        },
-        { 
-          title: "Foundation Complete", 
-          completed: true, 
-          date: "March 2024", 
-          percentage: 25,
-          paymentReleased: true,
-          amount: "₱750,000",
-          verification: { verified: true, date: "Mar 20, 2024", by: "BuildSafe Inspector" },
-          media: ["https://via.placeholder.com/400x300/3B82F6/FFFFFF?text=Foundation+Complete"]
-        },
-        { 
-          title: "Structure Complete", 
-          completed: true, 
-          date: "September 2024", 
-          percentage: 50,
-          paymentReleased: true,
-          amount: "₱1,200,000",
-          verification: { verified: true, date: "Sep 28, 2024", by: "BuildSafe Inspector" },
-          media: ["https://via.placeholder.com/400x300/3B82F6/FFFFFF?text=Structure+Complete"]
-        },
-        { 
-          title: "Electrical & Plumbing", 
-          completed: false, 
-          date: "October 2025", 
-          percentage: 75,
-          paymentReleased: false,
-          amount: "₱900,000",
-          verification: { verified: false },
-          media: []
-        },
-        { 
-          title: "Interior Finishing", 
-          completed: false, 
-          date: "December 2025", 
-          percentage: 100,
-          paymentReleased: false,
-          amount: "₱650,000",
-          verification: { verified: false },
-          media: []
+  // Mock buyer ID - in real app, get from authentication
+  const buyerId = 'buyer-001';
+
+  // Load buyer's properties
+  useEffect(() => {
+    const loadProperties = async () => {
+      try {
+        setLoading(true);
+        
+        // In a real app, you'd get buyer's projects
+        // For now, we'll use the static guidelines example
+        const staticProperty = {
+          id: STATIC_GUIDELINES.project.id,
+          name: STATIC_GUIDELINES.project.name,
+          unit: "Unit 12A - 2BR Deluxe (Guidelines Example)",
+          developer: "Premier Development Corp (Guidelines)",
+          developerLogo: "https://via.placeholder.com/60x40/3B82F6/FFFFFF?text=PDC",
+          agent: "Maria Santos (Guidelines)",
+          agentContact: "+63 917 123 4567",
+          agentEmail: "maria.santos@premier.com",
+          progress: STATIC_GUIDELINES.project.progress,
+          expectedTurnover: "Q1 2025",
+          lastUpdate: "July 25, 2025",
+          image: "https://pueblodeoro.com/wp-content/uploads/2017/12/Sakura-1.jpg",
+          status: STATIC_GUIDELINES.project.status,
+          promisedLayout: "https://via.placeholder.com/400x300/E5E7EB/374151?text=Promised+Layout",
+          actualPhotos: [
+            "https://via.placeholder.com/400x300/10B981/FFFFFF?text=Actual+Photo+1",
+            "https://via.placeholder.com/400x300/3B82F6/FFFFFF?text=Actual+Photo+2"
+          ],
+          milestones: STATIC_GUIDELINES.project.milestones.map(milestone => ({
+            title: milestone.name,
+            completed: milestone.completed,
+            date: milestone.date,
+            percentage: milestone.progressPercentage,
+            paymentReleased: milestone.completed && milestone.verified,
+            amount: milestone.paymentAmount,
+            verification: { 
+              verified: milestone.verified, 
+              date: milestone.verified ? milestone.date : null, 
+              by: milestone.verified ? "BuildSafe Inspector" : null 
+            },
+            media: milestone.completed ? [`https://via.placeholder.com/400x300/10B981/FFFFFF?text=${milestone.name.replace(/\s+/g, '+')}`] : []
+          })),
+          documents: [
+            { name: "Reservation Agreement", status: "verified", date: "June 15, 2024", downloadUrl: "#" },
+            { name: "Contract to Sell", status: "verified", date: "July 1, 2024", downloadUrl: "#" },
+            { name: "Building Permits", status: "pending", date: "Processing", downloadUrl: null },
+            { name: "Title Deeds", status: "pending", date: "Processing", downloadUrl: null }
+          ],
+          issues: ["Guidelines: Minor delay in electrical work documentation"],
+          totalInvestment: STATIC_GUIDELINES.project.totalInvestment,
+          paidSoFar: STATIC_GUIDELINES.project.escrowStatus.released,
+          inEscrow: STATIC_GUIDELINES.project.escrowStatus.held,
+          isStatic: true
+        };
+
+        // Try to get buyer's actual projects from Firebase
+        try {
+          const buyerProjects = await projectService.getBuyerProjects(buyerId);
+          // Convert Firebase projects to buyer format if any exist
+          const convertedProjects = buyerProjects.map(project => ({
+            id: project.id,
+            name: project.name,
+            unit: `Unit ${project.unitNumber || 'TBD'} - ${project.unitType || '2BR'}`,
+            developer: project.developerName || 'Developer Name',
+            progress: project.progress,
+            status: project.status,
+            milestones: project.milestones || [],
+            // Add other buyer-specific properties...
+          }));
+          
+          setMyProperties([staticProperty, ...convertedProjects]);
+        } catch (err) {
+          console.error('Error loading buyer projects:', err);
+          // Fallback to static data only
+          setMyProperties([staticProperty]);
         }
-      ],
-      documents: [
-        { name: "Reservation Agreement", status: "verified", date: "June 15, 2024", downloadUrl: "#" },
-        { name: "Contract to Sell", status: "verified", date: "July 1, 2024", downloadUrl: "#" },
-        { name: "Building Permits", status: "pending", date: "Processing", downloadUrl: null },
-        { name: "Title Deeds", status: "pending", date: "Processing", downloadUrl: null }
-      ],
-      issues: ["Minor delay in electrical work"],
-      totalInvestment: "₱4,000,000",
-      paidSoFar: "₱2,450,000",
-      inEscrow: "₱1,550,000"
-    }
-  ];
+        
+        setError(null);
+      } catch (err) {
+        console.error('Error loading properties:', err);
+        setError('Failed to load properties. Please try again.');
+        
+        // Fallback static data
+        setMyProperties([{
+          id: 1,
+          name: "Horizon Residences (Fallback)",
+          unit: "Unit 12A - 2BR Deluxe",
+          developer: "Premier Development Corp",
+          progress: 76,
+          status: "On Track",
+          milestones: [
+            { 
+              title: "Land Development Complete", 
+              completed: true, 
+              date: "Jan 2024", 
+              percentage: 15,
+              paymentReleased: true,
+              amount: "₱500,000",
+              verification: { verified: true, date: "Jan 15, 2024", by: "BuildSafe Inspector" }
+            },
+            { 
+              title: "Ready for Interior Designing", 
+              completed: false, 
+              date: "October 2025", 
+              percentage: 75,
+              paymentReleased: false,
+              amount: "₱900,000",
+              verification: { verified: false }
+            },
+            { 
+              title: "Ready for Occupation", 
+              completed: false, 
+              date: "December 2025", 
+              percentage: 100,
+              paymentReleased: false,
+              amount: "₱650,000",
+              verification: { verified: false }
+            }
+          ]
+        }]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProperties();
+  }, [buyerId]);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-base-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="loading loading-spinner loading-lg text-primary"></div>
+          <p className="mt-4 text-base-content/70">Loading your properties...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-base-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="alert alert-error max-w-md">
+            <div>
+              <h3 className="font-bold">Connection Error</h3>
+              <div className="text-xs">{error}</div>
+            </div>
+          </div>
+          <button 
+            className="btn btn-primary mt-4"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (selectedProject) {
     const project = myProperties.find(p => p.id === selectedProject);
