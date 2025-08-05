@@ -3,7 +3,13 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "/src/components/Navbar.jsx";
 import Footer from "/src/components/Footer.jsx";
-import listingsData from "../../json/listings.json";
+import { 
+  collection, 
+  getDocs, 
+  query, 
+  where 
+} from 'firebase/firestore';
+import { db } from '../../config/Firebase';
 import {
   MagnifyingGlassIcon,
   AdjustmentsHorizontalIcon,
@@ -26,10 +32,10 @@ function Properties() {
     if (!description) return null;
 
     const locationPatterns = [
-      /Location:\s*([^\.|\n]+)/i,
-      /located at\s*([^\.|\n]+)/i,
-      /located in\s*([^\.|\n]+)/i,
-      /address:\s*([^\.|\n]+)/i,
+      /Location:\s*([^.|\n]+)/i,
+      /located at\s*([^.|\n]+)/i,
+      /located in\s*([^.|\n]+)/i,
+      /address:\s*([^.|\n]+)/i,
     ];
 
     for (const pattern of locationPatterns) {
@@ -56,8 +62,67 @@ function Properties() {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState("grid"); // grid or list
   const [showFilters, setShowFilters] = useState(false);
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
   const propertiesPerPage = 12;
   const propertiesSectionRef = useRef(null);
+
+  // Fetch properties from Firebase
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        setLoading(true);
+        console.log('Properties.jsx: Fetching properties from Firebase...');
+        
+        const propertiesRef = collection(db, 'properties');
+        const q = query(
+          propertiesRef,
+          where('isActive', '==', true)
+        );
+        
+        console.log('Properties.jsx: Executing query...');
+        const querySnapshot = await getDocs(q);
+        console.log('Properties.jsx: Found', querySnapshot.size, 'active properties');
+        
+        const fetchedProperties = [];
+        
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          console.log('Properties.jsx: Property found:', { 
+            id: doc.id, 
+            title: data.title, 
+            price: data.price, 
+            isActive: data.isActive,
+            agentId: data.agentId 
+          });
+          fetchedProperties.push({
+            id: doc.id,
+            ...data,
+            // Ensure compatibility with existing property structure
+            price: data.price?.startsWith('₱') ? data.price : `₱ ${data.price}`,
+            images: data.images || [data.image] || []
+          });
+        });
+        
+        // Sort in JavaScript instead of Firestore to avoid index requirements
+        fetchedProperties.sort((a, b) => {
+          const aTime = a.createdAt?.seconds || 0;
+          const bTime = b.createdAt?.seconds || 0;
+          return bTime - aTime; // Newest first
+        });
+        
+        setProperties(fetchedProperties);
+        console.log('Properties.jsx: Final properties set:', fetchedProperties.length, fetchedProperties);
+      } catch (error) {
+        console.error('Error fetching properties:', error);
+        setProperties([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProperties();
+  }, []);
 
   // Format price for display
   const formatPriceInput = (value) => {
@@ -79,7 +144,7 @@ function Properties() {
 
   // Filter and sort properties
   const filteredProperties = useMemo(() => {
-    return listingsData
+    return properties
       .filter((property) => {
         const matchesSearch =
           property.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -89,9 +154,9 @@ function Properties() {
           propertyType === "all"
             ? true
             : propertyType === "residential"
-            ? !property.title?.toLowerCase().includes("office")
+            ? property.type === "residential"
             : propertyType === "commercial"
-            ? property.title?.toLowerCase().includes("office")
+            ? property.type === "commercial"
             : true;
 
         const price = parseInt(property.price?.replace(/[^0-9]/g, "")) || 0;
@@ -117,10 +182,10 @@ function Properties() {
           );
         }
         return (
-          new Date(b.days_on_market || 0) - new Date(a.days_on_market || 0)
+          new Date(b.createdAt?.seconds * 1000 || 0) - new Date(a.createdAt?.seconds * 1000 || 0)
         );
       });
-  }, [searchTerm, sortBy, propertyType, priceRange]);
+  }, [properties, searchTerm, sortBy, propertyType, priceRange]);
 
   // Get current properties for pagination
   const indexOfLastProperty = currentPage * propertiesPerPage;
@@ -188,7 +253,9 @@ function Properties() {
               <div className="flex items-center justify-center gap-6 text-sm text-base-content/60">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                  <span>{filteredProperties.length} Properties Available</span>
+                  <span>
+                    {loading ? "Loading..." : `${filteredProperties.length} Properties Available`}
+                  </span>
                 </div>
                 <div className="w-1 h-1 bg-base-content/30 rounded-full"></div>
                 <div className="flex items-center gap-2">
@@ -423,17 +490,32 @@ function Properties() {
             )}
           </div>
 
-          {/* Results Grid/List */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5, duration: 0.5 }}
-            className={
-              viewMode === "grid"
-                ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8"
-                : "space-y-8"
-            }
-          >
+          {/* Loading State */}
+          {loading ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex justify-center items-center py-24"
+            >
+              <div className="flex flex-col items-center gap-4">
+                <div className="loading loading-spinner loading-lg text-primary"></div>
+                <p className="text-xl text-base-content/70">Loading properties...</p>
+                <p className="text-sm text-base-content/50">Fetching the latest listings from our database</p>
+              </div>
+            </motion.div>
+          ) : (
+            <>
+              {/* Results Grid/List */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+                className={
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8"
+                    : "space-y-8"
+                }
+              >
             {currentProperties.map((property, index) => (
               <motion.div
                 key={property.id}
@@ -723,7 +805,7 @@ function Properties() {
           )}
 
           {/* Enhanced No Results */}
-          {filteredProperties.length === 0 && (
+          {filteredProperties.length === 0 && !loading && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -745,6 +827,8 @@ function Properties() {
                 Clear All Filters
               </button>
             </motion.div>
+          )}
+          </>
           )}
         </motion.section>
       </section>

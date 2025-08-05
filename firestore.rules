@@ -17,6 +17,24 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == userId;
     }
     
+    // Listings collection - TEMPORARY: allow all authenticated users full access for testing
+    match /listings/{listingId} {
+      // Allow read access to all authenticated users (for browsing properties)
+      allow read: if request.auth != null;
+      
+      // TEMPORARY: Allow create/update/delete for all authenticated users for testing
+      allow create, update, delete: if request.auth != null;
+    }
+    
+    // Properties collection - public properties display
+    match /properties/{propertyId} {
+      // Allow read access to all users (public property browsing)
+      allow read: if true;
+      
+      // Allow create/update/delete for authenticated users (agents adding properties)
+      allow create, update, delete: if request.auth != null;
+    }
+    
     // Audit logs - remove TTL requirement that was causing issues
     match /audit_logs/{logId} {
       allow read: if request.auth != null;
