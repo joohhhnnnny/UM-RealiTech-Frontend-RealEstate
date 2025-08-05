@@ -14,6 +14,18 @@ import {
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../../../config/Firebase';
 
+// Utility function to fix agent names
+const fixAgentName = (agentName, agentEmail) => {
+  if (!agentName || agentName === 'undefined undefined' || agentName.trim() === '' || agentName.includes('undefined')) {
+    if (agentEmail) {
+      const emailPart = agentEmail.split('@')[0];
+      return emailPart.replace(/[^a-zA-Z0-9]/g, ' ').replace(/\s+/g, ' ').trim() || 'Professional Agent';
+    }
+    return 'Professional Agent';
+  }
+  return agentName;
+};
+
 function MyListing() {
   const [showAddListingModal, setShowAddListingModal] = useState(false);
   const [showEditListingModal, setShowEditListingModal] = useState(false);
@@ -23,6 +35,55 @@ function MyListing() {
   const [submitting, setSubmitting] = useState(false);
   const [myListings, setMyListings] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+
+  // Function to fix existing agent names for current user
+  const fixMyAgentNames = async () => {
+    if (!currentUser?.uid) return;
+    
+    try {
+      console.log('Fixing agent names for current user...');
+      
+      // Fix listings collection
+      const listingsQuery = query(collection(db, 'listings'), where('agentId', '==', currentUser.uid));
+      const listingsSnapshot = await getDocs(listingsQuery);
+      
+      for (const docSnapshot of listingsSnapshot.docs) {
+        const data = docSnapshot.data();
+        if (data.agentName === 'undefined undefined' || data.agentName?.includes('undefined')) {
+          const cleanedName = fixAgentName(data.agentName, data.agentEmail || currentUser.email);
+          await updateDoc(doc(db, 'listings', docSnapshot.id), {
+            agentName: cleanedName
+          });
+          console.log(`Fixed listing ${docSnapshot.id}: "${data.agentName}" -> "${cleanedName}"`);
+        }
+      }
+      
+      // Fix properties collection
+      const propertiesQuery = query(collection(db, 'properties'), where('agent_id', '==', currentUser.uid));
+      const propertiesSnapshot = await getDocs(propertiesQuery);
+      
+      for (const docSnapshot of propertiesSnapshot.docs) {
+        const data = docSnapshot.data();
+        if (data.agent_name === 'undefined undefined' || data.agent_name?.includes('undefined')) {
+          const cleanedName = fixAgentName(data.agent_name, data.agent_email || currentUser.email);
+          await updateDoc(doc(db, 'properties', docSnapshot.id), {
+            agent_name: cleanedName
+          });
+          console.log(`Fixed property ${docSnapshot.id}: "${data.agent_name}" -> "${cleanedName}"`);
+        }
+      }
+      
+      // Refresh the listings by re-running the fetch effect
+      if (currentUser?.uid) {
+        // Trigger a re-fetch by updating a state that the useEffect depends on
+        setLoading(true);
+      }
+      alert('Agent names have been fixed!');
+    } catch (error) {
+      console.error('Error fixing agent names:', error);
+      alert('Error fixing agent names. Check console for details.');
+    }
+  };
 
   // Get current user from Firebase Auth
   useEffect(() => {
@@ -168,6 +229,17 @@ function MyListing() {
     try {
       setSubmitting(true);
       
+      // Debug: Log current user data to understand the structure
+      console.log('MyListing: Current user data:', {
+        uid: currentUser?.uid,
+        fullName: currentUser?.fullName,
+        displayName: currentUser?.displayName,
+        firstName: currentUser?.firstName,
+        lastName: currentUser?.lastName,
+        email: currentUser?.email,
+        phone: currentUser?.phone
+      });
+      
       // Create the listing data
       const listingData = {
         title: newListing.title,
@@ -182,7 +254,10 @@ function MyListing() {
         maps_embed_url: newListing.maps_embed_url || "",
         status: "Available",
         agentId: currentUser.uid,
-        agentName: currentUser.fullName || `${currentUser.firstName} ${currentUser.lastName}`,
+        agentName: fixAgentName(
+          currentUser.fullName || currentUser.displayName || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim(),
+          currentUser.email
+        ),
         agentEmail: currentUser.email,
         image: newListing.image || "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9",
         buyers: [],
@@ -207,7 +282,10 @@ function MyListing() {
         amenities: [], // Can be enhanced later with amenities input
         images: [newListing.image || "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9"],
         agent_id: currentUser.uid,
-        agent_name: currentUser.fullName || `${currentUser.firstName} ${currentUser.lastName}`,
+        agent_name: fixAgentName(
+          currentUser.fullName || currentUser.displayName || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim(),
+          currentUser.email
+        ),
         agent_email: currentUser.email,
         agent_contact: currentUser.phone || "",
         developer_id: null, // For agent listings, developer_id is null
@@ -383,13 +461,23 @@ function MyListing() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-base-content">My Listings</h2>
-        <button 
-          className="btn btn-primary"
-          onClick={() => setShowAddListingModal(true)}
-          disabled={!currentUser}
-        >
-          Add New Listing
-        </button>
+        <div className="flex gap-3">
+          <button 
+            className="btn btn-secondary btn-sm"
+            onClick={fixMyAgentNames}
+            disabled={!currentUser}
+            title="Fix agent names that show as 'undefined undefined'"
+          >
+            Fix Agent Names
+          </button>
+          <button 
+            className="btn btn-primary"
+            onClick={() => setShowAddListingModal(true)}
+            disabled={!currentUser}
+          >
+            Add New Listing
+          </button>
+        </div>
       </div>
 
       {/* Loading State */}

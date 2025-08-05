@@ -219,6 +219,7 @@ function Properties() {
 
   const handleViewDetails = (property) => {
     // Navigate to the property details page
+    console.log('Properties.jsx: Navigating to property:', property.id, property.title);
     navigate(`/properties/${property.id}`);
   };
 
