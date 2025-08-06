@@ -22,7 +22,7 @@ import {
 import { discrepancyService, STATIC_GUIDELINES } from '../../../services/buildsafeService.js';
 
 
-function DiscrepancyLog({ projects, onIssueCountChange }) {
+function Issues({ projects, onIssueCountChange }) {
   const [discrepancies, setDiscrepancies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -39,32 +39,7 @@ function DiscrepancyLog({ projects, onIssueCountChange }) {
       } catch (err) {
         console.error('Error loading discrepancies:', err);
         setError('Failed to load discrepancies');
-        
-        // Fallback to static data
-        setDiscrepancies([
-          {
-            id: 1,
-            issue: 'Foundation concrete strength below specification (Fallback)',
-            description: 'Core test results show 28MPa strength vs required 35MPa for Block A foundation',
-            source: 'Quality Control',
-            category: 'Structural',
-            priority: 'critical',
-            date: new Date().toISOString().split('T')[0],
-            reportedBy: 'Site Engineer',
-            assignedTo: 'Concrete Supplier',
-            status: 'pending',
-            explanation: '',
-            documents: [
-              { name: 'core_test_results.pdf', type: 'pdf', size: '2.4 MB' },
-              { name: 'foundation_photos.jpg', type: 'image', size: '3.2 MB' }
-            ],
-            relatedProject: 'Horizon Residences',
-            location: 'Block A, Foundation Level',
-            estimatedCost: '₱1,200,000',
-            deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            requiresEscrowHold: true
-          }
-        ]);
+        setDiscrepancies([]);
       } finally {
         setLoading(false);
       }
@@ -212,7 +187,7 @@ function DiscrepancyLog({ projects, onIssueCountChange }) {
       {error && (
         <div className="alert alert-warning mb-4">
           <div>
-            <strong>Warning:</strong> {error}. Showing fallback data.
+            <strong>Warning:</strong> {error}.
           </div>
         </div>
       )}
@@ -630,4 +605,4 @@ function DiscrepancyLog({ projects, onIssueCountChange }) {
   );
 }
 
-export default DiscrepancyLog;
+export default Issues;

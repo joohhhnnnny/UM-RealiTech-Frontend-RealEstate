@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   RiMoneyDollarCircleLine,
   RiAddLine,
@@ -13,8 +13,13 @@ import {
   RiShieldCheckLine,
   RiAlertLine
 } from 'react-icons/ri';
+import { buildsafeService } from '../../../services/buildsafeService';
 
-function SmartContracts({ projects }) {
+function Escrow_Contracts({ projects }) {
+  // Firebase state
+  const [firebaseContracts, setFirebaseContracts] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
   // First define all state variables
   const [showNewContract, setShowNewContract] = useState(false);
   const [showEditContract, setShowEditContract] = useState(false);
@@ -61,66 +66,85 @@ function SmartContracts({ projects }) {
     });
   };
 
-  // Then initialize contracts state
-  const [contracts, setContracts] = useState(
-    projects.map(project => ({
-      id: project.id,
-      projectName: project.name,
-      totalValue: project.escrowStatus ? 
-        parseFloat(project.escrowStatus.released.replace(/[^\d.]/g, '')) + 
-        parseFloat(project.escrowStatus.held.replace(/[^\d.]/g, '')) : 0,
-      status: 'active',
-      startDate: '2025-01-01',
-      currentProgress: project.progress || 0,
-      paymentTriggers: project.milestones?.map(milestone => ({
-        id: milestone.id,
-        progressPercentage: calculateProgressPercentage(milestone.name, project.milestones),
-        paymentPercentage: calculatePaymentPercentage(milestone, project),
-        paymentAmount: milestone.paymentAmount || calculateDefaultPayment(milestone, project),
-        isComplete: milestone.completed && milestone.verified,
-        completionDate: milestone.verifiedDate || '',
-        milestone: milestone.name
-      })) || []
-    }))
-  );
+  // Firebase contracts loading
+  useEffect(() => {
+    const loadContracts = async () => {
+      setIsLoading(true);
+      try {
+        // Try to load contracts from Firebase
+        const contractsData = await buildsafeService.getContracts('dev-001');
+        setFirebaseContracts(contractsData || []);
+      } catch (error) {
+        console.error('Error loading contracts:', error);
+        setFirebaseContracts([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadContracts();
+  }, [projects]);
+
+  // Use Firebase contracts or fallback to local
+  const [contracts, setContracts] = useState([]);
+
+  // Update contracts when Firebase data loads
+  useEffect(() => {
+    setContracts(firebaseContracts);
+  }, [firebaseContracts]);
 
   // Rest of your component functions...
-  const handleCreateContract = useCallback(() => {
+  const handleCreateContract = useCallback(async () => {
     if (!newContract.projectName || !newContract.totalValue) {
       alert('Please fill in all required fields');
       return;
     }
 
-    const totalValue = parseFloat(newContract.totalValue);
-    const contractData = {
-      id: Date.now(),
-      projectName: newContract.projectName,
-      totalValue: totalValue,
-      status: 'active',
-      startDate: new Date().toISOString().split('T')[0],
-      currentProgress: 0,
-      paymentTriggers: newContract.paymentTriggers.map((trigger, index) => ({
-        ...trigger,
-        id: index + 1,
-        paymentAmount: (totalValue * (parseFloat(trigger.paymentPercentage) / 100))
-                      .toLocaleString('en-PH', { style: 'currency', currency: 'PHP' }),
-        isComplete: false
-      }))
-    };
+    setIsLoading(true);
+    try {
+      const totalValue = parseFloat(newContract.totalValue);
+      const contractData = {
+        id: Date.now(),
+        projectName: newContract.projectName,
+        totalValue: totalValue,
+        status: 'active',
+        startDate: new Date().toISOString().split('T')[0],
+        currentProgress: 0,
+        paymentTriggers: newContract.paymentTriggers.map((trigger, index) => ({
+          ...trigger,
+          id: index + 1,
+          paymentAmount: (totalValue * (parseFloat(trigger.paymentPercentage) / 100))
+                        .toLocaleString('en-PH', { style: 'currency', currency: 'PHP' }),
+          isComplete: false
+        }))
+      };
 
-    setContracts([contractData, ...contracts]);
-    setNewContract({
-      projectName: '',
-      totalValue: '',
-      paymentTriggers: []
-    });
-    setNewPaymentTrigger({ 
-      progressPercentage: '', 
-      paymentPercentage: '',
-      paymentAmount: '',
-      milestone: '' 
-    });
-    setShowNewContract(false);
+      // Save to Firebase
+      await buildsafeService.createContract('dev-001', contractData);
+      
+      // Update local state
+      const updatedContracts = [contractData, ...contracts];
+      setContracts(updatedContracts);
+      setFirebaseContracts(updatedContracts);
+      
+      setNewContract({
+        projectName: '',
+        totalValue: '',
+        paymentTriggers: []
+      });
+      setNewPaymentTrigger({ 
+        progressPercentage: '', 
+        paymentPercentage: '',
+        paymentAmount: '',
+        milestone: '' 
+      });
+      setShowNewContract(false);
+    } catch (error) {
+      console.error('Error creating contract:', error);
+      alert('Failed to create contract. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   }, [newContract, contracts]);
 
   const handleAddTrigger = useCallback(() => {
@@ -257,6 +281,13 @@ function SmartContracts({ projects }) {
 
   return (
     <div className="p-6">
+      {isLoading && (
+        <div className="text-center py-8">
+          <span className="loading loading-spinner loading-lg"></span>
+          <p className="mt-2 text-base-content/70">Loading contracts...</p>
+        </div>
+      )}
+      
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">BuildSafe Smart Contracts</h1>
@@ -265,6 +296,7 @@ function SmartContracts({ projects }) {
         <button
           onClick={() => setShowNewContract(true)}
           className="btn btn-primary gap-2"
+          disabled={isLoading}
         >
           <RiAddLine className="text-xl" />
           New Contract
@@ -580,4 +612,4 @@ function SmartContracts({ projects }) {
   );
 }
 
-export default SmartContracts;
+export default Escrow_Contracts;

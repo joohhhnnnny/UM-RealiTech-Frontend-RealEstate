@@ -404,7 +404,7 @@ function Sidebar({ userRole: propUserRole = 'buyer', isOpen, setIsOpen }) {
       },
       {
         title: 'BuildSafe',
-        path: '/dashboard/devtrackr',
+        path: '/dashboard/buildsafe',
         icon: BuildingOffice2Icon,
         color: 'text-blue-500 hover:text-blue-600',
         tooltip: 'BuildSafe',

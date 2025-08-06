@@ -7,8 +7,8 @@ import {
   RiVipCrownFill
 } from 'react-icons/ri';
 import ProjectDashboard from './devportal/ProjectDashboard.jsx';
-import SmartContract from './devportal/SmartContracts.jsx';
-import DiscrepancyLog from './devportal/DiscrepancyLog.jsx';
+import SmartContract from './devportal/Escrow_Contracts.jsx';
+import DiscrepancyLog from './devportal/Issues.jsx';
 import SubscriptionManager from './devportal/SubscriptionManager.jsx';
 import { 
   projectService, 
@@ -54,39 +54,10 @@ function DeveloperBuildSafe() {
         console.error('Error loading data:', err);
         setError('Failed to load data. Please try again.');
         
-        // Fallback to static data on error
-        setProjects([{
-          id: 1,
-          name: "Horizon Residences (Static Fallback)",
-          progress: 76,
-          status: "On Track",
-          unitsSold: 42,
-          totalUnits: 60,
-          subscription: "premium",
-          projectLimit: 10,
-          milestones: [
-            { id: 1, name: "Land Development", completed: true, date: "Jan 2024", verified: true },
-            { id: 2, name: "Foundation Complete", completed: true, date: "Mar 2024", verified: true },
-            { id: 3, name: "Structure Complete", completed: true, date: "Sep 2024", verified: true },
-            { id: 4, name: "Ready for Interior Designing", completed: false, date: "Oct 2025", verified: false },
-            { id: 5, name: "Ready for Occupation", completed: false, date: "Dec 2025", verified: false }
-          ],
-          pendingDocuments: 2,
-          escrowStatus: {
-            released: "₱12,450,000",
-            held: "₱8,550,000",
-            nextRelease: "₱3,200,000"
-          }
-        }]);
-        
-        setNotifications([{
-          id: 1,
-          type: 'milestone',
-          message: 'Foundation milestone requires verification (Static)',
-          project: 'Horizon Residences',
-          date: '2025-08-15',
-          read: false
-        }]);
+        // Set empty arrays instead of static fallback
+        setProjects([]);
+        setNotifications([]);
+        setSubscription(null);
       } finally {
         setLoading(false);
       }

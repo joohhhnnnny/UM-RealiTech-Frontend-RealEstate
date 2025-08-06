@@ -133,14 +133,20 @@ export const projectService = {
     try {
       const q = query(
         collection(db, PROJECTS_COLLECTION),
-        where('developerId', '==', developerId),
-        orderBy('createdAt', 'desc')
+        where('developerId', '==', developerId)
       );
       const querySnapshot = await getDocs(q);
       const projects = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+      
+      // Sort projects by creation date client-side
+      projects.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
       
       // Always include static guidelines example
       return [STATIC_GUIDELINES.project, ...projects];
@@ -158,14 +164,22 @@ export const projectService = {
     try {
       const q = query(
         collection(db, PROJECTS_COLLECTION),
-        where('buyers', 'array-contains', buyerId),
-        orderBy('createdAt', 'desc')
+        where('buyers', 'array-contains', buyerId)
       );
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
+      const projects = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+      
+      // Sort projects by creation date client-side
+      projects.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
+      
+      return projects;
     } catch (error) {
       console.error('Error fetching buyer projects:', error);
       return [];
@@ -253,14 +267,20 @@ export const notificationService = {
     try {
       const q = query(
         collection(db, NOTIFICATIONS_COLLECTION),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', userId)
       );
       const querySnapshot = await getDocs(q);
       const notifications = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+      
+      // Sort notifications by creation date client-side
+      notifications.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
       
       // Always include static guidelines example
       return [STATIC_GUIDELINES.notification, ...notifications];
@@ -319,8 +339,7 @@ export const discrepancyService = {
 
       const q = query(
         collection(db, DISCREPANCIES_COLLECTION),
-        where('relatedProject', 'in', projectIds),
-        orderBy('createdAt', 'desc')
+        where('relatedProject', 'in', projectIds)
       );
       const querySnapshot = await getDocs(q);
       const discrepancies = querySnapshot.docs.map(doc => ({
@@ -328,6 +347,13 @@ export const discrepancyService = {
         ...doc.data(),
         documents: doc.data().documents || [] // Ensure documents array exists
       }));
+      
+      // Sort discrepancies by creation date client-side
+      discrepancies.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
       
       // Always include static guidelines example
       return [STATIC_GUIDELINES.discrepancy, ...discrepancies];
@@ -454,8 +480,7 @@ export const realtimeService = {
   subscribeToProjects(developerId, callback) {
     const q = query(
       collection(db, PROJECTS_COLLECTION),
-      where('developerId', '==', developerId),
-      orderBy('createdAt', 'desc')
+      where('developerId', '==', developerId)
     );
     
     return onSnapshot(q, (querySnapshot) => {
@@ -463,6 +488,14 @@ export const realtimeService = {
         id: doc.id,
         ...doc.data()
       }));
+      
+      // Sort projects by creation date client-side
+      projects.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
+      
       // Always include static guidelines
       callback([STATIC_GUIDELINES.project, ...projects]);
     });
@@ -472,8 +505,7 @@ export const realtimeService = {
   subscribeToNotifications(userId, callback) {
     const q = query(
       collection(db, NOTIFICATIONS_COLLECTION),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
+      where('userId', '==', userId)
     );
     
     return onSnapshot(q, (querySnapshot) => {
@@ -481,8 +513,99 @@ export const realtimeService = {
         id: doc.id,
         ...doc.data()
       }));
+      
+      // Sort notifications by creation date client-side
+      notifications.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
+      
       // Always include static guidelines
       callback([STATIC_GUIDELINES.notification, ...notifications]);
     });
   }
+};
+
+// Contract Management Service
+export const contractService = {
+  // Get all contracts for a user
+  async getContracts(userId) {
+    try {
+      const q = query(
+        collection(db, CONTRACTS_COLLECTION),
+        where('userId', '==', userId)
+      );
+      const querySnapshot = await getDocs(q);
+      const contracts = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      // Sort contracts by creation date client-side
+      contracts.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
+      
+      return contracts;
+    } catch (error) {
+      console.error('Error getting contracts:', error);
+      return [];
+    }
+  },
+
+  // Create a new contract
+  async createContract(userId, contractData) {
+    try {
+      const docRef = await addDoc(collection(db, CONTRACTS_COLLECTION), {
+        ...contractData,
+        userId: userId,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('Error creating contract:', error);
+      throw error;
+    }
+  },
+
+  // Update a contract
+  async updateContract(contractId, updates) {
+    try {
+      const contractRef = doc(db, CONTRACTS_COLLECTION, contractId);
+      await updateDoc(contractRef, {
+        ...updates,
+        updatedAt: new Date()
+      });
+      return true;
+    } catch (error) {
+      console.error('Error updating contract:', error);
+      throw error;
+    }
+  },
+
+  // Delete a contract
+  async deleteContract(contractId) {
+    try {
+      await deleteDoc(doc(db, CONTRACTS_COLLECTION, contractId));
+      return true;
+    } catch (error) {
+      console.error('Error deleting contract:', error);
+      throw error;
+    }
+  }
+};
+
+// Main BuildSafe Service
+export const buildsafeService = {
+  ...projectService,
+  ...milestoneService,
+  ...notificationService,
+  ...discrepancyService,
+  ...subscriptionService,
+  ...realtimeService,
+  ...contractService
 };

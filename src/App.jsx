@@ -49,7 +49,7 @@ function App() {
                     <Route path="/dashboard/realtyconnect" element={<RealtyConnect />} />
                     <Route path="/dashboard/propguard" element={<PropGuard />} />
                     {/* <Route path="/dashboard/chatbot" element={<ChatBot />} /> */}
-                    <Route path="/dashboard/devtrackr" element={<BuildSafe />} />
+                    <Route path="/dashboard/buildsafe" element={<BuildSafe />} />
                     <Route path="/dashboard/notifications" element={<Notif />} />
                     <Route path="/dashboard/messages" element={<Msg />} />
                     <Route path="/settings" element={<Settings />} />

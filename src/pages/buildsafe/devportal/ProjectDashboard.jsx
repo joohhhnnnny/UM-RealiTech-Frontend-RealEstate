@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   RiBuildingLine,
   RiImageLine,
@@ -15,6 +15,7 @@ import {
   RiAlertLine
 } from 'react-icons/ri';
 import VerifiedBadge from '../../../components/VerifiedBadge';
+import { buildsafeService } from '../../../services/buildsafeService';
 
 // Memoized Stats Component
 const ProjectStats = React.memo(({ projects }) => {
@@ -26,11 +27,12 @@ const ProjectStats = React.memo(({ projects }) => {
       total: projects.length,
       onSchedule: projects.filter(p => p.status === 'On Track').length,
       pendingVerifications: projects.reduce((acc, proj) => 
-        acc + proj.milestones.filter(m => m.completed && !m.verified).length, 0
+        acc + (proj.milestones || []).filter(m => m.completed && !m.verified).length, 0
       ),
-      escrowFunds: projects.reduce((acc, proj) => 
-        acc + parseFloat(proj.escrowStatus.held.replace(/[^\d.]/g, '')), 0
-      ).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' }),
+      escrowFunds: projects.reduce((acc, proj) => {
+        const held = proj.escrowStatus?.held || '₱0';
+        return acc + parseFloat(held.replace(/[^\d.]/g, ''));
+      }, 0).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' }),
       premiumProjects,
       basicProjects
     };
@@ -138,34 +140,38 @@ const UpdateCard = React.memo(({ update, index }) => (
 ));
 
 // Memoized Escrow Status Component
-const EscrowStatus = React.memo(({ project }) => (
-  <div className="card bg-base-200 mt-4">
-    <div className="card-body p-4">
-      <h3 className="font-bold flex items-center gap-2">
-        <RiMoneyDollarCircleLine className="text-primary" />
-        Escrow Status
-      </h3>
-      <div className="grid grid-cols-2 gap-4 mt-2">
-        <div>
-          <p className="text-sm">Funds Released</p>
-          <p className="font-bold text-success">{project.escrowStatus.released}</p>
-        </div>
-        <div>
-          <p className="text-sm">Held in Escrow</p>
-          <p className="font-bold text-info">{project.escrowStatus.held}</p>
-        </div>
-        <div>
-          <p className="text-sm">Next Release</p>
-          <p className="font-bold text-warning">{project.escrowStatus.nextRelease}</p>
-        </div>
-        <div>
-          <p className="text-sm">Total Investment</p>
-          <p className="font-bold">{project.totalInvestment}</p>
+const EscrowStatus = React.memo(({ project }) => {
+  const escrowStatus = project.escrowStatus || { released: '₱0', held: '₱0', nextRelease: '₱0' };
+  
+  return (
+    <div className="card bg-base-200 mt-4">
+      <div className="card-body p-4">
+        <h3 className="font-bold flex items-center gap-2">
+          <RiMoneyDollarCircleLine className="text-primary" />
+          Escrow Status
+        </h3>
+        <div className="grid grid-cols-2 gap-4 mt-2">
+          <div>
+            <p className="text-sm">Funds Released</p>
+            <p className="font-bold text-success">{escrowStatus.released}</p>
+          </div>
+          <div>
+            <p className="text-sm">Held in Escrow</p>
+            <p className="font-bold text-info">{escrowStatus.held}</p>
+          </div>
+          <div>
+            <p className="text-sm">Next Release</p>
+            <p className="font-bold text-warning">{escrowStatus.nextRelease}</p>
+          </div>
+          <div>
+            <p className="text-sm">Total Investment</p>
+            <p className="font-bold">{project.totalInvestment || '₱0'}</p>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-));
+  );
+});
 
 // Memoized Document Status Component
 const DocumentStatus = React.memo(({ documents }) => (
@@ -185,7 +191,7 @@ const DocumentStatus = React.memo(({ documents }) => (
             </tr>
           </thead>
           <tbody>
-            {documents.map((doc, idx) => (
+            {(documents || []).map((doc, idx) => (
               <tr key={idx}>
                 <td>{doc.name}</td>
                 <td>
@@ -367,7 +373,7 @@ const ProjectCard = React.memo(({
         <EscrowStatus project={project} />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
-          {project.milestones.map((milestone) => (
+          {(project.milestones || []).map((milestone) => (
             <MilestoneCard 
               key={milestone.id} 
               milestone={milestone}
@@ -376,16 +382,16 @@ const ProjectCard = React.memo(({
           ))}
         </div>
 
-        <DocumentStatus documents={project.documents} />
+        <DocumentStatus documents={project.documents || []} />
 
         <div className="collapse collapse-plus bg-base-200 mt-4">
           <input type="checkbox" /> 
           <div className="collapse-title text-xl font-medium">
-            Recent Updates ({project.updates.length})
+            Recent Updates ({(project.updates || []).length})
           </div>
           <div className="collapse-content">
             <div className="space-y-4">
-              {project.updates.map((update, index) => (
+              {(project.updates || []).map((update, index) => (
                 <UpdateCard key={index} update={update} index={index} />
               ))}
             </div>
@@ -397,86 +403,28 @@ const ProjectCard = React.memo(({
 });
 
 function ProjectDashboard() {
-  const [projects, setProjects] = useState([
-    {
-      id: 1,
-      name: "Horizon Residences",
-      location: "Makati City",
-      description: "Luxury residential tower with 30 floors",
-      startDate: "2025-01-15",
-      expectedCompletion: "2026-12-31",
-      progress: 65,
-      status: "On Track",
-      milestones: [
-        { 
-          id: 1, 
-          name: 'Land Development', 
-          progressPercentage: 15, 
-          completed: true, 
-          completedDate: '2025-01-30',
-          verified: true,
-          verifiedDate: '2025-02-05',
-          paymentAmount: '₱500,000'
-        },
-        { 
-          id: 2, 
-          name: 'Foundation', 
-          progressPercentage: 25, 
-          completed: true, 
-          completedDate: '2025-03-20',
-          verified: true,
-          verifiedDate: '2025-03-25',
-          paymentAmount: '₱750,000'
-        },
-        { 
-          id: 3, 
-          name: 'Structure', 
-          progressPercentage: 50, 
-          completed: true, 
-          completedDate: '2025-06-15',
-          verified: false,
-          paymentAmount: '₱1,200,000'
-        },
-        { 
-          id: 4, 
-          name: 'Electrical & Plumbing', 
-          progressPercentage: 75, 
-          completed: false, 
-          paymentAmount: '₱900,000'
-        },
-        { 
-          id: 5, 
-          name: 'Interior Finishing', 
-          progressPercentage: 100, 
-          completed: false, 
-          paymentAmount: '₱650,000'
-        }
-      ],
-      updates: [
-        {
-          date: "2025-07-25",
-          description: "Interior walls completion for floors 1-10",
-          progress: 65,
-          media: [
-            "https://images.unsplash.com/photo-1574958269340-fa927503f3dd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y29uc3RydWN0aW9uJTIwcHJvZ3Jlc3N8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60",
-            "https://images.unsplash.com/photo-1590644365607-4cf4ce0034a8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8Y29uc3RydWN0aW9uJTIwcHJvZ3Jlc3N8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60"
-          ]
-        }
-      ],
-      documents: [
-        { name: "Building Permit", status: "verified" },
-        { name: "Environmental Clearance", status: "verified" },
-        { name: "Fire Safety Certificate", status: "pending" },
-        { name: "Occupancy Permit", status: "pending" }
-      ],
-      escrowStatus: {
-        released: "₱1,250,000",
-        held: "₱2,750,000",
-        nextRelease: "₱1,200,000"
-      },
-      totalInvestment: "₱4,000,000"
-    }
-  ]);
+  // Firebase state
+  const [isLoading, setIsLoading] = useState(false);
+  const [projects, setProjects] = useState([]);
+
+  // Load projects from Firebase
+  useEffect(() => {
+    const loadProjects = async () => {
+      setIsLoading(true);
+      try {
+        const projectsData = await buildsafeService.getProjects('dev-001');
+        setProjects(projectsData || []);
+      } catch (error) {
+        console.error('Error loading projects:', error);
+        // Set empty array instead of static fallback
+        setProjects([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProjects();
+  }, []);
 
   const [showNewProject, setShowNewProject] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -525,7 +473,7 @@ function ProjectDashboard() {
       ...newProject,
       progress: 0,
       status: "On Track",
-      milestones: newProject.milestones.map((milestone, index) => ({
+      milestones: (newProject.milestones || []).map((milestone, index) => ({
         id: index + 1,
         ...milestone,
         completed: false,
@@ -540,13 +488,13 @@ function ProjectDashboard() {
       ],
       escrowStatus: {
         released: "₱0",
-        held: newProject.milestones.reduce((sum, m) => 
-          sum + parseFloat(m.paymentAmount.replace(/[^\d.]/g, '')), 0
+        held: (newProject.milestones || []).reduce((sum, m) => 
+          sum + parseFloat((m.paymentAmount || '₱0').replace(/[^\d.]/g, '')), 0
         ).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' }),
-        nextRelease: newProject.milestones[0]?.paymentAmount || "₱0"
+        nextRelease: (newProject.milestones || [])[0]?.paymentAmount || "₱0"
       },
-      totalInvestment: newProject.milestones.reduce((sum, m) => 
-        sum + parseFloat(m.paymentAmount.replace(/[^\d.]/g, '')), 0
+      totalInvestment: (newProject.milestones || []).reduce((sum, m) => 
+        sum + parseFloat((m.paymentAmount || '₱0').replace(/[^\d.]/g, '')), 0
       ).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })
     };
 
@@ -627,7 +575,7 @@ function ProjectDashboard() {
   const handleVerifyMilestone = useCallback((projectId, milestoneId) => {
   setProjects(prev => prev.map(project => {
     if (project.id === projectId) {
-      const updatedMilestones = project.milestones.map(milestone => {
+      const updatedMilestones = (project.milestones || []).map(milestone => {
         if (milestone.id === milestoneId) {
           return { 
             ...milestone, 
@@ -688,6 +636,13 @@ function ProjectDashboard() {
 
   return (
     <div className="p-6">
+      {isLoading && (
+        <div className="text-center py-8">
+          <span className="loading loading-spinner loading-lg"></span>
+          <p className="mt-2 text-base-content/70">Loading projects...</p>
+        </div>
+      )}
+      
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">BuildSafe Developer Portal</h1>
@@ -696,6 +651,7 @@ function ProjectDashboard() {
         <button
           onClick={() => setShowNewProject(true)}
           className="btn btn-primary gap-2"
+          disabled={isLoading}
         >
           <RiAddLine className="text-xl" />
           New Project
