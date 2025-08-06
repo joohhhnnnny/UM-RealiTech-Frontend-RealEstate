@@ -514,7 +514,7 @@ function BuyerBuildSafe() {
                   <div className={`badge ${
                     property.status === 'On Track' ? 'badge-success' : 
                     property.status === 'Delayed' ? 'badge-warning' : 'badge-info'
-                  }`}>
+                  } p-4 text-xs`}>
                     {property.status}
                   </div>
                 </h2>
