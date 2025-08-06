@@ -463,14 +463,6 @@ function MyListing() {
         <h2 className="text-2xl font-bold text-base-content">My Listings</h2>
         <div className="flex gap-3">
           <button 
-            className="btn btn-secondary btn-sm"
-            onClick={fixMyAgentNames}
-            disabled={!currentUser}
-            title="Fix agent names that show as 'undefined undefined'"
-          >
-            Fix Agent Names
-          </button>
-          <button 
             className="btn btn-primary"
             onClick={() => setShowAddListingModal(true)}
             disabled={!currentUser}

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   RiRobot2Line, 
   RiMoneyDollarCircleLine,
@@ -13,17 +13,57 @@ import LoanCalculator from './buyersmartPH/LoanCalculator';
 import CostCalculator from './buyersmartPH/CostCalculator';
 import DocumentSubmission from './buyersmartPH/DocumentSubmission';
 import SmartListing from './buyersmartPH/SmartListing';
+import ProfileStatus from '../../components/ProfileStatus';
+import { userProfileService } from '../../services/UserProfileService';
 
 function BuyerBSPH() {
   const [activeStep, setActiveStep] = useState(1);
-  const [profileData, setProfileData] = useState({
-    buyerType: '',
-    monthlyIncome: '',
-    monthlyDebts: '',
-    hasSpouseIncome: false,
-    preferredLocation: '',
-    budgetRange: ''
-  });
+  const [profileData, setProfileData] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [profileComplete, setProfileComplete] = useState(false);
+
+  // Check profile completion status on component mount
+  useEffect(() => {
+    const checkProfileStatus = async () => {
+      try {
+        const hasProfile = await userProfileService.hasCompleteProfile();
+        setProfileComplete(hasProfile);
+        
+        if (hasProfile) {
+          // If profile exists, load it and go to Smart Listings by default
+          const response = await userProfileService.getProfile();
+          if (response.success && response.profileData) {
+            setProfileData(response.profileData);
+            setActiveStep(5); // Go directly to Smart Listings
+          }
+        }
+      } catch (error) {
+        console.error('Error checking profile status:', error);
+      }
+    };
+
+    checkProfileStatus();
+  }, []);
+
+  // Handle profile completion
+  const handleProfileComplete = (completedProfile) => {
+    setProfileData(completedProfile);
+    setProfileComplete(true);
+    setIsEditMode(false);
+    setActiveStep(5); // Navigate to Smart Listings
+  };
+
+  // Handle edit profile request
+  const handleEditProfile = () => {
+    setIsEditMode(true);
+    setActiveStep(1); // Go back to AI Guide in edit mode
+  };
+
+  // Handle start profile setup for new users
+  const handleStartSetup = () => {
+    setIsEditMode(false);
+    setActiveStep(1); // Go to AI Guide
+  };
 
   const buyingSteps = [
     {
@@ -75,31 +115,29 @@ function BuyerBSPH() {
     1: <AIGuide 
          profileData={profileData} 
          setProfileData={setProfileData} 
-         onComplete={() => setActiveStep(5)} 
+         onComplete={handleProfileComplete}
+         isEditMode={isEditMode}
        />,
     2: <LoanCalculator />,
     3: <CostCalculator />,
     4: <DocumentSubmission />,
-    5: profileData.buyerType ? (
-      <SmartListing profileData={profileData} />
+    5: profileComplete ? (
+      <div className="space-y-6">
+        <ProfileStatus 
+          profileData={profileData}
+          setProfileData={setProfileData}
+          onEditProfile={handleEditProfile}
+          onStartSetup={handleStartSetup}
+        />
+        <SmartListing profileData={profileData} />
+      </div>
     ) : (
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="card bg-base-100 shadow-lg p-8 text-center"
-      >
-        <RiRobot2Line className="w-16 h-16 mx-auto text-primary mb-4" />
-        <h3 className="text-xl font-bold mb-2">Complete Your AI Profile First</h3>
-        <p className="text-base-content/70 mb-6">
-          To get personalized property recommendations, please complete your buyer profile through the AI Guide first.
-        </p>
-        <button 
-          onClick={() => setActiveStep(1)} 
-          className="btn btn-primary mx-auto"
-        >
-          Go to AI Guide
-        </button>
-      </motion.div>
+      <ProfileStatus 
+        profileData={profileData}
+        setProfileData={setProfileData}
+        onEditProfile={handleEditProfile}
+        onStartSetup={handleStartSetup}
+      />
     )
   };
 
@@ -113,19 +151,37 @@ function BuyerBSPH() {
             initial={{ scale: 0.95 }}
             animate={{ scale: 1 }}
             whileHover={{ scale: 1.02 }}
-            className={`card bg-gradient-to-br ${step.bgGradient} backdrop-blur-xl cursor-pointer ${
+            className={`card bg-gradient-to-br ${step.bgGradient} backdrop-blur-xl cursor-pointer transition-all duration-300 ${
               activeStep === step.id ? 'ring-2 ring-primary' : ''
+            } ${
+              step.id === 5 && !profileComplete ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
             }`}
-            onClick={() => setActiveStep(step.id)}
+            onClick={() => {
+              // Prevent navigation to Smart Listings if profile is not complete
+              if (step.id === 5 && !profileComplete) {
+                alert('Please complete your profile first to access Smart Listings');
+                return;
+              }
+              setActiveStep(step.id);
+            }}
           >
             <div className="card-body p-6">
               <div className="flex items-start justify-between">
                 <div>
                   <step.icon className={`w-8 h-8 ${step.color} mb-4`} />
-                  <h3 className={`text-lg font-bold ${step.color}`}>
+                  <h3 className={`text-lg font-bold ${step.color} ${
+                    step.id === 5 && !profileComplete ? 'opacity-50' : ''
+                  }`}>
                     {step.title}
+                    {step.id === 5 && !profileComplete && (
+                      <span className="text-xs text-warning block font-normal mt-1">
+                        Complete profile first
+                      </span>
+                    )}
                   </h3>
-                  <p className="text-base-content/70 text-sm mt-2">
+                  <p className={`text-base-content/70 text-sm mt-2 ${
+                    step.id === 5 && !profileComplete ? 'opacity-50' : ''
+                  }`}>
                     {step.description}
                   </p>
                 </div>
