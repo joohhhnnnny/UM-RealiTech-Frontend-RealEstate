@@ -1,11 +1,15 @@
 import { motion } from "framer-motion";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { 
   RiRobot2Line,
   RiCheckboxCircleLine,
   RiMapPinLine,
-  RiPriceTag3Line
+  RiPriceTag3Line,
+  RiLoader4Line,
+  RiErrorWarningLine,
+  RiCheckLine
 } from 'react-icons/ri';
+import { userProfileService } from '../../../services/UserProfileService';
 
 // Memoized progress component to prevent re-renders
 const ProgressBar = ({ step }) => {
@@ -82,8 +86,11 @@ const InputField = ({ label, name, value, onChange, type = 'text', placeholder, 
   );
 };
 
-function AIGuide({ profileData, setProfileData, onComplete }) {
+function AIGuide({ profileData, setProfileData, onComplete, isEditMode = false }) {
   const [step, setStep] = useState(1);
+  const [saveStatus, setSaveStatus] = useState(null); // 'saving', 'success', 'error'
+  const [isLoading, setIsLoading] = useState(false); // For profile loading only
+  const hasLoadedProfile = useRef(false); // Track if we've already loaded profile data
   const [formData, setFormData] = useState(profileData || {
     buyerType: '',
     monthlyIncome: '',
@@ -92,6 +99,61 @@ function AIGuide({ profileData, setProfileData, onComplete }) {
     preferredLocation: '',
     budgetRange: ''
   });
+
+  // Load existing profile on component mount
+  useEffect(() => {
+    const loadExistingProfile = async () => {
+      // Prevent multiple loads and infinite loops
+      if (hasLoadedProfile.current) return;
+      
+      // Only load if we're in edit mode and don't have complete profile data
+      if (isEditMode && (!profileData || !profileData.buyerType)) {
+        setIsLoading(true);
+        hasLoadedProfile.current = true;
+        
+        try {
+          const response = await userProfileService.getProfile();
+          if (response.success && response.exists) {
+            const existingProfile = response.profileData;
+            setFormData({
+              buyerType: existingProfile.buyerType || '',
+              monthlyIncome: existingProfile.monthlyIncome || '',
+              monthlyDebts: existingProfile.monthlyDebts || '',
+              hasSpouseIncome: existingProfile.hasSpouseIncome || false,
+              preferredLocation: existingProfile.preferredLocation || '',
+              budgetRange: existingProfile.budgetRange || ''
+            });
+            setProfileData(existingProfile);
+          }
+        } catch (error) {
+          console.error('Error loading profile:', error);
+          setSaveStatus('error');
+        } finally {
+          setIsLoading(false);
+        }
+      } else if (profileData && profileData.buyerType && !hasLoadedProfile.current) {
+        // If we already have profile data, populate the form once
+        hasLoadedProfile.current = true;
+        setFormData({
+          buyerType: profileData.buyerType || '',
+          monthlyIncome: profileData.monthlyIncome || '',
+          monthlyDebts: profileData.monthlyDebts || '',
+          hasSpouseIncome: profileData.hasSpouseIncome || false,
+          preferredLocation: profileData.preferredLocation || '',
+          budgetRange: profileData.budgetRange || ''
+        });
+      }
+    };
+
+    loadExistingProfile();
+  }, [isEditMode, profileData, setProfileData]);
+
+  // Reset the loaded flag when edit mode changes
+  useEffect(() => {
+    hasLoadedProfile.current = false;
+    setStep(1);
+    setSaveStatus(null);
+  }, [isEditMode]);
 
   // Memoize the handleInputChange to prevent recreating the function
   const handleInputChange = useCallback((e) => {
@@ -102,27 +164,67 @@ function AIGuide({ profileData, setProfileData, onComplete }) {
     }));
   }, []);
 
-  // Memoize the buyer type selection handler
-  const handleBuyerTypeSelect = useCallback((type) => {
-    setFormData(prev => ({ ...prev, buyerType: type }));
-  }, []);
-
   const handleNext = useCallback(() => {
+    // Clear any error states when moving to next step
+    if (saveStatus === 'error') {
+      setSaveStatus(null);
+    }
     setStep(prev => Math.min(prev + 1, 4));
-  }, []);
+  }, [saveStatus]);
 
   const handlePrevious = useCallback(() => {
+    // Clear any save states when going back
+    setSaveStatus(null);
     setStep(prev => Math.max(prev - 1, 1));
   }, []);
 
-  const handleComplete = useCallback(() => {
+  const handleComplete = useCallback(async () => {
     if (formData.buyerType && formData.monthlyIncome && formData.preferredLocation && formData.budgetRange) {
-      setProfileData(formData);
-      onComplete(formData);
+      setSaveStatus('saving');
+      
+      try {
+        // Validate profile data
+        const validation = userProfileService.validateProfile(formData);
+        if (!validation.isValid) {
+          alert(`Please complete the following fields: ${validation.missingFields.join(', ')}`);
+          setSaveStatus('error');
+          return;
+        }
+
+        // Save or update profile to Firestore
+        const saveResponse = isEditMode 
+          ? await userProfileService.updateProfile(formData)
+          : await userProfileService.saveProfile(formData);
+        
+        if (saveResponse.success) {
+          setSaveStatus('success');
+          
+          // For updates, merge the updated data with existing profile
+          const updatedProfileData = isEditMode 
+            ? { ...profileData, ...formData, lastUpdatedAt: new Date() }
+            : saveResponse.profileData;
+            
+          setProfileData(updatedProfileData);
+          
+          // Show success message briefly before completing
+          setTimeout(() => {
+            // Reset states before completing
+            setSaveStatus(null);
+            onComplete(updatedProfileData);
+          }, 1500);
+        } else {
+          setSaveStatus('error');
+          alert(`Failed to ${isEditMode ? 'update' : 'save'} profile: ${saveResponse.message}`);
+        }
+      } catch (error) {
+        console.error('Error saving profile:', error);
+        setSaveStatus('error');
+        alert(`An error occurred while ${isEditMode ? 'updating' : 'saving'} your profile. Please try again.`);
+      }
     } else {
       alert("Please complete all required fields before proceeding");
     }
-  }, [formData, onComplete, setProfileData]);
+  }, [formData, onComplete, setProfileData, isEditMode, profileData]);
 
   const renderBuyerType = useMemo(() => () => (
     <motion.div 
@@ -219,7 +321,9 @@ function AIGuide({ profileData, setProfileData, onComplete }) {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <h3 className="text-xl font-semibold mb-4">Profile Summary</h3>
+      <h3 className="text-xl font-semibold mb-4">
+        {isEditMode ? 'Update Profile Summary' : 'Profile Summary'}
+      </h3>
       <div className="bg-base-200 p-6 rounded-lg space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -248,6 +352,38 @@ function AIGuide({ profileData, setProfileData, onComplete }) {
           </div>
         </div>
       </div>
+
+      {/* Save Status Display */}
+      {saveStatus === 'saving' && (
+        <div className="alert alert-info">
+          <RiLoader4Line className="w-6 h-6 animate-spin" />
+          <div>
+            <h3 className="font-bold">Saving Profile...</h3>
+            <div className="text-sm">Please wait while we save your profile to the cloud.</div>
+          </div>
+        </div>
+      )}
+
+      {saveStatus === 'success' && (
+        <div className="alert alert-success">
+          <RiCheckLine className="w-6 h-6" />
+          <div>
+            <h3 className="font-bold">Profile Saved Successfully!</h3>
+            <div className="text-sm">Your profile has been saved and you'll be redirected to your recommendations.</div>
+          </div>
+        </div>
+      )}
+
+      {saveStatus === 'error' && (
+        <div className="alert alert-error">
+          <RiErrorWarningLine className="w-6 h-6" />
+          <div>
+            <h3 className="font-bold">Save Failed</h3>
+            <div className="text-sm">There was an error saving your profile. Please try again.</div>
+          </div>
+        </div>
+      )}
+
       {formData.buyerType && formData.monthlyIncome && formData.preferredLocation && formData.budgetRange ? (
         <div className="alert alert-success">
           <RiRobot2Line className="w-6 h-6" />
@@ -274,43 +410,60 @@ function AIGuide({ profileData, setProfileData, onComplete }) {
         </div>
       )}
     </motion.div>
-  ), [formData]);
+  ), [formData, saveStatus, isEditMode]);
 
   return (
     <div className="card bg-base-100 shadow-lg border border-base-200 p-6">
-      <h2 className="text-2xl font-bold mb-4">AI Buyer Profile Setup</h2>
+      <h2 className="text-2xl font-bold mb-4">
+        {isEditMode ? 'Update AI Buyer Profile' : 'AI Buyer Profile Setup'}
+      </h2>
       <ProgressBar step={step} />
       
-      {step === 1 && renderBuyerType()}
-      {step === 2 && renderFinancialInfo()}
-      {step === 3 && renderLocationBudget()}
-      {step === 4 && renderSummary()}
-      
-      <div className="flex justify-between mt-8">
-        <button 
-          className="btn btn-outline" 
-          onClick={handlePrevious}
-          disabled={step === 1}
-        >
-          Previous
-        </button>
-        <button 
-          className="btn btn-primary gap-2" 
-          onClick={step === 4 ? handleComplete : handleNext}
-        >
-          {step === 4 ? (
-            <>
-              <RiRobot2Line className="w-5 h-5" />
-              View AI Recommendations
-            </>
-          ) : (
-            <>
-              <RiCheckboxCircleLine className="w-5 h-5" />
-              Next
-            </>
-          )}
-        </button>
-      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <RiLoader4Line className="w-8 h-8 animate-spin text-primary mr-3" />
+          <span>Loading profile data...</span>
+        </div>
+      ) : (
+        <div key={`form-${isEditMode}-${hasLoadedProfile.current}`}>
+          {step === 1 && renderBuyerType()}
+          {step === 2 && renderFinancialInfo()}
+          {step === 3 && renderLocationBudget()}
+          {step === 4 && renderSummary()}
+          
+          <div className="flex justify-between mt-8">
+            <button 
+              className="btn btn-outline" 
+              onClick={handlePrevious}
+              disabled={step === 1 || saveStatus === 'saving'}
+            >
+              Previous
+            </button>
+            <button 
+              className="btn btn-primary gap-2" 
+              onClick={step === 4 ? handleComplete : handleNext}
+              disabled={saveStatus === 'saving'}
+            >
+              {(step === 4 && saveStatus === 'saving') ? (
+                <>
+                  <RiLoader4Line className="w-5 h-5 animate-spin" />
+                  {isEditMode ? 'Updating Profile...' : 'Saving Profile...'}
+                </>
+              ) : step === 4 ? (
+                <>
+                  <RiRobot2Line className="w-5 h-5" />
+                  {isEditMode ? 'Update Profile & View Recommendations' : 'Save Profile & View AI Recommendations'}
+                </>
+              ) : (
+                <>
+                  <RiCheckboxCircleLine className="w-5 h-5" />
+                  Next
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
