@@ -586,105 +586,124 @@ function MyListing() {
               setShowEditListingModal(false);
               setSelectedListing(null);
             }} className="space-y-6">
-              <div className="form-control">
+              {/* Title Input */}
+              <div className="form-control w-full">
                 <label className="label">
                   <span className="label-text font-medium">Title</span>
                 </label>
                 <input
                   type="text"
-                  className="input input-bordered bg-base-100 text-base-content"
+                  className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
                   value={selectedListing.title}
                   onChange={e => setSelectedListing({...selectedListing, title: e.target.value})}
+                  placeholder="Enter property title"
                   required
                 />
               </div>
-              <div className="form-control">
+
+              {/* Price Input */}
+              <div className="form-control w-full">
                 <label className="label">
                   <span className="label-text font-medium">Price</span>
                 </label>
-                <input
-                  type="text"
-                  className="input input-bordered bg-base-100 text-base-content"
-                  value={selectedListing.price}
-                  onChange={e => setSelectedListing({...selectedListing, price: e.target.value})}
-                  required
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/70">₱</span>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full pl-7 mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
+                    value={selectedListing.price}
+                    onChange={e => setSelectedListing({...selectedListing, price: e.target.value})}
+                    placeholder="Enter property price"
+                    required
+                  />
+                </div>
               </div>
-              <div className="form-control">
+
+              {/* Location Input */}
+              <div className="form-control w-full">
                 <label className="label">
                   <span className="label-text font-medium">Location</span>
                 </label>
                 <input
                   type="text"
-                  className="input input-bordered bg-base-100 text-base-content"
+                  className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
                   value={selectedListing.location}
                   onChange={e => setSelectedListing({...selectedListing, location: e.target.value})}
+                  placeholder="Enter property location"
                   required
                 />
               </div>
-              <div className="form-control">
+
+              {/* Type Select */}
+              <div className="form-control w-full">
                 <label className="label">
-                  <span className="label-text font-medium">Type</span>
+                  <span className="label-text font-medium">Property Type</span>
                 </label>
                 <select
-                  className="select select-bordered bg-base-100 text-base-content"
+                  className="select select-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
                   value={selectedListing.type}
                   onChange={e => setSelectedListing({...selectedListing, type: e.target.value})}
                   required
                 >
-                  <option value="">Select Type</option>
+                  <option value="">Select property type</option>
                   <option value="House">House</option>
                   <option value="Townhouse">Townhouse</option>
                   <option value="Condo">Condo</option>
                   <option value="Lot">Lot</option>
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="form-control">
+
+              {/* Bedrooms and Bathrooms */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="form-control w-full">
                   <label className="label">
                     <span className="label-text font-medium">Bedrooms</span>
                   </label>
                   <input
                     type="number"
-                    className="input input-bordered bg-base-100 text-base-content"
+                    className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
                     value={selectedListing.bedrooms}
                     onChange={e => setSelectedListing({...selectedListing, bedrooms: e.target.value})}
+                    placeholder="0"
                     required
                   />
                 </div>
-                <div className="form-control">
+                <div className="form-control w-full">
                   <label className="label">
                     <span className="label-text font-medium">Bathrooms</span>
                   </label>
                   <input
                     type="number"
-                    className="input input-bordered bg-base-100 text-base-content"
+                    className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
                     value={selectedListing.bathrooms}
                     onChange={e => setSelectedListing({...selectedListing, bathrooms: e.target.value})}
+                    placeholder="0"
                     required
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="form-control">
+
+              {/* Floor Area and Lot Area */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="form-control w-full">
                   <label className="label">
                     <span className="label-text font-medium">Floor Area</span>
                   </label>
                   <input
                     type="text"
-                    className="input input-bordered bg-base-100 text-base-content"
+                    className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
                     placeholder="e.g. 120 sqm"
                     value={selectedListing.floorArea}
                     onChange={e => setSelectedListing({...selectedListing, floorArea: e.target.value})}
                   />
                 </div>
-                <div className="form-control">
+                <div className="form-control w-full">
                   <label className="label">
                     <span className="label-text font-medium">Lot Area</span>
                   </label>
                   <input
                     type="text"
-                    className="input input-bordered bg-base-100 text-base-content"
+                    className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
                     placeholder="e.g. 100 sqm"
                     value={selectedListing.lotArea}
                     onChange={e => setSelectedListing({...selectedListing, lotArea: e.target.value})}
@@ -692,24 +711,30 @@ function MyListing() {
                 </div>
               </div>
               
-              {/* Maps Embed URL for Edit Modal */}
-              <div className="form-control">
+              {/* Maps Embed URL */}
+              <div className="form-control w-full">
                 <label className="label">
-                  <span className="label-text font-medium">Google Maps Embed URL (Optional)</span>
+                  <div className="flex items-center gap-2">
+                    <span className="label-text font-medium">Maps Embed URL</span>
+                    <div className="tooltip tooltip-right" data-tip="Google Maps embed URL for property location (from Google Maps > Share > Embed)">
+                      <div className="btn btn-circle btn-ml btn-ghost text-base-content/50 hover:text-base-content/80">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
                 </label>
                 <input
                   type="url"
-                  className="input input-bordered bg-base-100 text-base-content"
+                  className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
                   placeholder="https://www.google.com/maps/embed?pb=..."
                   value={selectedListing.maps_embed_url || ""}
                   onChange={e => setSelectedListing({...selectedListing, maps_embed_url: e.target.value})}
                 />
-                <label className="label">
-                  <span className="label-text-alt text-base-content/70">Google Maps embed URL for property location</span>
-                </label>
               </div>
               
-              <div className="modal-action">
+              <div className="modal-action pt-4">
                 <button 
                   type="submit" 
                   className="btn btn-primary"
@@ -906,7 +931,16 @@ function MyListing() {
               {/* Maps Embed URL */}
               <div className="form-control w-full">
                 <label className="label">
-                  <span className="label-text font-medium">Google Maps Embed URL (Optional)</span>
+                  <div className="flex items-center gap-2">
+                    <span className="label-text font-medium">Maps Embed URL</span>
+                    <div className="tooltip tooltip-right" data-tip="Google Maps embed URL for property location (from Google Maps > Share > Embed)">
+                      <div className="btn btn-circle btn-xs btn-ghost text-base-content/50 hover:text-base-content/80">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
                 </label>
                 <input
                   type="url"
@@ -915,9 +949,6 @@ function MyListing() {
                   value={newListing.maps_embed_url}
                   onChange={e => setNewListing({...newListing, maps_embed_url: e.target.value})}
                 />
-                <label className="label">
-                  <span className="label-text-alt text-base-content/70">Google Maps embed URL for property location (from Google Maps &gt; Share &gt; Embed)</span>
-                </label>
               </div>
 
               <div className="modal-action pt-4">

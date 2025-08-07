@@ -50,6 +50,31 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Buyer Documents collection - Allow users to manage their own documents
+    match /buyerDocuments/{documentId} {
+      allow read: if request.auth != null 
+        && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null 
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.userType == 'buyer';
+      allow update: if request.auth != null 
+        && resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null 
+        && resource.data.userId == request.auth.uid;
+    }
+
+    // User Documents collection - Legacy support (if any references remain)
+    match /userDocuments/{documentId} {
+      allow read: if request.auth != null 
+        && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null 
+        && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null 
+        && resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null 
+        && resource.data.userId == request.auth.uid;
+    }
+
     // BuildSafe Collections - TEMPORARY: Allow all access for testing
     // In production, these should have proper authentication rules
     

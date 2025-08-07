@@ -487,7 +487,7 @@ function Sidebar({ userRole: propUserRole = 'buyer', isOpen, setIsOpen }) {
             data-tip={!isOpen ? 'Dashboard' : ''}
           >
             <RiDashboardLine className="w-6 h-6 text-primary" />
-            {isOpen && <span className="text-sm font-medium capitalize">{currentUserRole} Dashboard</span>}
+            {isOpen && <span className="text-sm font-medium">Dashboard</span>}
           </Link>
 
           <QuickActions isOpen={isOpen} />

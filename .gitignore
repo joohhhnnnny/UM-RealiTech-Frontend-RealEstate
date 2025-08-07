@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Upload directories (files stored in Firebase Storage in production)
+uploads/buyer/documents/personal/*
+uploads/buyer/documents/financial/*
+uploads/buyer/documents/property/*
+uploads/buyer/documents/legal/*
+!uploads/buyer/documents/personal/.gitkeep
+!uploads/buyer/documents/financial/.gitkeep
+!uploads/buyer/documents/property/.gitkeep
+!uploads/buyer/documents/legal/.gitkeep
+!uploads/README.md
