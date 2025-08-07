@@ -1024,23 +1024,6 @@ function SmartListing({ profileData }) {
 
   return (
     <div className="space-y-8">
-      {/* Debug Info Panel - Remove this after testing */}
-      {profileData && (
-        <div className="alert alert-info shadow-lg">
-          <div className="text-sm">
-            <strong>Debug Info:</strong> Profile: {profileData.buyerType} | Location: {profileData.preferredLocation} | Budget: {profileData.budgetRange} | 
-            Income: ₱{parseInt(profileData.monthlyIncome || 0).toLocaleString()}/month | Debts: ₱{parseInt(profileData.monthlyDebts || 0).toLocaleString()}/month | 
-            Spouse Income: {profileData.hasSpouseIncome ? 'Yes' : 'No'} | 
-            Original Listings: {originalListings.length} | Filtered Listings: {listings.length}
-            {listings.length > 0 && (
-              <div className="mt-2">
-                <strong>Top 3 Scores:</strong> {listings.slice(0, 3).map(l => `${l.title}: ${l.matchScore}% (${getAffordabilityLevel(l, profileData)})`).join(' | ')}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* AI Recommendations Banner */}
       <div className="alert alert-success shadow-lg">
         <RiRobot2Line className="w-6 h-6" />
@@ -1078,17 +1061,17 @@ function SmartListing({ profileData }) {
       </motion.div>
 
       {/* Filter and Sort Controls */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-1">
         <h2 id="listings-heading" className="text-xl sm:text-2xl font-bold">Smart Property Recommendations</h2>
-        <div className="flex items-center gap-4 w-full sm:w-auto">
-          <button className="btn btn-outline btn-sm gap-2 flex-1 sm:flex-none">
+        <div className="flex items-center gap-3 w-full sm:w-auto min-w-0">
+          <button className="btn btn-outline btn-sm gap-2 flex-shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
             Filter
           </button>
           <select 
-            className="select select-bordered select-sm flex-1 sm:flex-none" 
+            className="select select-bordered select-sm w-full sm:w-48 min-w-0" 
             value={sortBy} 
             onChange={(e) => setSortBy(e.target.value)}
           >
