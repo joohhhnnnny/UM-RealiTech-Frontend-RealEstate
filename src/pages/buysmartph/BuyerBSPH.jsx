@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
+import { useLocation } from 'react-router-dom';
 import { 
   RiRobot2Line, 
   RiMoneyDollarCircleLine,
@@ -17,6 +18,7 @@ import ProfileStatus from '../../components/ProfileStatus';
 import { userProfileService } from '../../services/UserProfileService';
 
 function BuyerBSPH() {
+  const location = useLocation();
   const [activeStep, setActiveStep] = useState(1);
   const [profileData, setProfileData] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -30,11 +32,22 @@ function BuyerBSPH() {
         setProfileComplete(hasProfile);
         
         if (hasProfile) {
-          // If profile exists, load it and go to Smart Listings by default
+          // If profile exists, load it
           const response = await userProfileService.getProfile();
           if (response.success && response.profileData) {
             setProfileData(response.profileData);
-            setActiveStep(5); // Go directly to Smart Listings
+            
+            // Check if we're coming from dashboard with specific navigation
+            if (location.state?.fromDashboard && location.state?.activeStep) {
+              setActiveStep(location.state.activeStep);
+            } else {
+              setActiveStep(5); // Go directly to Smart Listings by default
+            }
+          }
+        } else {
+          // Check if we're trying to go to Smart Listings without profile
+          if (location.state?.activeStep === 5) {
+            setActiveStep(1); // Redirect to profile setup
           }
         }
       } catch (error) {
@@ -43,7 +56,7 @@ function BuyerBSPH() {
     };
 
     checkProfileStatus();
-  }, []);
+  }, [location.state]);
 
   // Handle profile completion
   const handleProfileComplete = (completedProfile) => {

@@ -15,12 +15,16 @@ import {
   RiHotelBedLine,
   RiDropLine,
   RiLoader4Line,
-  RiErrorWarningLine
+  RiErrorWarningLine,
+  RiHeartLine,
+  RiHeartFill
 } from 'react-icons/ri';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../../../config/Firebase';
+import { collection, getDocs, query, where, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
+import { db, auth } from '../../../config/Firebase';
+import { useAuthState } from 'react-firebase-hooks/auth';
 
 function SmartListing({ profileData }) {
+  const [user, authLoading] = useAuthState(auth);
   const [listings, setListings] = useState([]);
   const [sortBy, setSortBy] = useState('match'); // Set default sort to match score
   const [selectedProperty, setSelectedProperty] = useState(null);
@@ -28,6 +32,8 @@ function SmartListing({ profileData }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [originalListings, setOriginalListings] = useState([]); // Store original fetched data
+  const [savedProperties, setSavedProperties] = useState(new Set());
+  const [savingProperty, setSavingProperty] = useState(null);
   const itemsPerPage = 9;
 
   // Smart location matching function
@@ -315,6 +321,76 @@ function SmartListing({ profileData }) {
     return Math.round(monthlyPayment);
   }, []);
 
+  // Function to fetch user's saved properties
+  const fetchSavedProperties = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const buyerDoc = await getDoc(doc(db, 'buyers', user.uid));
+      if (buyerDoc.exists()) {
+        const buyerData = buyerDoc.data();
+        const saved = buyerData.buyerProfile?.savedProperties || [];
+        setSavedProperties(new Set(saved.map(prop => prop.id)));
+      }
+    } catch (error) {
+      console.error('Error fetching saved properties:', error);
+    }
+  }, [user]);
+
+  // Function to save/unsave property
+  const handleSaveProperty = useCallback(async (listing) => {
+    if (!user) {
+      setError('Please login to save properties');
+      return;
+    }
+
+    setSavingProperty(listing.id);
+
+    try {
+      const buyerRef = doc(db, 'buyers', user.uid);
+      const isCurrentlySaved = savedProperties.has(listing.id);
+
+      // Prepare property data to save
+      const propertyData = {
+        id: listing.id,
+        title: listing.title,
+        price: listing.price,
+        location: listing.location,
+        type: listing.type,
+        beds: listing.beds,
+        baths: listing.baths,
+        floor_area_sqm: listing.floor_area_sqm,
+        images: listing.images || [],
+        matchScore: listing.matchScore,
+        savedAt: new Date().toISOString()
+      };
+
+      if (isCurrentlySaved) {
+        // Remove from saved properties
+        await updateDoc(buyerRef, {
+          'buyerProfile.savedProperties': arrayRemove(propertyData)
+        });
+        setSavedProperties(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(listing.id);
+          return newSet;
+        });
+      } else {
+        // Add to saved properties
+        await updateDoc(buyerRef, {
+          'buyerProfile.savedProperties': arrayUnion(propertyData)
+        });
+        setSavedProperties(prev => new Set([...prev, listing.id]));
+      }
+
+    } catch (error) {
+      console.error('Error saving/unsaving property:', error);
+      setError('Failed to save property. Please try again.');
+    } finally {
+      setSavingProperty(null);
+    }
+  }, [user, savedProperties]);
+
   // Calculate total pages
   const totalPages = Math.ceil(listings.length / itemsPerPage);
 
@@ -482,6 +558,15 @@ function SmartListing({ profileData }) {
     loadInitialData();
   }, [profileData, calculateMatchScore]); // Include profileData to recalculate when it changes
 
+  // Fetch saved properties when user changes
+  useEffect(() => {
+    if (user) {
+      fetchSavedProperties();
+    } else {
+      setSavedProperties(new Set());
+    }
+  }, [user, fetchSavedProperties]);
+
   // Profile-based filtering and scoring effect
   useEffect(() => {
     if (originalListings.length === 0) return;
@@ -610,10 +695,22 @@ function SmartListing({ profileData }) {
             )}
           </div>
           <div className="absolute bottom-4 right-4 z-20">
-            <button className="btn btn-circle btn-sm bg-white/80 backdrop-blur-md hover:bg-teal-600 hover:text-white border border-teal-700/10 shadow-lg transition-all duration-300">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
+            <button 
+              onClick={() => handleSaveProperty(listing)}
+              disabled={savingProperty === listing.id}
+              className={`btn btn-circle btn-sm backdrop-blur-md border shadow-lg transition-all duration-300 hover:border-teal-600 ${
+                savedProperties.has(listing.id) 
+                  ? 'bg-red-500/90 hover:bg-red-600 text-white border-red-500/20' 
+                  : 'bg-base-100/90 hover:bg-teal-600 hover:text-white border-base-300/20 text-base-content'
+              }`}
+            >
+              {savingProperty === listing.id ? (
+                <RiLoader4Line className="h-4 w-4 animate-spin" />
+              ) : savedProperties.has(listing.id) ? (
+                <RiHeartFill className="h-4 w-4" />
+              ) : (
+                <RiHeartLine className="h-4 w-4" />
+              )}
             </button>
           </div>
         </figure>
@@ -930,14 +1027,18 @@ function SmartListing({ profileData }) {
   };
 
   // Loading state
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="space-y-8">
         <div className="alert alert-info shadow-lg">
           <RiLoader4Line className="w-6 h-6 animate-spin" />
           <div>
-            <h3 className="font-bold">Loading Properties...</h3>
-            <div className="text-sm">Fetching the latest listings from our database.</div>
+            <h3 className="font-bold">
+              {authLoading ? 'Authenticating...' : 'Loading Properties...'}
+            </h3>
+            <div className="text-sm">
+              {authLoading ? 'Please wait while we authenticate your session.' : 'Fetching the latest listings from our database.'}
+            </div>
           </div>
         </div>
         

@@ -1,5 +1,6 @@
 import { doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../config/Firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 /**
  * Professional User Profile Management Service
@@ -11,10 +12,23 @@ class UserProfileService {
   }
 
   /**
-   * Get the current authenticated user
+   * Get the current authenticated user with proper state handling
+   * @returns {Promise<Object|null>} Current user object or null
+   */
+  async getCurrentUser() {
+    return new Promise((resolve) => {
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        unsubscribe();
+        resolve(user);
+      });
+    });
+  }
+
+  /**
+   * Get the current authenticated user synchronously (use with caution)
    * @returns {Object|null} Current user object or null
    */
-  getCurrentUser() {
+  getCurrentUserSync() {
     return auth.currentUser;
   }
 
@@ -40,7 +54,7 @@ class UserProfileService {
    */
   async saveProfile(profileData) {
     try {
-      const user = this.getCurrentUser();
+      const user = await this.getCurrentUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
@@ -85,7 +99,8 @@ class UserProfileService {
    */
   async getProfile(userId = null) {
     try {
-      const targetUserId = userId || this.getCurrentUser()?.uid;
+      const user = await this.getCurrentUser();
+      const targetUserId = userId || user?.uid;
       if (!targetUserId) {
         throw new Error('User not authenticated');
       }
@@ -132,7 +147,7 @@ class UserProfileService {
    */
   async updateProfile(updates) {
     try {
-      const user = this.getCurrentUser();
+      const user = await this.getCurrentUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
@@ -188,7 +203,8 @@ class UserProfileService {
    */
   async deleteProfile(userId = null) {
     try {
-      const targetUserId = userId || this.getCurrentUser()?.uid;
+      const user = await this.getCurrentUser();
+      const targetUserId = userId || user?.uid;
       if (!targetUserId) {
         throw new Error('User not authenticated');
       }

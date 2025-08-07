@@ -9,6 +9,8 @@ import {
   RiErrorWarningLine,
   RiCheckLine
 } from 'react-icons/ri';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../../../config/Firebase';
 import { userProfileService } from '../../../services/UserProfileService';
 
 // Memoized progress component to prevent re-renders
@@ -87,6 +89,7 @@ const InputField = ({ label, name, value, onChange, type = 'text', placeholder, 
 };
 
 function AIGuide({ profileData, setProfileData, onComplete, isEditMode = false }) {
+  const [user, authLoading] = useAuthState(auth);
   const [step, setStep] = useState(1);
   const [saveStatus, setSaveStatus] = useState(null); // 'saving', 'success', 'error'
   const [isLoading, setIsLoading] = useState(false); // For profile loading only
@@ -104,10 +107,10 @@ function AIGuide({ profileData, setProfileData, onComplete, isEditMode = false }
   useEffect(() => {
     const loadExistingProfile = async () => {
       // Prevent multiple loads and infinite loops
-      if (hasLoadedProfile.current) return;
+      if (hasLoadedProfile.current || authLoading) return;
       
       // Only load if we're in edit mode and don't have complete profile data
-      if (isEditMode && (!profileData || !profileData.buyerType)) {
+      if (isEditMode && (!profileData || !profileData.buyerType) && user) {
         setIsLoading(true);
         hasLoadedProfile.current = true;
         
@@ -131,7 +134,7 @@ function AIGuide({ profileData, setProfileData, onComplete, isEditMode = false }
         } finally {
           setIsLoading(false);
         }
-      } else if (profileData && profileData.buyerType && !hasLoadedProfile.current) {
+      } else if (profileData && profileData.buyerType && !hasLoadedProfile.current && !authLoading) {
         // If we already have profile data, populate the form once
         hasLoadedProfile.current = true;
         setFormData({
@@ -146,7 +149,7 @@ function AIGuide({ profileData, setProfileData, onComplete, isEditMode = false }
     };
 
     loadExistingProfile();
-  }, [isEditMode, profileData, setProfileData]);
+  }, [isEditMode, profileData, setProfileData, user, authLoading]);
 
   // Reset the loaded flag when edit mode changes
   useEffect(() => {
@@ -419,10 +422,20 @@ function AIGuide({ profileData, setProfileData, onComplete, isEditMode = false }
       </h2>
       <ProgressBar step={step} />
       
-      {isLoading ? (
+      {(authLoading || isLoading) ? (
         <div className="flex items-center justify-center py-12">
           <RiLoader4Line className="w-8 h-8 animate-spin text-primary mr-3" />
-          <span>Loading profile data...</span>
+          <span>
+            {authLoading ? 'Authenticating...' : 'Loading profile data...'}
+          </span>
+        </div>
+      ) : !user && isEditMode ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <RiErrorWarningLine className="w-12 h-12 text-error mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Authentication Required</h3>
+            <p className="text-base-content/70">Please log in to edit your profile.</p>
+          </div>
         </div>
       ) : (
         <div key={`form-${isEditMode}-${hasLoadedProfile.current}`}>
