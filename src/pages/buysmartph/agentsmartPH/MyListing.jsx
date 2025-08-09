@@ -13,6 +13,8 @@ import {
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../../../config/Firebase';
+import ListingForm from '../../../components/ListingForm';
+import { DEFAULT_PROPERTY_IMAGE, INITIAL_LISTING_STATE, debugLog } from '../../../constants/propertyConstants';
 
 // Utility function to fix agent names
 const fixAgentName = (agentName, agentEmail) => {
@@ -35,13 +37,14 @@ function MyListing() {
   const [submitting, setSubmitting] = useState(false);
   const [myListings, setMyListings] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [newListing, setNewListing] = useState(INITIAL_LISTING_STATE);
 
   // Function to fix existing agent names for current user
-  const fixMyAgentNames = async () => {
+const fixMyAgentNames = async (agent) => {
     if (!currentUser?.uid) return;
     
     try {
-      console.log('Fixing agent names for current user...');
+      debugLog('Fixing agent names for current user...');
       
       // Fix listings collection
       const listingsQuery = query(collection(db, 'listings'), where('agentId', '==', currentUser.uid));
@@ -90,11 +93,11 @@ function MyListing() {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         // User is signed in through Firebase Auth
-        console.log('Firebase user authenticated:', firebaseUser.uid);
+        debugLog('Firebase user authenticated:', firebaseUser.uid);
         setCurrentUser(firebaseUser);
       } else {
         // No user is signed in, fallback to localStorage
-        console.log('No Firebase user, checking localStorage');
+        debugLog('No Firebase user, checking localStorage');
         const userData = localStorage.getItem('userData');
         if (userData) {
           try {
@@ -203,21 +206,6 @@ function MyListing() {
     }
   }, [currentUser]);
 
-  const [newListing, setNewListing] = useState({
-    title: "",
-    price: "",
-    location: "",
-    type: "",
-    bedrooms: "",
-    bathrooms: "",
-    floorArea: "",
-    lotArea: "",
-    image: "",
-    imageFile: null,
-    description: "",
-    maps_embed_url: ""
-  });
-
   const handleAddListing = async (e) => {
     e.preventDefault();
     
@@ -259,7 +247,7 @@ function MyListing() {
           currentUser.email
         ),
         agentEmail: currentUser.email,
-        image: newListing.image || "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9",
+        image: newListing.image || DEFAULT_PROPERTY_IMAGE,
         buyers: [],
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -316,20 +304,7 @@ function MyListing() {
       setShowAddListingModal(false);
       
       // Reset form
-      setNewListing({
-        title: "",
-        price: "",
-        location: "",
-        type: "",
-        bedrooms: "",
-        bathrooms: "",
-        floorArea: "",
-        lotArea: "",
-        image: "",
-        imageFile: null,
-        description: "",
-        maps_embed_url: ""
-      });
+      setNewListing(INITIAL_LISTING_STATE);
       
       alert('Listing added successfully!');
     } catch (error) {
@@ -512,7 +487,7 @@ function MyListing() {
                   alt={listing.title} 
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    e.target.src = "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9";
+                    e.target.src = DEFAULT_PROPERTY_IMAGE;
                   }}
                 />
               </figure>
@@ -580,188 +555,22 @@ function MyListing() {
         <div className="modal modal-open">
           <div className="modal-box max-w-2xl bg-base-100">
             <h3 className="font-bold text-xl mb-6 text-base-content">Edit Listing</h3>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              await handleUpdateListing(selectedListing);
-              setShowEditListingModal(false);
-              setSelectedListing(null);
-            }} className="space-y-6">
-              {/* Title Input */}
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text font-medium">Title</span>
-                </label>
-                <input
-                  type="text"
-                  className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                  value={selectedListing.title}
-                  onChange={e => setSelectedListing({...selectedListing, title: e.target.value})}
-                  placeholder="Enter property title"
-                  required
-                />
-              </div>
-
-              {/* Price Input */}
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text font-medium">Price</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/70">₱</span>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full pl-7 mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                    value={selectedListing.price}
-                    onChange={e => setSelectedListing({...selectedListing, price: e.target.value})}
-                    placeholder="Enter property price"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Location Input */}
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text font-medium">Location</span>
-                </label>
-                <input
-                  type="text"
-                  className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                  value={selectedListing.location}
-                  onChange={e => setSelectedListing({...selectedListing, location: e.target.value})}
-                  placeholder="Enter property location"
-                  required
-                />
-              </div>
-
-              {/* Type Select */}
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text font-medium">Property Type</span>
-                </label>
-                <select
-                  className="select select-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                  value={selectedListing.type}
-                  onChange={e => setSelectedListing({...selectedListing, type: e.target.value})}
-                  required
-                >
-                  <option value="">Select property type</option>
-                  <option value="House">House</option>
-                  <option value="Townhouse">Townhouse</option>
-                  <option value="Condo">Condo</option>
-                  <option value="Lot">Lot</option>
-                </select>
-              </div>
-
-              {/* Bedrooms and Bathrooms */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="form-control w-full">
-                  <label className="label">
-                    <span className="label-text font-medium">Bedrooms</span>
-                  </label>
-                  <input
-                    type="number"
-                    className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                    value={selectedListing.bedrooms}
-                    onChange={e => setSelectedListing({...selectedListing, bedrooms: e.target.value})}
-                    placeholder="0"
-                    required
-                  />
-                </div>
-                <div className="form-control w-full">
-                  <label className="label">
-                    <span className="label-text font-medium">Bathrooms</span>
-                  </label>
-                  <input
-                    type="number"
-                    className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                    value={selectedListing.bathrooms}
-                    onChange={e => setSelectedListing({...selectedListing, bathrooms: e.target.value})}
-                    placeholder="0"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Floor Area and Lot Area */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="form-control w-full">
-                  <label className="label">
-                    <span className="label-text font-medium">Floor Area</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                    placeholder="e.g. 120 sqm"
-                    value={selectedListing.floorArea}
-                    onChange={e => setSelectedListing({...selectedListing, floorArea: e.target.value})}
-                  />
-                </div>
-                <div className="form-control w-full">
-                  <label className="label">
-                    <span className="label-text font-medium">Lot Area</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                    placeholder="e.g. 100 sqm"
-                    value={selectedListing.lotArea}
-                    onChange={e => setSelectedListing({...selectedListing, lotArea: e.target.value})}
-                  />
-                </div>
-              </div>
-              
-              {/* Maps Embed URL */}
-              <div className="form-control w-full">
-                <label className="label">
-                  <div className="flex items-center gap-2">
-                    <span className="label-text font-medium">Maps Embed URL</span>
-                    <div className="tooltip tooltip-right" data-tip="Google Maps embed URL for property location (from Google Maps > Share > Embed)">
-                      <div className="btn btn-circle btn-ml btn-ghost text-base-content/50 hover:text-base-content/80">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                </label>
-                <input
-                  type="url"
-                  className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                  placeholder="https://www.google.com/maps/embed?pb=..."
-                  value={selectedListing.maps_embed_url || ""}
-                  onChange={e => setSelectedListing({...selectedListing, maps_embed_url: e.target.value})}
-                />
-              </div>
-              
-              <div className="modal-action pt-4">
-                <button 
-                  type="submit" 
-                  className="btn btn-primary"
-                  disabled={submitting}
-                >
-                  {submitting ? (
-                    <>
-                      <RiLoader4Line className="w-4 h-4 animate-spin mr-2" />
-                      Updating...
-                    </>
-                  ) : (
-                    'Save Changes'
-                  )}
-                </button>
-                <button 
-                  type="button" 
-                  className="btn btn-ghost"
-                  onClick={() => {
-                    setShowEditListingModal(false);
-                    setSelectedListing(null);
-                  }}
-                  disabled={submitting}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+            <ListingForm
+              listing={selectedListing}
+              onListingChange={setSelectedListing}
+              onSubmit={async (e) => {
+                e.preventDefault();
+                await handleUpdateListing(selectedListing);
+                setShowEditListingModal(false);
+                setSelectedListing(null);
+              }}
+              onCancel={() => {
+                setShowEditListingModal(false);
+                setSelectedListing(null);
+              }}
+              submitting={submitting}
+              mode="edit"
+            />
           </div>
         </div>
       )}
@@ -771,228 +580,17 @@ function MyListing() {
         <div className="modal modal-open">
           <div className="modal-box max-w-2xl bg-base-100">
             <h3 className="font-bold text-xl mb-6 text-base-content">Add New Listing</h3>
-            <form onSubmit={handleAddListing} className="space-y-6">
-              {/* Title Input */}
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text font-medium">Title</span>
-                </label>
-                <input
-                  type="text"
-                  className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                  value={newListing.title}
-                  onChange={e => setNewListing({...newListing, title: e.target.value})}
-                  placeholder="Enter property title"
-                  required
-                />
-              </div>
-
-              {/* Price Input */}
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text font-medium">Price</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/70">₱</span>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full pl-7 mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                    value={newListing.price}
-                    onChange={e => setNewListing({...newListing, price: e.target.value})}
-                    placeholder="Enter property price"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Location Input */}
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text font-medium">Location</span>
-                </label>
-                <input
-                  type="text"
-                  className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                  value={newListing.location}
-                  onChange={e => setNewListing({...newListing, location: e.target.value})}
-                  placeholder="Enter property location"
-                  required
-                />
-              </div>
-
-              {/* Type Select */}
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text font-medium">Property Type</span>
-                </label>
-                <select
-                  className="select select-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                  value={newListing.type}
-                  onChange={e => setNewListing({...newListing, type: e.target.value})}
-                  required
-                >
-                  <option value="">Select property type</option>
-                  <option value="House">House</option>
-                  <option value="Townhouse">Townhouse</option>
-                  <option value="Condo">Condo</option>
-                  <option value="Lot">Lot</option>
-                </select>
-              </div>
-
-              {/* Bedrooms and Bathrooms */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="form-control w-full">
-                  <label className="label">
-                    <span className="label-text font-medium">Bedrooms</span>
-                  </label>
-                  <input
-                    type="number"
-                    className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                    value={newListing.bedrooms}
-                    onChange={e => setNewListing({...newListing, bedrooms: e.target.value})}
-                    placeholder="0"
-                    required
-                  />
-                </div>
-                <div className="form-control w-full">
-                  <label className="label">
-                    <span className="label-text font-medium">Bathrooms</span>
-                  </label>
-                  <input
-                    type="number"
-                    className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                    value={newListing.bathrooms}
-                    onChange={e => setNewListing({...newListing, bathrooms: e.target.value})}
-                    placeholder="0"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Floor Area and Lot Area */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="form-control w-full">
-                  <label className="label">
-                    <span className="label-text font-medium">Floor Area</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                    placeholder="e.g. 120 sqm"
-                    value={newListing.floorArea}
-                    onChange={e => setNewListing({...newListing, floorArea: e.target.value})}
-                  />
-                </div>
-                <div className="form-control w-full">
-                  <label className="label">
-                    <span className="label-text font-medium">Lot Area</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                    placeholder="e.g. 100 sqm"
-                    value={newListing.lotArea}
-                    onChange={e => setNewListing({...newListing, lotArea: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              {/* Description */}
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text font-medium">Description (Optional)</span>
-                </label>
-                <textarea
-                  className="textarea textarea-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                  placeholder="Describe the property features, amenities, etc."
-                  value={newListing.description}
-                  onChange={e => setNewListing({...newListing, description: e.target.value})}
-                  rows="3"
-                />
-              </div>
-
-              {/* Image URL */}
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text font-medium">Property Image URL (Optional)</span>
-                </label>
-                <input
-                  type="url"
-                  className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                  placeholder="https://example.com/image.jpg"
-                  value={newListing.image}
-                  onChange={e => setNewListing({...newListing, image: e.target.value})}
-                />
-                <label className="label">
-                  <span className="label-text-alt text-base-content/70">Provide a direct URL to the property image</span>
-                </label>
-              </div>
-
-              {/* Maps Embed URL */}
-              <div className="form-control w-full">
-                <label className="label">
-                  <div className="flex items-center gap-2">
-                    <span className="label-text font-medium">Maps Embed URL</span>
-                    <div className="tooltip tooltip-right" data-tip="Google Maps embed URL for property location (from Google Maps > Share > Embed)">
-                      <div className="btn btn-circle btn-xs btn-ghost text-base-content/50 hover:text-base-content/80">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                </label>
-                <input
-                  type="url"
-                  className="input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
-                  placeholder="https://www.google.com/maps/embed?pb=..."
-                  value={newListing.maps_embed_url}
-                  onChange={e => setNewListing({...newListing, maps_embed_url: e.target.value})}
-                />
-              </div>
-
-              <div className="modal-action pt-4">
-                <button 
-                  type="submit" 
-                  className="btn btn-primary"
-                  disabled={submitting}
-                >
-                  {submitting ? (
-                    <>
-                      <RiLoader4Line className="w-4 h-4 animate-spin mr-2" />
-                      Adding Listing...
-                    </>
-                  ) : (
-                    'Add Listing'
-                  )}
-                </button>
-                <button 
-                  type="button" 
-                  className="btn btn-ghost"
-                  onClick={() => {
-                    setShowAddListingModal(false);
-                    // Reset form when canceling
-                    setNewListing({
-                      title: "",
-                      price: "",
-                      location: "",
-                      type: "",
-                      bedrooms: "",
-                      bathrooms: "",
-                      floorArea: "",
-                      lotArea: "",
-                      image: "",
-                      imageFile: null,
-                      description: "",
-                      maps_embed_url: ""
-                    });
-                  }}
-                  disabled={submitting}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+            <ListingForm
+              listing={newListing}
+              onListingChange={setNewListing}
+              onSubmit={handleAddListing}
+              onCancel={() => {
+                setShowAddListingModal(false);
+                setNewListing(INITIAL_LISTING_STATE);
+              }}
+              submitting={submitting}
+              mode="add"
+            />
           </div>
         </div>
       )}

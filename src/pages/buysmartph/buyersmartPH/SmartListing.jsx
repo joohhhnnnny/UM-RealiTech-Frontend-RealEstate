@@ -22,6 +22,7 @@ import {
 import { collection, getDocs, query, where, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
 import { db, auth } from '../../../config/Firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
+import { propertyRecommendationEngine } from '../../../services/PropertyRecommendationEngine';
 
 function SmartListing({ profileData }) {
   const [user, authLoading] = useAuthState(auth);
@@ -108,178 +109,30 @@ function SmartListing({ profileData }) {
     return hasCommonSynonym;
   }, []);
 
-  // Calculate match score based on profile data and listing
+  // Enhanced MCDA + Content-Based Filtering Algorithm
   const calculateMatchScore = useCallback((listing, profile) => {
-    let score = 0;
-    let maxPossibleScore = 0;
-    let matchedFactors = [];
+    if (!profile || !listing) {
+      return 30; // Default score for incomplete data
+    }
 
-    console.log('Calculating score for:', listing.title, 'with profile:', profile);
-
-    // Financial Affordability Check (highest weight - 35 points)
-    maxPossibleScore += 35;
-    if (profile.monthlyIncome && listing.price) {
-      const monthlyIncome = parseInt(profile.monthlyIncome) || 0;
-      const monthlyDebts = parseInt(profile.monthlyDebts) || 0;
-      const spouseIncome = profile.hasSpouseIncome ? monthlyIncome * 0.5 : 0; // Assume spouse earns 50% of main income
-      const totalMonthlyIncome = monthlyIncome + spouseIncome;
-      const netIncome = totalMonthlyIncome - monthlyDebts;
-      const propertyPrice = parseInt(listing.price.replace(/[₱,\s]/g, '')) || 0;
-
-      // Calculate monthly payment (assuming 20% down payment, 6.5% interest, 15-year loan)
-      const loanAmount = propertyPrice * 0.8; // 80% loan
-      const monthlyInterestRate = 0.065 / 12;
-      const numberOfPayments = 15 * 12;
-      const monthlyPayment = loanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments)) / 
-                           (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1);
-
-      // Debt-to-income ratio calculation (should be max 30% for housing)
-      const housingRatio = monthlyPayment / totalMonthlyIncome;
-      const totalDebtRatio = (monthlyPayment + monthlyDebts) / totalMonthlyIncome;
-
-      console.log('Financial calculation:', {
-        totalIncome: totalMonthlyIncome,
-        netIncome: netIncome,
-        monthlyPayment: monthlyPayment,
-        housingRatio: housingRatio,
-        totalDebtRatio: totalDebtRatio
+    try {
+      // Use the professional recommendation engine
+      const scoredProperty = propertyRecommendationEngine.calculateRecommendationScore(listing, profile);
+      
+      console.log('Professional MCDA Score Result:', {
+        property: listing.title,
+        finalScore: scoredProperty.matchScore,
+        detailedScores: scoredProperty.detailedScores,
+        matchFactors: scoredProperty.matchFactors,
+        explanation: scoredProperty.explanation
       });
 
-      if (housingRatio <= 0.25 && totalDebtRatio <= 0.35) {
-        score += 35; // Excellent affordability
-        matchedFactors.push('financial-excellent');
-      } else if (housingRatio <= 0.30 && totalDebtRatio <= 0.40) {
-        score += 30; // Good affordability
-        matchedFactors.push('financial-good');
-      } else if (housingRatio <= 0.35 && totalDebtRatio <= 0.45) {
-        score += 20; // Fair affordability
-        matchedFactors.push('financial-fair');
-      } else if (housingRatio <= 0.40 && totalDebtRatio <= 0.50) {
-        score += 10; // Tight affordability
-        matchedFactors.push('financial-tight');
-      } else {
-        score += 5; // Poor affordability
-        matchedFactors.push('financial-poor');
-      }
+      return scoredProperty.matchScore;
+    } catch (error) {
+      console.error('Error in recommendation scoring:', error);
+      return 30; // Fallback score
     }
-
-    // Budget match (high weight - 25 points)
-    maxPossibleScore += 25;
-    if (profile.budgetRange && listing.price) {
-      const price = parseInt(listing.price.replace(/[₱,\s]/g, '')) || 0;
-      const budgetRanges = {
-        '1M-3M': { min: 1000000, max: 3000000 },
-        '3M-5M': { min: 3000000, max: 5000000 },
-        '5M-10M': { min: 5000000, max: 10000000 },
-        '10M+': { min: 10000000, max: Infinity }
-      };
-      const range = budgetRanges[profile.budgetRange];
-      if (range) {
-        if (price >= range.min && price <= range.max) {
-          score += 25; // Perfect budget match
-          matchedFactors.push('budget-perfect');
-        } else if (price >= range.min * 0.7 && price <= range.max * 1.3) {
-          score += 20; // Close budget match (within 30%)
-          matchedFactors.push('budget-close');
-        } else if (price >= range.min * 0.5 && price <= range.max * 1.5) {
-          score += 15; // Some budget match (within 50%)
-          matchedFactors.push('budget-some');
-        } else {
-          score += 5; // Way outside budget but still some points
-          matchedFactors.push('budget-far');
-        }
-      }
-    }
-
-    // Location match (high weight - 25 points)
-    maxPossibleScore += 25;
-    if (profile.preferredLocation && listing.location) {
-      if (isLocationMatch(listing.location, profile.preferredLocation)) {
-        score += 25; // Perfect location match
-        matchedFactors.push('location-match');
-      } else {
-        score += 5; // No location match but has location data
-        matchedFactors.push('location-no-match');
-      }
-    }
-
-    // Buyer type specific matches (moderate weight - 15 points)
-    maxPossibleScore += 15;
-    if (profile.buyerType) {
-      switch(profile.buyerType) {
-        case 'First Time Buyer': {
-          const firstTimeBuyerPrice = parseInt(listing.price?.replace(/[₱,\s]/g, '')) || 0;
-          if (firstTimeBuyerPrice <= 3000000) {
-            score += 15;
-            matchedFactors.push('buyer-type-perfect');
-          } else if (firstTimeBuyerPrice <= 5000000) {
-            score += 10;
-            matchedFactors.push('buyer-type-good');
-          } else {
-            score += 5;
-            matchedFactors.push('buyer-type-some');
-          }
-          break;
-        }
-        case 'Investor':
-          if (listing.title?.toLowerCase().includes('investment') ||
-              listing.description?.toLowerCase().includes('investment') ||
-              listing.amenities?.some(a => a.toLowerCase().includes('rental'))) {
-            score += 15;
-            matchedFactors.push('buyer-type-perfect');
-          } else {
-            score += 8; // Any property can be an investment
-            matchedFactors.push('buyer-type-some');
-          }
-          break;
-        case 'OFW':
-          if (listing.description?.toLowerCase().includes('ofw friendly') ||
-              listing.furnishing === 'Fully Furnished') {
-            score += 15;
-            matchedFactors.push('buyer-type-perfect');
-          } else if (listing.furnishing === 'Semi Furnished') {
-            score += 10;
-            matchedFactors.push('buyer-type-good');
-          } else {
-            score += 5;
-            matchedFactors.push('buyer-type-some');
-          }
-          break;
-        case 'Upgrader': {
-          const upgraderPrice = parseInt(listing.price?.replace(/[₱,\s]/g, '')) || 0;
-          if (upgraderPrice >= 5000000 && listing.amenities?.length >= 3) {
-            score += 15;
-            matchedFactors.push('buyer-type-perfect');
-          } else if (upgraderPrice >= 3000000) {
-            score += 10;
-            matchedFactors.push('buyer-type-good');
-          } else {
-            score += 5;
-            matchedFactors.push('buyer-type-some');
-          }
-          break;
-        }
-        default:
-          score += 8;
-          matchedFactors.push('buyer-type-default');
-      }
-    }
-
-    // Calculate percentage score
-    const percentageScore = maxPossibleScore > 0 ? Math.round((score / maxPossibleScore) * 100) : 30;
-    const finalScore = Math.min(100, Math.max(20, percentageScore));
-
-    console.log('Score calculation result:', {
-      listing: listing.title,
-      score: score,
-      maxPossible: maxPossibleScore,
-      percentage: percentageScore,
-      finalScore: finalScore,
-      matchedFactors: matchedFactors
-    });
-    
-    return finalScore;
-  }, [isLocationMatch]);
+  }, []);
 
   // Function to get affordability level for display
   const getAffordabilityLevel = useCallback((listing, profile) => {
@@ -688,20 +541,20 @@ function SmartListing({ profileData }) {
               </div>
             )}
             {listing.furnishing === "Semi Furnished" && (
-              <div className="badge badge-info bg-blue-700/90 text-white border-0 backdrop-blur-md shadow-lg text-xs">Semi Furnished</div>
+              <div className="badge badge-info text-white border-0 backdrop-blur-md shadow-lg text-xs">Semi Furnished</div>
             )}
             {listing.furnishing === "Fully Furnished" && (
-              <div className="badge badge-info bg-blue-600/90 text-white border-0 backdrop-blur-md shadow-lg text-xs">Fully Furnished</div>
+              <div className="badge badge-info text-white border-0 backdrop-blur-md shadow-lg text-xs">Fully Furnished</div>
             )}
           </div>
           <div className="absolute bottom-4 right-4 z-20">
             <button 
               onClick={() => handleSaveProperty(listing)}
               disabled={savingProperty === listing.id}
-              className={`btn btn-circle btn-sm backdrop-blur-md border shadow-lg transition-all duration-300 hover:border-teal-600 ${
+              className={`btn btn-circle btn-sm backdrop-blur-md border shadow-lg transition-all duration-300 hover:border-primary ${
                 savedProperties.has(listing.id) 
-                  ? 'bg-red-500/90 hover:bg-red-600 text-white border-red-500/20' 
-                  : 'bg-base-100/90 hover:bg-teal-600 hover:text-white border-base-300/20 text-base-content'
+                  ? 'bg-error hover:bg-error text-white border-error/20' 
+                  : 'bg-base-100/90 hover:bg-primary hover:text-white border-base-300/20 text-base-content'
               }`}
             >
               {savingProperty === listing.id ? (
@@ -716,11 +569,11 @@ function SmartListing({ profileData }) {
         </figure>
         <div className="card-body p-4 flex flex-col h-full bg-gradient-to-b from-base-100 to-base-200/20">
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-bold mb-1.5 line-clamp-2 leading-tight bg-gradient-to-r from-teal-800 to-teal-600 bg-clip-text text-transparent">
+            <h3 className="text-lg font-bold mb-1.5 line-clamp-2 leading-tight text-base-content">
               {listing.title}
             </h3>
             <p className="text-sm text-base-content/70 flex items-center gap-1.5">
-              <RiMapPinLine className="h-4 w-4 flex-shrink-0 text-teal-600" />
+              <RiMapPinLine className="h-4 w-4 flex-shrink-0 text-primary" />
               <span className="truncate">{listing.location}</span>
             </p>
           </div>
@@ -728,24 +581,24 @@ function SmartListing({ profileData }) {
           <div className="flex flex-col lg:flex-row items-start justify-between mt-3 gap-3">
             {/* Property stats with icons - responsive grid */}
             <div className="grid grid-cols-3 gap-1 sm:gap-2 text-sm w-full lg:flex-1">
-              <div className="flex flex-col items-center p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-teal-700/5 to-teal-800/10 backdrop-blur-sm border border-teal-700/10 hover:border-teal-700/20 transition-colors">
-                <RiHome3Line className="h-3 w-3 sm:h-4 sm:w-4 text-teal-700 mb-1" />
+              <div className="flex flex-col items-center p-1.5 sm:p-2 rounded-lg bg-base-200/30 backdrop-blur-sm border border-primary/10 hover:border-primary/20 transition-colors">
+                <RiHome3Line className="h-3 w-3 sm:h-4 sm:w-4 text-primary mb-1" />
                 <span className="text-base-content/70 text-xs">Area</span>
-                <span className="font-semibold mt-0.5 text-teal-700 text-xs sm:text-sm">
+                <span className="font-semibold mt-0.5 text-primary text-xs sm:text-sm">
                   {listing.floor_area_sqm || '0'} sqm
                 </span>
               </div>
-              <div className="flex flex-col items-center p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-teal-600/5 to-teal-700/10 backdrop-blur-sm border border-teal-600/10 hover:border-teal-600/20 transition-colors">
-                <RiHotelBedLine className="h-3 w-3 sm:h-4 sm:w-4 text-teal-600 mb-1" />
+              <div className="flex flex-col items-center p-1.5 sm:p-2 rounded-lg bg-base-200/30 backdrop-blur-sm border border-primary/10 hover:border-primary/20 transition-colors">
+                <RiHotelBedLine className="h-3 w-3 sm:h-4 sm:w-4 text-primary mb-1" />
                 <span className="text-base-content/70 text-xs">Beds</span>
-                <span className="font-semibold mt-0.5 text-teal-600 text-xs sm:text-sm">
+                <span className="font-semibold mt-0.5 text-primary text-xs sm:text-sm">
                   {listing.beds || '0'}
                 </span>
               </div>
-              <div className="flex flex-col items-center p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-teal-500/5 to-teal-600/10 backdrop-blur-sm border border-teal-500/10 hover:border-teal-500/20 transition-colors">
-                <RiDropLine className="h-3 w-3 sm:h-4 sm:w-4 text-teal-500 mb-1" />
+              <div className="flex flex-col items-center p-1.5 sm:p-2 rounded-lg bg-base-200/30 backdrop-blur-sm border border-primary/10 hover:border-primary/20 transition-colors">
+                <RiDropLine className="h-3 w-3 sm:h-4 sm:w-4 text-primary mb-1" />
                 <span className="text-base-content/70 text-xs">Baths</span>
-                <span className="font-semibold mt-0.5 text-teal-500 text-xs sm:text-sm">
+                <span className="font-semibold mt-0.5 text-primary text-xs sm:text-sm">
                   {listing.baths || '0'}
                 </span>
               </div>
@@ -753,11 +606,11 @@ function SmartListing({ profileData }) {
             
             {/* Price section */}
             <div className="text-center lg:text-right lg:ml-4 flex-none w-full lg:w-auto">
-              <p className="text-lg sm:text-xl font-bold bg-gradient-to-r from-teal-900 to-teal-700 text-white px-3 py-1 rounded-full shadow-lg whitespace-nowrap">
+              <p className="text-lg sm:text-xl font-bold bg-primary text-primary-content px-3 py-1 rounded-full shadow-lg whitespace-nowrap">
                 {listing.price}
               </p>
               {profileData && profileData.monthlyIncome && (
-                <p className="text-xs text-green-600 font-semibold mt-1 whitespace-nowrap">
+                <p className="text-xs text-success font-semibold mt-1 whitespace-nowrap">
                   ₱{calculateMonthlyPayment(listing.price).toLocaleString()}/month
                 </p>
               )}
@@ -786,14 +639,14 @@ function SmartListing({ profileData }) {
           )}
 
           {/* Footer section */}
-          <div className="flex-none pt-2 border-t border-gradient-to-r from-teal-800/20 to-teal-600/20">
+          <div className="flex-none pt-2 border-t border-base-content/10">
             <div className="flex items-center gap-2 mb-3 text-xs text-base-content/60">
-              <RiPriceTag3Line className="h-3.5 w-3.5 text-teal-600" />
+              <RiPriceTag3Line className="h-3.5 w-3.5 text-primary" />
               Listed {listing.days_on_market === "Unknown" ? "Recently" : listing.days_on_market + " ago"}
             </div>
             
             <button 
-              className="btn btn-primary w-full mb-2 normal-case bg-gradient-to-r from-teal-900 to-teal-700 text-white hover:brightness-110 transition-all duration-300 shadow-lg hover:shadow-xl"
+              className="btn btn-primary w-full mb-2 normal-case hover:brightness-110 transition-all duration-300 shadow-lg hover:shadow-xl"
               onClick={() => setSelectedProperty(listing)}
             >
               View Details
@@ -825,19 +678,19 @@ function SmartListing({ profileData }) {
     
     return (
       <div className="modal modal-open">
-        <div className="modal-box w-11/12 max-w-5xl">
+        <div className="modal-box w-11/12 max-w-5xl bg-base-100 text-base-content">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h3 className="font-bold text-2xl text-teal-700">{selectedProperty.title}</h3>
+              <h3 className="font-bold text-2xl text-primary">{selectedProperty.title}</h3>
               <p className="text-lg text-base-content/70 flex items-center gap-2 mt-2">
                 <RiMapPinLine className="w-5 h-5" />
                 {selectedProperty.location}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-3xl font-bold text-teal-900">{selectedProperty.price}</p>
+              <p className="text-3xl font-bold text-primary">{selectedProperty.price}</p>
               <button 
-                className="btn btn-sm btn-circle btn-ghost mt-2"
+                className="btn btn-sm btn-circle btn-ghost mt-2 text-base-content hover:bg-base-200"
                 onClick={() => setSelectedProperty(null)}
               >
                 ✕
@@ -856,52 +709,84 @@ function SmartListing({ profileData }) {
               </figure>
               
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="bg-teal-50 p-3 rounded-lg">
-                  <div className="text-2xl font-bold text-teal-700">{selectedProperty.floor_area_sqm || '0'}</div>
-                  <div className="text-sm text-teal-600">sqm Floor Area</div>
+                <div className="bg-base-200 p-3 rounded-lg">
+                  <div className="text-2xl font-bold text-primary">{selectedProperty.floor_area_sqm || '0'}</div>
+                  <div className="text-sm text-base-content/70">sqm Floor Area</div>
                 </div>
-                <div className="bg-teal-50 p-3 rounded-lg">
-                  <div className="text-2xl font-bold text-teal-700">{selectedProperty.beds || '0'}</div>
-                  <div className="text-sm text-teal-600">Bedrooms</div>
+                <div className="bg-base-200 p-3 rounded-lg">
+                  <div className="text-2xl font-bold text-primary">{selectedProperty.beds || '0'}</div>
+                  <div className="text-sm text-base-content/70">Bedrooms</div>
                 </div>
-                <div className="bg-teal-50 p-3 rounded-lg">
-                  <div className="text-2xl font-bold text-teal-700">{selectedProperty.baths || '0'}</div>
-                  <div className="text-sm text-teal-600">Bathrooms</div>
+                <div className="bg-base-200 p-3 rounded-lg">
+                  <div className="text-2xl font-bold text-primary">{selectedProperty.baths || '0'}</div>
+                  <div className="text-sm text-base-content/70">Bathrooms</div>
                 </div>
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <h4 className="font-semibold text-lg mb-2">Property Details</h4>
+                <h4 className="font-semibold text-lg mb-2 text-base-content">Property Details</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span>Property Type:</span>
-                    <span className="font-medium">{selectedProperty.property_type || 'House'}</span>
+                    <span className="text-base-content/70">Property Type:</span>
+                    <span className="font-medium text-base-content">{selectedProperty.property_type || 'House'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Furnishing:</span>
-                    <span className="font-medium">{selectedProperty.furnishing || 'Unfurnished'}</span>
+                    <span className="text-base-content/70">Furnishing:</span>
+                    <span className="font-medium text-base-content">{selectedProperty.furnishing || 'Unfurnished'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Lot Area:</span>
-                    <span className="font-medium">{selectedProperty.lot_area_sqm || '0'} sqm</span>
+                    <span className="text-base-content/70">Lot Area:</span>
+                    <span className="font-medium text-base-content">{selectedProperty.lot_area_sqm || '0'} sqm</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Price per sqm:</span>
-                    <span className="font-medium">
+                    <span className="text-base-content/70">Price per sqm:</span>
+                    <span className="font-medium text-base-content">
                       ₱{Math.round(parseInt(selectedProperty.price.replace(/[^0-9]/g, '')) / (selectedProperty.lot_area_sqm || 1)).toLocaleString()}
                     </span>
                   </div>
                 </div>
               </div>
 
+              {/* MCDA Algorithm Insights */}
+              {profileData && (
+                <div>
+                  <h4 className="font-semibold text-lg mb-2 text-info">🤖 AI Match Analysis</h4>
+                  <div className="space-y-2 bg-base-200 p-3 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <span className="text-base-content/70">Overall Match Score:</span>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-16 h-2 rounded-full ${
+                          selectedProperty.matchScore >= 80 ? 'bg-success' :
+                          selectedProperty.matchScore >= 60 ? 'bg-warning' :
+                          selectedProperty.matchScore >= 40 ? 'bg-info' :
+                          'bg-base-content/30'
+                        }`}></div>
+                        <span className="font-bold text-lg text-base-content">
+                          {selectedProperty.matchScore || calculateMatchScore(selectedProperty, profileData)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-xs text-base-content/60">
+                      {selectedProperty.matchScore >= 80 ? '🎯 Excellent match for your profile' :
+                       selectedProperty.matchScore >= 60 ? '⭐ Good match with strong compatibility' :
+                       selectedProperty.matchScore >= 40 ? '👍 Fair match with some benefits' :
+                       '📍 Basic match - consider your priorities'}
+                    </div>
+                    <div className="text-xs text-info font-medium mt-2">
+                      Algorithm: Multi-Criteria Decision Analysis (MCDA) + Content-Based Filtering
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {selectedProperty.amenities && selectedProperty.amenities.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-lg mb-2">Amenities</h4>
+                  <h4 className="font-semibold text-lg mb-2 text-base-content">Amenities</h4>
                   <div className="flex flex-wrap gap-2">
                     {selectedProperty.amenities.map((amenity) => (
-                      <div key={amenity} className="badge badge-outline">{amenity}</div>
+                      <div key={amenity} className="badge badge-outline text-base-content border-base-content/30">{amenity}</div>
                     ))}
                   </div>
                 </div>
@@ -909,38 +794,38 @@ function SmartListing({ profileData }) {
 
               {profileData && profileData.monthlyIncome && (
                 <div>
-                  <h4 className="font-semibold text-lg mb-2 text-green-600">💰 Financial Analysis</h4>
-                  <div className="space-y-2 text-sm bg-green-50 p-3 rounded-lg">
+                  <h4 className="font-semibold text-lg mb-2 text-success">💰 Financial Analysis</h4>
+                  <div className="space-y-2 text-sm bg-base-200 p-3 rounded-lg">
                     <div className="flex justify-between">
-                      <span>Estimated Monthly Payment:</span>
-                      <span className="font-bold text-green-700">₱{calculateMonthlyPayment(selectedProperty.price).toLocaleString()}/month</span>
+                      <span className="text-base-content/70">Estimated Monthly Payment:</span>
+                      <span className="font-bold text-success">₱{calculateMonthlyPayment(selectedProperty.price).toLocaleString()}/month</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Down Payment (20%):</span>
-                      <span className="font-medium">₱{Math.round(parseInt(selectedProperty.price.replace(/[^0-9]/g, '')) * 0.2).toLocaleString()}</span>
+                      <span className="text-base-content/70">Down Payment (20%):</span>
+                      <span className="font-medium text-base-content">₱{Math.round(parseInt(selectedProperty.price.replace(/[^0-9]/g, '')) * 0.2).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Loan Amount:</span>
-                      <span className="font-medium">₱{Math.round(parseInt(selectedProperty.price.replace(/[^0-9]/g, '')) * 0.8).toLocaleString()}</span>
+                      <span className="text-base-content/70">Loan Amount:</span>
+                      <span className="font-medium text-base-content">₱{Math.round(parseInt(selectedProperty.price.replace(/[^0-9]/g, '')) * 0.8).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Your Monthly Income:</span>
-                      <span className="font-medium">₱{parseInt(profileData.monthlyIncome).toLocaleString()}</span>
+                      <span className="text-base-content/70">Your Monthly Income:</span>
+                      <span className="font-medium text-base-content">₱{parseInt(profileData.monthlyIncome).toLocaleString()}</span>
                     </div>
                     {profileData.hasSpouseIncome && (
                       <div className="flex justify-between">
-                        <span>Combined Income (with spouse):</span>
-                        <span className="font-medium">₱{Math.round(parseInt(profileData.monthlyIncome) * 1.5).toLocaleString()}</span>
+                        <span className="text-base-content/70">Combined Income (with spouse):</span>
+                        <span className="font-medium text-base-content">₱{Math.round(parseInt(profileData.monthlyIncome) * 1.5).toLocaleString()}</span>
                       </div>
                     )}
-                    <div className="flex justify-between border-t pt-2">
-                      <span>Affordability Level:</span>
+                    <div className="flex justify-between border-t border-base-content/20 pt-2">
+                      <span className="text-base-content/70">Affordability Level:</span>
                       <span className={`font-bold ${
-                        getAffordabilityLevel(selectedProperty, profileData) === 'excellent' ? 'text-green-600' :
-                        getAffordabilityLevel(selectedProperty, profileData) === 'good' ? 'text-blue-600' :
-                        getAffordabilityLevel(selectedProperty, profileData) === 'fair' ? 'text-yellow-600' :
-                        getAffordabilityLevel(selectedProperty, profileData) === 'tight' ? 'text-orange-600' :
-                        'text-red-600'
+                        getAffordabilityLevel(selectedProperty, profileData) === 'excellent' ? 'text-success' :
+                        getAffordabilityLevel(selectedProperty, profileData) === 'good' ? 'text-info' :
+                        getAffordabilityLevel(selectedProperty, profileData) === 'fair' ? 'text-warning' :
+                        getAffordabilityLevel(selectedProperty, profileData) === 'tight' ? 'text-warning' :
+                        'text-error'
                       }`}>
                         {getAffordabilityLevel(selectedProperty, profileData) === 'excellent' ? '💰 Excellent' :
                          getAffordabilityLevel(selectedProperty, profileData) === 'good' ? '💸 Good' :
@@ -949,7 +834,7 @@ function SmartListing({ profileData }) {
                          '❌ Financial Stretch'}
                       </span>
                     </div>
-                    <div className="text-xs text-gray-600 italic">
+                    <div className="text-xs text-base-content/50 italic">
                       *Based on 20% down payment, 6.5% interest, 15-year loan term
                     </div>
                   </div>
@@ -986,7 +871,7 @@ function SmartListing({ profileData }) {
             </div>
           </div>
         </div>
-        <div className="modal-backdrop" onClick={() => setSelectedProperty(null)}></div>
+        <div className="modal-backdrop bg-base-300/50 backdrop-blur-sm" onClick={() => setSelectedProperty(null)}></div>
       </div>
     );
   };
@@ -1145,13 +1030,13 @@ function SmartListing({ profileData }) {
       <motion.div
         initial={{ scale: 0.95 }}
         animate={{ scale: 1 }}
-        className="card bg-gradient-to-br from-teal-500/20 to-teal-500/5 backdrop-blur-xl shadow-lg"
+        className="card bg-base-200/20 backdrop-blur-xl shadow-lg border border-primary/10"
       >
         <div className="card-body p-6">
           <div className="flex items-start justify-between">
             <div>
-              <RiLayoutGridLine className="w-8 h-8 text-teal-500 mb-4" />
-              <h3 className="text-lg font-bold text-teal-500">Smart Listings</h3>
+              <RiLayoutGridLine className="w-8 h-8 text-primary mb-4" />
+              <h3 className="text-lg font-bold text-primary">Smart Listings</h3>
               <p className="text-base-content/70 text-sm mt-2">AI-powered property recommendations based on your profile</p>
             </div>
             <div className="rounded-full bg-success/10 p-1">
@@ -1163,7 +1048,20 @@ function SmartListing({ profileData }) {
 
       {/* Filter and Sort Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-1">
-        <h2 id="listings-heading" className="text-xl sm:text-2xl font-bold">Smart Property Recommendations</h2>
+        <div className="space-y-2">
+          <h2 id="listings-heading" className="text-xl sm:text-2xl font-bold">Smart Property Recommendations</h2>
+          {profileData && (
+            <div className="flex items-center gap-2">
+              <div className="badge badge-success text-white gap-1">
+                <RiRobot2Line className="w-3 h-3" />
+                MCDA Algorithm Active
+              </div>
+              <div className="text-xs text-base-content/70">
+                Personalized matching for {profileData.buyerType}s
+              </div>
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-3 w-full sm:w-auto min-w-0">
           <button className="btn btn-outline btn-sm gap-2 flex-shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
