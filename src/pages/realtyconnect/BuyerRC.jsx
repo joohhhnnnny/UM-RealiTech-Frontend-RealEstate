@@ -1,15 +1,15 @@
-import React, { useState, useMemo, memo, useCallback } from 'react';
-import { FaUserTie, FaStar } from 'react-icons/fa';
-import agentsData from '../../json/agents.json';
+import React, { useState, useMemo, memo, useCallback, useEffect } from 'react';
+import { FaUserTie, FaStar, FaSpinner } from 'react-icons/fa';
+import { agentService } from '../../services/realtyConnectService';
 
 // Memoized Agent Card Component
-const AgentCard = memo(({ agent, onViewProfile, renderStars }) => (
+const AgentCard = memo(({ agent, onViewProfile, onContactAgent, renderStars }) => (
   <div className="card bg-base-100 shadow-xl">
     <div className="card-body">
       <div className="flex items-center gap-4">
         <div className="avatar">
           <div className="w-16 h-16 rounded-full">
-            <img src={agent.image} alt={agent.name} loading="lazy" />
+            <img src={agent.image || '/default-avatar.png'} alt={agent.name} loading="lazy" />
           </div>
         </div>
         <div>
@@ -29,7 +29,12 @@ const AgentCard = memo(({ agent, onViewProfile, renderStars }) => (
       </div>
       
       <div className="card-actions justify-end mt-4">
-        <button className="btn btn-primary">Contact Agent</button>
+        <button 
+          className="btn btn-primary"
+          onClick={() => onContactAgent(agent)}
+        >
+          Contact Agent
+        </button>
         <button 
           className="btn btn-outline"
           onClick={() => onViewProfile(agent)}
@@ -42,7 +47,7 @@ const AgentCard = memo(({ agent, onViewProfile, renderStars }) => (
 ));
 
 // Memoized Agent Profile Modal Component
-const AgentProfileModal = memo(({ selectedAgent, onClose, renderStars }) => {
+const AgentProfileModal = memo(({ selectedAgent, onClose, onScheduleMeeting, renderStars }) => {
   if (!selectedAgent) return null;
 
   return (
@@ -51,7 +56,7 @@ const AgentProfileModal = memo(({ selectedAgent, onClose, renderStars }) => {
         <div className="flex items-start gap-6">
           <div className="avatar">
             <div className="w-24 h-24 rounded-full ring ring-purple-500 ring-offset-2">
-              <img src={selectedAgent.image} alt={selectedAgent.name} loading="lazy" />
+              <img src={selectedAgent.image || '/default-avatar.png'} alt={selectedAgent.name} loading="lazy" />
             </div>
           </div>
           <div className="flex-1">
@@ -97,14 +102,17 @@ const AgentProfileModal = memo(({ selectedAgent, onClose, renderStars }) => {
         <div className="mt-6">
           <h3 className="font-semibold text-lg mb-3">About</h3>
           <p className="text-base-content/70">
-            Professional real estate agent with proven expertise in {selectedAgent.specialization.toLowerCase()} properties. 
-            Successfully closed {selectedAgent.deals} deals, maintaining a {selectedAgent.rating}/5 client satisfaction rating. 
-            Specializes in providing comprehensive property solutions and exceptional client service.
+            {selectedAgent.bio || `Professional real estate agent with proven expertise in ${selectedAgent.specialization?.toLowerCase()} properties. 
+            Successfully closed ${selectedAgent.deals} deals, maintaining a ${selectedAgent.rating}/5 client satisfaction rating. 
+            Specializes in providing comprehensive property solutions and exceptional client service.`}
           </p>
         </div>
 
         <div className="modal-action">
-          <button className="btn btn-primary gap-2">
+          <button 
+            className="btn btn-primary gap-2"
+            onClick={() => onScheduleMeeting(selectedAgent)}
+          >
             <FaUserTie />
             Schedule Meeting
           </button>
@@ -125,57 +133,31 @@ function BuyerRC() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedAgent, setSelectedAgent] = useState(null);
+  const [agents, setAgents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Optimized agent data processing
-  const agents = useMemo(() => {
-    return agentsData.map((agent, index) => {
-      let image;
-      
-      if (index === 0) {
-        image = "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&backgroundColor=b6e3f4";
-      } else {
-        const professionalPhotos = [
-          'https://images.unsplash.com/photo-1560250097-0b93528c311a',
-          'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2',
-          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d',
-          'https://images.unsplash.com/photo-1580489944761-15a19d654956',
-          'https://images.unsplash.com/photo-1438761681033-6461ffad8d80',
-          'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e',
-          'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79',
-          'https://images.unsplash.com/photo-1544005313-94ddf0286df2',
-          'https://randomuser.me/api/portraits/men/41.jpg',
-          'https://randomuser.me/api/portraits/women/42.jpg',
-          'https://randomuser.me/api/portraits/men/43.jpg',
-          'https://randomuser.me/api/portraits/women/44.jpg'
-        ];
-        
-        const uniqueIndex = index % professionalPhotos.length;
-        image = professionalPhotos[uniqueIndex];
+  // Load agents from Firebase
+  useEffect(() => {
+    const loadAgents = async () => {
+      try {
+        setLoading(true);
+        // Subscribe to real-time updates
+        const unsubscribe = agentService.subscribeToAgents((agentsData) => {
+          setAgents(agentsData);
+          setLoading(false);
+        });
+
+        return () => unsubscribe();
+      } catch (err) {
+        console.error('Error loading agents:', err);
+        setError('Failed to load agents');
+        setLoading(false);
       }
+    };
 
-      let specialization = ['Residential', 'Commercial', 'Industrial'][Math.floor(Math.random() * 3)];
-      let rating = (Math.random() * (5 - 4) + 4).toFixed(1);
-      let deals = Math.floor(Math.random() * (50 - 10) + 10);
-
-      if (agent.name === 'Sarah Garcia') {
-        specialization = 'Residential';
-        rating = '4.8';
-        deals = 32;
-      }
-
-      return {
-        ...agent,
-        specialization,
-        rating,
-        deals,
-        image,
-        ...(agent.name === 'Sarah Garcia' && {
-          agency: 'RealiTech Realty',
-          email: 'sarah@realitech.com'
-        })
-      };
-    });
-  }, [agentsData]);
+    loadAgents();
+  }, []);
 
   // Optimized filtered agents with early exit
   const filteredAgents = useMemo(() => {
@@ -222,6 +204,17 @@ function BuyerRC() {
     setSelectedAgent(null);
   }, []);
 
+  const handleContactAgent = useCallback((agent) => {
+    // Implement contact functionality
+    alert(`Contacting ${agent.name} at ${agent.email}`);
+  }, []);
+
+  const handleScheduleMeeting = useCallback((agent) => {
+    // Implement schedule meeting functionality
+    alert(`Scheduling meeting with ${agent.name}`);
+    setSelectedAgent(null);
+  }, []);
+
   // Search handler
   const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);
@@ -231,6 +224,29 @@ function BuyerRC() {
   const handleFilterChange = useCallback((e) => {
     setSelectedFilter(e.target.value);
   }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <FaSpinner className="animate-spin text-4xl text-purple-500" />
+        <span className="ml-2 text-lg">Loading agents...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="alert alert-error">
+        <span>{error}</span>
+        <button 
+          className="btn btn-sm btn-outline"
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -255,6 +271,11 @@ function BuyerRC() {
         </select>
       </div>
 
+      {/* Results count */}
+      <div className="text-sm opacity-70">
+        Showing {filteredAgents.length} of {agents.length} agents
+      </div>
+
       {/* Agents Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredAgents.map((agent) => (
@@ -262,16 +283,34 @@ function BuyerRC() {
             key={agent.id} 
             agent={agent}
             onViewProfile={handleViewProfile}
+            onContactAgent={handleContactAgent}
             renderStars={renderStars}
           />
         ))}
       </div>
+
+      {/* No results message */}
+      {filteredAgents.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-lg opacity-70">No agents found matching your criteria</p>
+          <button 
+            className="btn btn-outline mt-4"
+            onClick={() => {
+              setSearchQuery('');
+              setSelectedFilter('all');
+            }}
+          >
+            Clear Filters
+          </button>
+        </div>
+      )}
 
       {/* Conditionally rendered modal */}
       {selectedAgent && (
         <AgentProfileModal 
           selectedAgent={selectedAgent}
           onClose={handleCloseModal}
+          onScheduleMeeting={handleScheduleMeeting}
           renderStars={renderStars}
         />
       )}
