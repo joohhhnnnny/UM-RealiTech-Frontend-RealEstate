@@ -9,20 +9,22 @@ import {
   RiPhoneLine,
   RiCalculatorLine,
   RiFileTextLine,
-  RiBuilding4Line,
-  RiBarChartBoxLine,
   RiHome3Line,
   RiHotelBedLine,
   RiDropLine,
   RiLoader4Line,
-  RiErrorWarningLine,
   RiHeartLine,
-  RiHeartFill
+  RiHeartFill,
+  RiMailLine,
+  RiUserLine
 } from 'react-icons/ri';
 import { collection, getDocs, query, where, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
 import { db, auth } from '../../../config/Firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { propertyRecommendationEngine } from '../../../services/PropertyRecommendationEngine';
+import PropertyEmptyState from '../../../components/PropertyEmptyState';
+import PropertySuccessBanner from '../../../components/PropertySuccessBanner';
+import agentsData from '../../../json/agents.json';
 
 function SmartListing({ profileData }) {
   const [user, authLoading] = useAuthState(auth);
@@ -109,6 +111,29 @@ function SmartListing({ profileData }) {
     return hasCommonSynonym;
   }, []);
 
+  // Helper function to assign agent data to properties that don't have agents
+  const assignAgentToProperty = useCallback((listing) => {
+    // If the listing already has agent info, keep it
+    if (listing.agent_name && listing.agent_email) {
+      return {
+        ...listing,
+        agentName: listing.agent_name,
+        agentEmail: listing.agent_email
+      };
+    }
+    
+    // Otherwise, assign a random agent from the agents data
+    const randomAgent = agentsData[Math.floor(Math.random() * agentsData.length)];
+    
+    return {
+      ...listing,
+      agentName: randomAgent.name,
+      agentEmail: randomAgent.email,
+      agentPhone: randomAgent.phone,
+      agentAgency: randomAgent.agency
+    };
+  }, []);
+
   // Enhanced MCDA + Content-Based Filtering Algorithm
   const calculateMatchScore = useCallback((listing, profile) => {
     if (!profile || !listing) {
@@ -134,31 +159,47 @@ function SmartListing({ profileData }) {
     }
   }, []);
 
-  // Function to get affordability level for display
-  const getAffordabilityLevel = useCallback((listing, profile) => {
-    if (!profile.monthlyIncome || !listing.price) return 'unknown';
-    
-    const monthlyIncome = parseInt(profile.monthlyIncome) || 0;
-    const monthlyDebts = parseInt(profile.monthlyDebts) || 0;
-    const spouseIncome = profile.hasSpouseIncome ? monthlyIncome * 0.5 : 0;
-    const totalMonthlyIncome = monthlyIncome + spouseIncome;
-    const propertyPrice = parseInt(listing.price.replace(/[₱,\s]/g, '')) || 0;
+  // Helper function to get affordability styling and display
+  const getAffordabilityDisplay = useCallback((level) => {
+    const affordabilityMap = {
+      excellent: {
+        bgClass: 'bg-success',
+        textClass: 'text-success',
+        label: '💰 Excellent',
+        badgeLabel: '💰 Excellent'
+      },
+      good: {
+        bgClass: 'bg-info',
+        textClass: 'text-info',
+        label: '💸 Good',
+        badgeLabel: '💸 Good'
+      },
+      fair: {
+        bgClass: 'bg-warning',
+        textClass: 'text-warning',
+        label: '⚖️ Fair',
+        badgeLabel: '⚖️ Fair'
+      },
+      tight: {
+        bgClass: 'bg-warning',
+        textClass: 'text-warning',
+        label: '⚠️ Tight Budget',
+        badgeLabel: '⚠️ Tight'
+      },
+      stretch: {
+        bgClass: 'bg-error',
+        textClass: 'text-error',
+        label: '❌ Financial Stretch',
+        badgeLabel: '❌ Stretch'
+      }
+    };
 
-    // Calculate monthly payment (assuming 20% down payment, 6.5% interest, 15-year loan)
-    const loanAmount = propertyPrice * 0.8;
-    const monthlyInterestRate = 0.065 / 12;
-    const numberOfPayments = 15 * 12;
-    const monthlyPayment = loanAmount * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments)) / 
-                         (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1);
-
-    const housingRatio = monthlyPayment / totalMonthlyIncome;
-    const totalDebtRatio = (monthlyPayment + monthlyDebts) / totalMonthlyIncome;
-
-    if (housingRatio <= 0.25 && totalDebtRatio <= 0.35) return 'excellent';
-    if (housingRatio <= 0.30 && totalDebtRatio <= 0.40) return 'good';
-    if (housingRatio <= 0.35 && totalDebtRatio <= 0.45) return 'fair';
-    if (housingRatio <= 0.40 && totalDebtRatio <= 0.50) return 'tight';
-    return 'stretch';
+    return affordabilityMap[level] || {
+      bgClass: 'bg-base-300',
+      textClass: 'text-base-content',
+      label: 'Unknown',
+      badgeLabel: 'Unknown'
+    };
   }, []);
 
   // Function to calculate monthly payment for display
@@ -173,6 +214,28 @@ function SmartListing({ profileData }) {
     
     return Math.round(monthlyPayment);
   }, []);
+
+  // Function to get affordability level for display (uses calculateMonthlyPayment to avoid duplication)
+  const getAffordabilityLevel = useCallback((listing, profile) => {
+    if (!profile.monthlyIncome || !listing.price) return 'unknown';
+    
+    const monthlyIncome = parseInt(profile.monthlyIncome) || 0;
+    const monthlyDebts = parseInt(profile.monthlyDebts) || 0;
+    const spouseIncome = profile.hasSpouseIncome ? monthlyIncome * 0.5 : 0;
+    const totalMonthlyIncome = monthlyIncome + spouseIncome;
+
+    // Use the existing calculateMonthlyPayment function to avoid code duplication
+    const monthlyPayment = calculateMonthlyPayment(listing.price);
+
+    const housingRatio = monthlyPayment / totalMonthlyIncome;
+    const totalDebtRatio = (monthlyPayment + monthlyDebts) / totalMonthlyIncome;
+
+    if (housingRatio <= 0.25 && totalDebtRatio <= 0.35) return 'excellent';
+    if (housingRatio <= 0.30 && totalDebtRatio <= 0.40) return 'good';
+    if (housingRatio <= 0.35 && totalDebtRatio <= 0.45) return 'fair';
+    if (housingRatio <= 0.40 && totalDebtRatio <= 0.50) return 'tight';
+    return 'stretch';
+  }, [calculateMonthlyPayment]);
 
   // Function to fetch user's saved properties
   const fetchSavedProperties = useCallback(async () => {
@@ -253,7 +316,7 @@ function SmartListing({ profileData }) {
   const currentListings = listings.slice(indexOfFirstItem, indexOfLastItem);
 
   // Function to fetch listings from Firebase
-  const fetchListingsFromFirebase = async () => {
+  const fetchListingsFromFirebase = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -345,17 +408,20 @@ function SmartListing({ profileData }) {
         index === self.findIndex(l => l.title === listing.title && l.location === listing.location)
       );
 
+      // Assign agents to properties that don't have agent data
+      const listingsWithAgents = uniqueListings.map(listing => assignAgentToProperty(listing));
+
       console.log('SmartListing: Final results:', {
         properties: propertiesData.length,
         listings: listingsData.length,
-        total: uniqueListings.length,
-        sampleData: uniqueListings.slice(0, 2), // Show first 2 items for debugging
-        uniqueListings: uniqueListings
+        total: listingsWithAgents.length,
+        sampleData: listingsWithAgents.slice(0, 2), // Show first 2 items for debugging
+        uniqueListings: listingsWithAgents
       });
 
-      setOriginalListings(uniqueListings);
+      setOriginalListings(listingsWithAgents);
       
-      return uniqueListings;
+      return listingsWithAgents;
     } catch (error) {
       console.error('SmartListing: Error fetching listings:', error);
       setError('Failed to load properties. Please try again later.');
@@ -363,7 +429,7 @@ function SmartListing({ profileData }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [assignAgentToProperty]); // Add dependencies for useCallback
 
   // Initial data loading effect
   useEffect(() => {
@@ -409,7 +475,7 @@ function SmartListing({ profileData }) {
     };
 
     loadInitialData();
-  }, [profileData, calculateMatchScore]); // Include profileData to recalculate when it changes
+  }, [profileData, calculateMatchScore, fetchListingsFromFirebase, assignAgentToProperty]); // Include profileData to recalculate when it changes
 
   // Fetch saved properties when user changes
   useEffect(() => {
@@ -513,19 +579,15 @@ function SmartListing({ profileData }) {
               AI Match: {listing.matchScore}%
             </div>
             {profileData && profileData.monthlyIncome && (
-              <div className={`badge text-white border-0 backdrop-blur-md shadow-lg text-xs ${
-                getAffordabilityLevel(listing, profileData) === 'excellent' ? 'bg-green-600/90' :
-                getAffordabilityLevel(listing, profileData) === 'good' ? 'bg-blue-600/90' :
-                getAffordabilityLevel(listing, profileData) === 'fair' ? 'bg-yellow-600/90' :
-                getAffordabilityLevel(listing, profileData) === 'tight' ? 'bg-orange-600/90' :
-                'bg-red-600/90'
-              }`}>
-                {getAffordabilityLevel(listing, profileData) === 'excellent' ? '💰 Excellent' :
-                 getAffordabilityLevel(listing, profileData) === 'good' ? '💸 Good' :
-                 getAffordabilityLevel(listing, profileData) === 'fair' ? '⚖️ Fair' :
-                 getAffordabilityLevel(listing, profileData) === 'tight' ? '⚠️ Tight' :
-                 '❌ Stretch'}
-              </div>
+              (() => {
+                const affordabilityLevel = getAffordabilityLevel(listing, profileData);
+                const affordabilityDisplay = getAffordabilityDisplay(affordabilityLevel);
+                return (
+                  <div className={`badge text-white border-0 backdrop-blur-md shadow-lg text-xs ${affordabilityDisplay.bgClass}`}>
+                    {affordabilityDisplay.badgeLabel}
+                  </div>
+                );
+              })()
             )}
             {profileData && (
               <div className={`badge text-white border-0 backdrop-blur-md shadow-lg text-xs ${
@@ -652,18 +714,14 @@ function SmartListing({ profileData }) {
               View Details
             </button>
             
-            <div className="grid grid-cols-3 gap-1">
-              <button className="btn btn-sm btn-outline gap-1 text-xs">
-                <RiCalculatorLine className="w-3 h-3" />
-                <span className="hidden sm:inline">Loan</span>
-              </button>
-              <button className="btn btn-sm btn-outline gap-1 text-xs">
+            <div className="grid grid-cols-2 gap-2">
+              <button className="btn btn-sm btn-outline gap-1 text-xs hover:btn-primary transition-colors">
                 <RiFileTextLine className="w-3 h-3" />
                 <span className="hidden sm:inline">Apply</span>
               </button>
-              <button className="btn btn-sm btn-outline gap-1 text-xs">
-                <RiPhoneLine className="w-3 h-3" />
-                <span className="hidden sm:inline">Call</span>
+              <button className="btn btn-sm btn-outline gap-1 text-xs hover:btn-secondary transition-colors">
+                <RiMailLine className="w-3 h-3" />
+                <span className="hidden sm:inline">Message</span>
               </button>
             </div>
           </div>
@@ -820,25 +878,57 @@ function SmartListing({ profileData }) {
                     )}
                     <div className="flex justify-between border-t border-base-content/20 pt-2">
                       <span className="text-base-content/70">Affordability Level:</span>
-                      <span className={`font-bold ${
-                        getAffordabilityLevel(selectedProperty, profileData) === 'excellent' ? 'text-success' :
-                        getAffordabilityLevel(selectedProperty, profileData) === 'good' ? 'text-info' :
-                        getAffordabilityLevel(selectedProperty, profileData) === 'fair' ? 'text-warning' :
-                        getAffordabilityLevel(selectedProperty, profileData) === 'tight' ? 'text-warning' :
-                        'text-error'
-                      }`}>
-                        {getAffordabilityLevel(selectedProperty, profileData) === 'excellent' ? '💰 Excellent' :
-                         getAffordabilityLevel(selectedProperty, profileData) === 'good' ? '💸 Good' :
-                         getAffordabilityLevel(selectedProperty, profileData) === 'fair' ? '⚖️ Fair' :
-                         getAffordabilityLevel(selectedProperty, profileData) === 'tight' ? '⚠️ Tight Budget' :
-                         '❌ Financial Stretch'}
-                      </span>
+                      {(() => {
+                        const affordabilityLevel = getAffordabilityLevel(selectedProperty, profileData);
+                        const affordabilityDisplay = getAffordabilityDisplay(affordabilityLevel);
+                        return (
+                          <span className={`font-bold ${affordabilityDisplay.textClass}`}>
+                            {affordabilityDisplay.label}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div className="text-xs text-base-content/50 italic">
                       *Based on 20% down payment, 6.5% interest, 15-year loan term
                     </div>
                   </div>
                 </div>
+              )}
+
+              {/* Agent Information Section */}
+              {selectedProperty.agentName && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="mb-6"
+                >
+                  <h4 className="text-lg font-semibold mb-4 flex items-center gap-2 text-base-content">
+                    <RiUserLine className="text-blue-600 dark:text-blue-400" />
+                    Agent Information
+                  </h4>
+                  <div className="bg-base-200 dark:bg-base-200 p-4 rounded-xl border border-base-300 dark:border-base-600">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white">
+                        <RiUserLine className="text-xl" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-base-content mb-1">
+                          {selectedProperty.agentName}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-base-content/70">
+                          <RiMailLine className="text-blue-600 dark:text-blue-400" />
+                          <a 
+                            href={`mailto:${selectedProperty.agentEmail}`}
+                            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+                          >
+                            {selectedProperty.agentEmail}
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
               )}
 
               <div className="space-y-3 pt-4">
@@ -848,13 +938,6 @@ function SmartListing({ profileData }) {
                 >
                   <RiCalculatorLine className="w-5 h-5" />
                   Calculate Loan for This Property
-                </button>
-                <button 
-                  className="btn btn-outline w-full gap-2"
-                  onClick={() => setSelectedProperty(null)}
-                >
-                  <RiBarChartBoxLine className="w-5 h-5" />
-                  Calculate Total Costs
                 </button>
                 <button 
                   className="btn btn-outline w-full gap-2"
@@ -951,80 +1034,41 @@ function SmartListing({ profileData }) {
   // Error state
   if (error) {
     return (
-      <div className="space-y-8">
-        <div className="alert alert-error shadow-lg">
-          <RiErrorWarningLine className="w-6 h-6" />
-          <div>
-            <h3 className="font-bold">Error Loading Properties</h3>
-            <div className="text-sm">{error}</div>
-          </div>
-        </div>
-        
-        <div className="text-center py-12">
-          <button 
-            className="btn btn-primary gap-2"
-            onClick={() => {
-              setError(null);
-              setLoading(true);
-              fetchListingsFromFirebase();
-            }}
-          >
-            <RiLoader4Line className="w-5 h-5" />
-            Try Again
-          </button>
-        </div>
-      </div>
+      <PropertyEmptyState
+        type="error"
+        error={error}
+        onRetry={() => {
+          setError(null);
+          setLoading(true);
+          fetchListingsFromFirebase();
+        }}
+        isRefreshing={loading}
+      />
     );
   }
 
   // Empty state
   if (!loading && listings.length === 0) {
     return (
-      <div className="space-y-8">
-        <div className="alert alert-warning shadow-lg">
-          <RiErrorWarningLine className="w-6 h-6" />
-          <div>
-            <h3 className="font-bold">No Properties Found</h3>
-            <div className="text-sm">No properties match your current criteria. Try adjusting your filters.</div>
-          </div>
-        </div>
-        
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">🏠</div>
-          <h3 className="text-2xl font-bold mb-2">No listings available</h3>
-          <p className="text-base-content/70 mb-6">Check back later or adjust your search criteria.</p>
-          <button 
-            className="btn btn-primary gap-2"
-            onClick={() => {
-              setLoading(true);
-              fetchListingsFromFirebase();
-            }}
-          >
-            <RiLoader4Line className="w-5 h-5" />
-            Refresh Listings
-          </button>
-        </div>
-      </div>
+      <PropertyEmptyState
+        type="no-listings"
+        onRefresh={() => {
+          setLoading(true);
+          fetchListingsFromFirebase();
+        }}
+        isRefreshing={loading}
+      />
     );
   }
 
   return (
     <div className="space-y-8">
       {/* AI Recommendations Banner */}
-      <div className="alert alert-success shadow-lg">
-        <RiRobot2Line className="w-6 h-6" />
-        <div>
-          <h3 className="font-bold">
-            {profileData && profileData.buyerType ? 'AI Smart Recommendations Ready!' : 'Available Properties'}
-          </h3>
-          <div className="text-sm">
-            {profileData && profileData.buyerType
-              ? `Based on your ${profileData.buyerType} profile (${profileData.preferredLocation || 'No location'}, ${profileData.budgetRange || 'No budget'}, ₱${parseInt(profileData.monthlyIncome || 0).toLocaleString()}/month income), showing ${listings.length} properties ranked by compatibility and affordability.`
-              : `Showing ${listings.length} available properties. Complete your AI profile for personalized recommendations.`
-            }
-          </div>
-        </div>
-      </div>
+      <PropertySuccessBanner 
+        profileData={profileData}
+        listingsCount={listings.length}
+        isAIRecommendationsReady={profileData && profileData.buyerType}
+      />
 
       {/* Header Card */}
       <motion.div
