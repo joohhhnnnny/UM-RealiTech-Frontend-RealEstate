@@ -24,6 +24,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { propertyRecommendationEngine } from '../../../services/PropertyRecommendationEngine';
 import PropertyEmptyState from '../../../components/PropertyEmptyState';
 import PropertySuccessBanner from '../../../components/PropertySuccessBanner';
+import DocumentSubmissionModal from '../../../components/DocumentSubmissionModal';
 import agentsData from '../../../json/agents.json';
 
 function SmartListing({ profileData }) {
@@ -37,6 +38,8 @@ function SmartListing({ profileData }) {
   const [originalListings, setOriginalListings] = useState([]); // Store original fetched data
   const [savedProperties, setSavedProperties] = useState(new Set());
   const [savingProperty, setSavingProperty] = useState(null);
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
+  const [documentModalProperty, setDocumentModalProperty] = useState(null);
   const itemsPerPage = 9;
 
   // Smart location matching function
@@ -306,6 +309,22 @@ function SmartListing({ profileData }) {
       setSavingProperty(null);
     }
   }, [user, savedProperties]);
+
+  // Function to open document submission modal
+  const handleApplyForProperty = useCallback((listing) => {
+    if (!user) {
+      setError('Please login to apply for properties');
+      return;
+    }
+    setDocumentModalProperty(listing);
+    setShowDocumentModal(true);
+  }, [user]);
+
+  // Function to close document modal
+  const handleCloseDocumentModal = useCallback(() => {
+    setShowDocumentModal(false);
+    setDocumentModalProperty(null);
+  }, []);
 
   // Calculate total pages
   const totalPages = Math.ceil(listings.length / itemsPerPage);
@@ -715,7 +734,10 @@ function SmartListing({ profileData }) {
             </button>
             
             <div className="grid grid-cols-2 gap-2">
-              <button className="btn btn-sm btn-outline gap-1 text-xs hover:btn-primary transition-colors">
+              <button 
+                className="btn btn-sm btn-outline gap-1 text-xs hover:btn-primary transition-colors"
+                onClick={() => handleApplyForProperty(listing)}
+              >
                 <RiFileTextLine className="w-3 h-3" />
                 <span className="hidden sm:inline">Apply</span>
               </button>
@@ -941,7 +963,10 @@ function SmartListing({ profileData }) {
                 </button>
                 <button 
                   className="btn btn-outline w-full gap-2"
-                  onClick={() => setSelectedProperty(null)}
+                  onClick={() => {
+                    setDocumentModalProperty(selectedProperty);
+                    setShowDocumentModal(true);
+                  }}
                 >
                   <RiFileTextLine className="w-5 h-5" />
                   Submit Documents for This Property
@@ -1136,6 +1161,13 @@ function SmartListing({ profileData }) {
 
       {/* Pagination */}
       {renderPagination()}
+
+      {/* Document Submission Modal */}
+      <DocumentSubmissionModal
+        isOpen={showDocumentModal}
+        onClose={handleCloseDocumentModal}
+        selectedProperty={documentModalProperty}
+      />
     </div>
   );
 }

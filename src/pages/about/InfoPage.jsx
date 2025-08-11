@@ -55,7 +55,7 @@ function InfoPage() {
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-accent/5 dark:bg-accent/10 rounded-full blur-3xl"></div>
             </div>
 
-            <div className="container mx-auto px-4 py-20 max-w-6xl relative z-10">
+            <div className="container mx-auto px-4 py-16 pb-8 max-w-6xl relative z-10">
                 <motion.div 
                     className="text-center mb-16"
                     initial={{ opacity: 0, y: -30 }}

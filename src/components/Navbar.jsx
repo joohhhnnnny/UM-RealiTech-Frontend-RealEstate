@@ -53,8 +53,8 @@ function Navbar() {
           </Link>
 
           {/* links center */}
-          <div className="hidden lg:flex flex-[2] justify-center">
-            <ul className="flex items-center space-x-8">
+          <div className="hidden lg:flex flex-[2] justify-center ml-0 mr-33">
+            <ul className="flex items-center space-x-30">
               {navItems.map((item) => (
                 <motion.li 
                   key={item.name}

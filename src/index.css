@@ -123,4 +123,70 @@ html {
   --scrollbar-thumb-hover: hsl(220 13% 38%);
 }
 
+/* 3D Flip Card Animation Styles */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Enhanced flip animation with modern CSS */
+.flip-card-inner {
+  transition: transform 0.7s ease-in-out;
+  transform-style: preserve-3d;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.flip-card-inner.flipped {
+  transform: rotateY(180deg);
+}
+
+.flip-card-front,
+.flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  border-radius: 0.75rem;
+}
+
+.flip-card-back {
+  transform: rotateY(180deg);
+}
+
+/* Add subtle hover effects */
+.flip-card-container {
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.flip-card-container:hover {
+  transform: translateY(-2px);
+}
+
+/* Smooth image transitions */
+.flip-card-front img,
+.flip-card-back img {
+  transition: transform 0.5s ease;
+}
+
+.group:hover .flip-card-front img,
+.group:hover .flip-card-back img {
+  transform: scale(1.05);
+}
+
 
