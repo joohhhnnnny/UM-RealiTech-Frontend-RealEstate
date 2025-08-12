@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   RiLayoutGridLine,
   RiRobot2Line,
@@ -25,6 +25,7 @@ import { propertyRecommendationEngine } from '../../../services/PropertyRecommen
 import PropertyEmptyState from '../../../components/PropertyEmptyState';
 import PropertySuccessBanner from '../../../components/PropertySuccessBanner';
 import DocumentSubmissionModal from '../../../components/DocumentSubmissionModal';
+import CostBreakdownComponent from '../../../components/CostBreakdownComponent';
 import agentsData from '../../../json/agents.json';
 
 function SmartListing({ profileData }) {
@@ -40,6 +41,7 @@ function SmartListing({ profileData }) {
   const [savingProperty, setSavingProperty] = useState(null);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [documentModalProperty, setDocumentModalProperty] = useState(null);
+  const [showCostBreakdown, setShowCostBreakdown] = useState(false);
   const itemsPerPage = 9;
 
   // Smart location matching function
@@ -854,9 +856,6 @@ function SmartListing({ profileData }) {
                        selectedProperty.matchScore >= 40 ? '👍 Fair match with some benefits' :
                        '📍 Basic match - consider your priorities'}
                     </div>
-                    <div className="text-xs text-info font-medium mt-2">
-                      Algorithm: Multi-Criteria Decision Analysis (MCDA) + Content-Based Filtering
-                    </div>
                   </div>
                 </div>
               )}
@@ -917,6 +916,12 @@ function SmartListing({ profileData }) {
                 </div>
               )}
 
+              {/* Full Cost Details Section */}
+              <CostBreakdownComponent 
+                selectedProperty={selectedProperty} 
+                isOpen={showCostBreakdown} 
+              />
+
               {/* Agent Information Section */}
               {selectedProperty.agentName && (
                 <motion.div
@@ -956,10 +961,10 @@ function SmartListing({ profileData }) {
               <div className="space-y-3 pt-4">
                 <button 
                   className="btn btn-primary w-full gap-2"
-                  onClick={() => setSelectedProperty(null)}
+                  onClick={() => setShowCostBreakdown(!showCostBreakdown)}
                 >
                   <RiCalculatorLine className="w-5 h-5" />
-                  Calculate Loan for This Property
+                  Full Cost Details
                 </button>
                 <button 
                   className="btn btn-outline w-full gap-2"
