@@ -1,53 +1,46 @@
 /**
  * File Upload Utility for Document Submission
- * Handles secure file upload to the uploads/buyer/documents directory
+ * Handles secure file upload to the uploads/buyer/documents directory via API
  */
 
 export class DocumentUploadService {
   static async uploadFile(file, userId, documentType) {
     try {
+      // Validate file before upload
+      if (!this.validateFileType(file)) {
+        throw new Error('Invalid file type. Only PDF and image files are allowed.');
+      }
+      
+      if (!this.validateFileSize(file, 5)) {
+        throw new Error('File too large. Maximum size is 5MB.');
+      }
+      
       // Create unique filename
       const timestamp = Date.now();
       const fileExtension = file.name.split('.').pop();
       const fileName = `${userId}_${documentType}_${timestamp}.${fileExtension}`;
-      const filePath = `uploads/buyer/documents/${fileName}`;
       
-      // Validate file type
-      const allowedTypes = ['pdf', 'jpg', 'jpeg', 'png'];
-      if (!allowedTypes.includes(fileExtension.toLowerCase())) {
-        throw new Error('Invalid file type. Only PDF and image files are allowed.');
+      // Create FormData for API upload
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', userId);
+      formData.append('fileName', fileName);
+      
+      // Upload to server via API
+      const response = await fetch('http://localhost:3001/api/upload-document', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Upload failed');
       }
       
-      // Validate file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
-        throw new Error('File too large. Maximum size is 5MB.');
-      }
+      const result = await response.json();
       
-      // For development: Store file info in localStorage
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const fileData = await this.fileToBase64(file);
-        
-        const fileInfo = {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          data: fileData,
-          path: filePath,
-          userId: userId,
-          documentType: documentType,
-          uploadedAt: new Date().toISOString()
-        };
-        
-        localStorage.setItem(`file_${filePath}`, JSON.stringify(fileInfo));
-        localStorage.setItem(`fileIndex_${userId}`, 
-          JSON.stringify([
-            ...this.getFileIndex(userId), 
-            filePath
-          ])
-        );
-      }
-      
-      return filePath;
+      console.log(`File uploaded successfully: ${result.filePath}`);
+      return result.filePath;
       
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -57,50 +50,31 @@ export class DocumentUploadService {
   
   static async deleteFile(filePath, userId) {
     try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        // Remove file data
-        localStorage.removeItem(`file_${filePath}`);
-        
-        // Update file index
-        const index = this.getFileIndex(userId);
-        const updatedIndex = index.filter(path => path !== filePath);
-        localStorage.setItem(`fileIndex_${userId}`, JSON.stringify(updatedIndex));
+      // Delete file via API
+      const response = await fetch('http://localhost:3001/api/delete-document', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filePath: filePath,
+          userId: userId
+        }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Delete failed');
       }
       
-      return true;
+      const result = await response.json();
+      console.log(`File deleted successfully: ${filePath}`);
+      return result.success;
+      
     } catch (error) {
       console.error('Error deleting file:', error);
       throw error;
     }
-  }
-  
-  static getFileIndex(userId) {
-    if (typeof window === 'undefined') return [];
-    try {
-      const index = localStorage.getItem(`fileIndex_${userId}`);
-      return index ? JSON.parse(index) : [];
-    } catch {
-      return [];
-    }
-  }
-  
-  static getFileInfo(filePath) {
-    if (typeof window === 'undefined') return null;
-    try {
-      const fileInfo = localStorage.getItem(`file_${filePath}`);
-      return fileInfo ? JSON.parse(fileInfo) : null;
-    } catch {
-      return null;
-    }
-  }
-  
-  static async fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
   }
   
   static validateFileType(file) {
@@ -126,6 +100,15 @@ export class DocumentUploadService {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+  
+  // Legacy methods for backward compatibility (now no-ops)
+  static getFileIndex(_userId) {
+    return [];
+  }
+  
+  static getFileInfo(_filePath) {
+    return null;
   }
 }
 

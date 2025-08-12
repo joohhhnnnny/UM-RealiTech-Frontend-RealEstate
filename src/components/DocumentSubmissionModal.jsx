@@ -39,6 +39,17 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [documentId, setDocumentId] = useState(null);
   
+  // Debug user authentication
+  useEffect(() => {
+    console.log('User auth state:', { 
+      user: !!user, 
+      loading, 
+      uid: user?.uid, 
+      email: user?.email,
+      isAnonymous: user?.isAnonymous 
+    });
+  }, [user, loading]);
+  
   // Form data states
   const [formData, setFormData] = useState({
     // Personal Identification
@@ -88,7 +99,12 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
 
   // Upload file to local filesystem using DocumentUploadService
   const uploadFile = useCallback(async (file, documentType) => {
-    if (!file || !user) return null;
+    if (!file || !user) {
+      console.log('Upload failed - missing file or user:', { file: !!file, user: !!user, userId: user?.uid });
+      return null;
+    }
+    
+    console.log('Starting upload with user:', { userId: user.uid, email: user.email, documentType });
     
     try {
       // Validate file before upload
@@ -123,24 +139,61 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
       
       if (docSnap.exists()) {
         const data = docSnap.data();
+        
+        // Create file metadata objects from saved paths for UI display
+        const createFileMetadata = (path) => {
+          if (!path) return null;
+          
+          // Extract filename from path
+          const filename = path.split('/').pop() || 'uploaded_file';
+          const extension = filename.split('.').pop()?.toLowerCase();
+          
+          // Create a mock file object for display purposes
+          return {
+            name: filename,
+            size: 0, // We don't store file size, so display as unknown
+            type: extension === 'pdf' ? 'application/pdf' : `image/${extension}`,
+            path: path, // Store the actual path for reference
+            isRestored: true // Flag to identify restored files
+          };
+        };
+        
+        const createMultipleFileMetadata = (paths) => {
+          if (!paths || !Array.isArray(paths)) return [];
+          return paths.map(path => createFileMetadata(path)).filter(Boolean);
+        };
+        
         setFormData(prevData => ({
           ...prevData,
           ...data,
-          // Don't override file objects, only paths
-          governmentId: prevData.governmentId,
-          birthCertificate: prevData.birthCertificate,
-          marriageCertificate: prevData.marriageCertificate,
-          payslips: prevData.payslips,
-          employmentCertificate: prevData.employmentCertificate,
-          itr: prevData.itr,
-          businessRegistration: prevData.businessRegistration,
-          auditedFinancialStatement: prevData.auditedFinancialStatement,
-          bankStatements: prevData.bankStatements,
-          employmentContract: prevData.employmentContract,
-          remittanceProof: prevData.remittanceProof
+          // Create file metadata objects from stored paths
+          governmentId: createFileMetadata(data.governmentIdPath, 'governmentId'),
+          birthCertificate: createFileMetadata(data.birthCertificatePath, 'birthCertificate'),
+          marriageCertificate: createFileMetadata(data.marriageCertificatePath, 'marriageCertificate'),
+          payslips: createMultipleFileMetadata(data.payslipsPaths),
+          employmentCertificate: createFileMetadata(data.employmentCertificatePath, 'employmentCertificate'),
+          itr: createFileMetadata(data.itrPath, 'itr'),
+          businessRegistration: createFileMetadata(data.businessRegistrationPath, 'businessRegistration'),
+          auditedFinancialStatement: createFileMetadata(data.auditedFinancialStatementPath, 'auditedFinancialStatement'),
+          bankStatements: createMultipleFileMetadata(data.bankStatementsPaths),
+          employmentContract: createFileMetadata(data.employmentContractPath, 'employmentContract'),
+          remittanceProof: createMultipleFileMetadata(data.remittanceProofPaths)
         }));
         setDocumentId(docSnap.id);
-        setLastSaved(data.updatedAt?.toDate() || new Date());
+        
+        // Set last saved time from Firestore timestamp (converted to Date) or current time as fallback
+        const firestoreDate = data.updatedAt?.toDate();
+        if (firestoreDate) {
+          setLastSaved(firestoreDate);
+        }
+        
+        console.log('Loaded saved document with file metadata:', {
+          governmentId: !!data.governmentIdPath,
+          birthCertificate: !!data.birthCertificatePath,
+          marriageCertificate: !!data.marriageCertificatePath,
+          payslips: data.payslipsPaths?.length || 0,
+          totalPaths: Object.keys(data).filter(key => key.endsWith('Path') || key.endsWith('Paths')).length
+        });
       }
     } catch (error) {
       console.error('Error loading saved document:', error);
@@ -151,13 +204,25 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
 
   // Save progress to Firestore
   const saveProgress = useCallback(async (autoSave = true) => {
-    if (!user || !selectedProperty) return;
+    if (!user || !selectedProperty) {
+      console.log('Save failed - missing requirements:', { 
+        user: !!user, 
+        userId: user?.uid, 
+        selectedProperty: !!selectedProperty,
+        propertyId: selectedProperty?.id 
+      });
+      return;
+    }
+
+    console.log('Starting save with user:', { userId: user.uid, email: user.email, propertyId: selectedProperty.id });
 
     if (autoSave) setIsSaving(true);
     
     try {
       const docId = documentId || `${user.uid}_${selectedProperty.id}`;
       const docRef = doc(db, 'documentSubmissions', docId);
+      
+      console.log('Saving to document ID:', docId);
       
       const saveData = {
         ...formData,
@@ -182,11 +247,17 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
         ...(formData.createdAt ? {} : { createdAt: serverTimestamp() })
       };
 
+      console.log('Save data:', { ...saveData, updatedAt: 'serverTimestamp()', createdAt: formData.createdAt ? 'existing' : 'new' });
+
       await setDoc(docRef, saveData, { merge: true });
       
       if (!documentId) setDocumentId(docId);
-      setLastSaved(new Date());
       
+      // Set the exact time when the save was completed
+      const saveTime = new Date();
+      setLastSaved(saveTime);
+      
+      console.log('Save successful at:', saveTime.toLocaleTimeString());
       return true;
     } catch (error) {
       console.error('Error saving progress:', error);
@@ -242,12 +313,21 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
       return;
     }
 
+    // Set loading state for this field
+    setErrors(prev => ({ ...prev, [fieldName]: 'Uploading...' }));
+
     try {
       if (isMultiple) {
         const fileArray = Array.from(files);
-        const uploadPromises = fileArray.map(file => 
-          uploadFile(file, fieldName).then(path => ({ file, path }))
-        );
+        const uploadPromises = fileArray.map(async (file) => {
+          try {
+            const path = await uploadFile(file, fieldName);
+            return { file, path };
+          } catch (error) {
+            console.error(`Failed to upload ${file.name}:`, error);
+            throw new Error(`Failed to upload ${file.name}: ${error.message}`);
+          }
+        });
         
         const results = await Promise.all(uploadPromises);
         
@@ -277,10 +357,102 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
       console.error('Error uploading file:', error);
       setErrors(prev => ({
         ...prev,
-        [fieldName]: 'Failed to upload file. Please try again.'
+        [fieldName]: `Upload failed: ${error.message}`
       }));
     }
   }, [user, uploadFile]);
+
+  // Replace/update an existing file
+  const handleFileReplace = useCallback(async (fieldName, index, newFile, isMultiple = false) => {
+    if (!user) {
+      setErrors(prev => ({ ...prev, [fieldName]: 'Please login to replace files' }));
+      return;
+    }
+
+    // Set loading state for this field
+    setErrors(prev => ({ ...prev, [fieldName]: 'Replacing file...' }));
+
+    try {
+      // Validate new file before upload
+      if (!DocumentUploadService.validateFileType(newFile)) {
+        throw new Error('Invalid file type. Only PDF and image files are allowed.');
+      }
+      
+      if (!DocumentUploadService.validateFileSize(newFile, 5)) {
+        throw new Error('File too large. Maximum size is 5MB.');
+      }
+
+      if (isMultiple) {
+        const pathsFieldName = `${fieldName}Paths`;
+        const currentFiles = formData[fieldName] || [];
+        const currentPaths = formData[pathsFieldName] || [];
+        const oldPath = currentPaths[index];
+
+        // Delete old file from server
+        if (oldPath && user) {
+          try {
+            await DocumentUploadService.deleteFile(oldPath, user.uid);
+            console.log(`Old file deleted successfully: ${oldPath}`);
+          } catch (deleteError) {
+            console.warn('Error deleting old file:', deleteError);
+          }
+        }
+
+        // Upload new file
+        const newPath = await uploadFile(newFile, fieldName);
+
+        // Update arrays at the specific index
+        const updatedFiles = [...currentFiles];
+        const updatedPaths = [...currentPaths];
+        updatedFiles[index] = newFile;
+        updatedPaths[index] = newPath;
+
+        setFormData(prev => ({
+          ...prev,
+          [fieldName]: updatedFiles,
+          [pathsFieldName]: updatedPaths
+        }));
+
+      } else {
+        const pathFieldName = `${fieldName}Path`;
+        const oldPath = formData[pathFieldName];
+
+        // Delete old file from server
+        if (oldPath && user) {
+          try {
+            await DocumentUploadService.deleteFile(oldPath, user.uid);
+            console.log(`Old file deleted successfully: ${oldPath}`);
+          } catch (deleteError) {
+            console.warn('Error deleting old file:', deleteError);
+          }
+        }
+
+        // Upload new file
+        const newPath = await uploadFile(newFile, fieldName);
+
+        setFormData(prev => ({
+          ...prev,
+          [fieldName]: newFile,
+          [pathFieldName]: newPath
+        }));
+      }
+
+      // Clear any existing errors for this field
+      setErrors(prev => ({
+        ...prev,
+        [fieldName]: null
+      }));
+
+      console.log(`File replaced successfully: ${newFile.name}`);
+
+    } catch (error) {
+      console.error('Error replacing file:', error);
+      setErrors(prev => ({
+        ...prev,
+        [fieldName]: `Replace failed: ${error.message}`
+      }));
+    }
+  }, [user, uploadFile, formData]);
 
   // Remove file using DocumentUploadService
   const removeFile = useCallback(async (fieldName, index = null) => {
@@ -576,6 +748,8 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
   }) => {
     const files = multiple ? (formData[fieldName] || []) : (formData[fieldName] ? [formData[fieldName]] : []);
     const hasError = errors[fieldName];
+    const isUploading = hasError === 'Uploading...' || hasError === 'Replacing file...';
+    const isReplacing = hasError === 'Replacing file...';
     
     return (
       <div className="form-control">
@@ -590,9 +764,18 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
         )}
         
         <div className={`border-2 border-dashed rounded-lg p-4 transition-colors ${
-          hasError ? 'border-error bg-error/5' : 'border-base-300 hover:border-primary bg-base-200/30'
+          hasError && !isUploading ? 'border-error bg-error/5' : 
+          isUploading ? 'border-primary bg-primary/5' :
+          'border-base-300 hover:border-primary bg-base-200/30'
         }`}>
-          {files.length === 0 ? (
+          {isUploading ? (
+            <div className="flex flex-col items-center justify-center py-4">
+              <span className="loading loading-spinner loading-md text-primary mb-2"></span>
+              <p className="text-sm text-primary">
+                {isReplacing ? 'Replacing file...' : 'Uploading files...'}
+              </p>
+            </div>
+          ) : files.length === 0 ? (
             <label className="cursor-pointer flex flex-col items-center justify-center py-4">
               <input
                 type="file"
@@ -600,38 +783,90 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
                 multiple={multiple}
                 onChange={(e) => handleFileUpload(fieldName, e.target.files, multiple)}
                 className="hidden"
+                disabled={isUploading}
               />
               <RiUploadCloudLine className="w-8 h-8 text-base-content/50 mb-2" />
               <p className="text-sm text-base-content/70">
                 Click to upload or drag and drop
               </p>
               <p className="text-xs text-base-content/50">
-                {accept.includes('.pdf') ? 'PDF, JPG, PNG' : 'JPG, PNG'} files
+                {accept.includes('.pdf') ? 'PDF, JPG, PNG' : 'JPG, PNG'} files (Max {DocumentUploadService.formatFileSize(5 * 1024 * 1024)})
               </p>
             </label>
           ) : (
             <div className="space-y-2">
               {files.map((file, index) => (
-                <div key={index} className="flex items-center justify-between bg-base-100 p-2 rounded">
-                  <div className="flex items-center gap-2">
+                <div key={index} className="flex items-center justify-between bg-base-100 p-3 rounded border hover:border-primary/30 transition-colors">
+                  <div className="flex items-center gap-3 flex-1">
                     <RiFileAddLine className="w-4 h-4 text-success" />
-                    <span className="text-sm truncate">{file.name}</span>
-                    <span className="text-xs text-base-content/50">
-                      ({DocumentUploadService.formatFileSize(file.size)})
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium truncate max-w-48" title={file.name}>
+                          {file.name}
+                        </span>
+                        {file.isRestored ? (
+                          <div className="badge badge-info badge-xs">Previously Uploaded</div>
+                        ) : (
+                          <div className="badge badge-success badge-xs">Uploaded</div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        {!file.isRestored && file.size > 0 && (
+                          <span className="text-xs text-base-content/50">
+                            ({DocumentUploadService.formatFileSize(file.size)})
+                          </span>
+                        )}
+                        {file.isRestored && (
+                          <span className="text-xs text-success">
+                            ✓ File saved from previous session
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removeFile(fieldName, multiple ? index : null)}
-                    className="btn btn-ghost btn-xs text-error hover:bg-error/10"
-                  >
-                    <RiDeleteBinLine className="w-3 h-3" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {/* Replace/Update button for single files or individual files in arrays */}
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept={accept}
+                        onChange={(e) => {
+                          if (e.target.files?.length > 0) {
+                            // Replace the specific file
+                            handleFileReplace(fieldName, index, e.target.files[0], multiple);
+                          }
+                        }}
+                        className="hidden"
+                        disabled={isUploading}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs text-primary hover:bg-primary/10"
+                        title={file.isRestored ? "Replace uploaded file" : "Update file"}
+                        disabled={isUploading}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.previousElementSibling.click();
+                        }}
+                      >
+                        <RiUploadCloudLine className="w-3 h-3" />
+                      </button>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(fieldName, multiple ? index : null)}
+                      className="btn btn-ghost btn-xs text-error hover:bg-error/10"
+                      title="Remove file"
+                      disabled={isUploading}
+                    >
+                      <RiDeleteBinLine className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
               ))}
               
-              {multiple && files.length < maxFiles && (
-                <label className="cursor-pointer flex items-center gap-2 text-primary hover:text-primary-focus">
+              {multiple && files.length < maxFiles && !isUploading && (
+                <label className="cursor-pointer flex items-center gap-2 text-primary hover:text-primary-focus p-2 rounded border border-dashed border-primary/30 hover:bg-primary/5">
                   <input
                     type="file"
                     accept={accept}
@@ -640,16 +875,24 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
                     className="hidden"
                   />
                   <RiFileAddLine className="w-4 h-4" />
-                  <span className="text-sm">Add more files</span>
+                  <span className="text-sm">Add more files ({files.length}/{maxFiles})</span>
                 </label>
               )}
             </div>
           )}
         </div>
         
-        {hasError && (
+        {hasError && !isUploading && (
           <label className="label">
             <span className="label-text-alt text-error">{hasError}</span>
+          </label>
+        )}
+        
+        {isUploading && (
+          <label className="label">
+            <span className="label-text-alt text-primary">
+              {isReplacing ? 'Please wait while the file is being replaced...' : 'Please wait while files are being uploaded...'}
+            </span>
           </label>
         )}
       </div>
@@ -1014,7 +1257,11 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
             {lastSaved && (
               <p className="text-xs text-success mt-1 flex items-center gap-1">
                 <RiCheckLine className="w-3 h-3" />
-                Last saved: {lastSaved.toLocaleString()}
+                Last saved: {lastSaved.toLocaleTimeString('en-US', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  hour12: true 
+                })}
               </p>
             )}
           </div>
@@ -1130,7 +1377,11 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
             {lastSaved && (
               <div className="text-xs text-success flex items-center gap-1">
                 <RiCheckLine className="w-3 h-3" />
-                Saved {lastSaved.toLocaleTimeString()}
+                Saved {lastSaved.toLocaleTimeString('en-US', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  hour12: true 
+                })}
               </div>
             )}
           </div>

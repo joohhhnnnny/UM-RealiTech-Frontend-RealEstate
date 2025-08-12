@@ -745,7 +745,7 @@ function SmartListing({ profileData }) {
               </button>
               <button className="btn btn-sm btn-outline gap-1 text-xs hover:btn-secondary transition-colors">
                 <RiMailLine className="w-3 h-3" />
-                <span className="hidden sm:inline">Message</span>
+                <span className="hidden sm:inline">Send Email</span>
               </button>
             </div>
           </div>

@@ -1,23 +1,91 @@
-# Document Upload System Implementation
+# Document Upload System Implementation - UPDATED
 
 ## Overview
-The Document Submission Modal has been professionally updated to store uploaded files locally in the `uploads/buyer/documents/` directory and save only file paths as strings in Firestore, not Firebase Storage URLs.
+This implementation provides professional file upload functionality for the real estate document submission system. Files are now properly stored in the file system and only their paths are saved to Firestore.
 
-## File Storage Structure
+## NEW ARCHITECTURE ✅
 
-### Directory Organization
+### File Storage
+- **Physical Storage**: Files are stored in `uploads/buyer/documents/` directory
+- **Database Storage**: Only file paths are stored in Firestore (not the actual files)
+- **File Naming**: `{userId}_{documentType}_{timestamp}.{extension}`
+
+### API Endpoints
+- **Upload**: `POST http://localhost:3001/api/upload-document`
+- **Delete**: `DELETE http://localhost:3001/api/delete-document`
+
+### Security Features
+- File type validation (PDF, JPG, PNG only)
+- File size limit (5MB maximum)
+- User authentication required
+- Path validation to prevent directory traversal
+
+## IMPLEMENTATION COMPLETE ✅
+
+### Starting the System
+1. Start the file upload server:
+   ```bash
+   npm run server
+   ```
+
+2. Start both server and client:
+   ```bash
+   npm run dev:full
+   ```
+
+### File Upload Process
+1. User selects file(s) in the Document Submission Modal
+2. File is validated (type, size)
+3. File is uploaded to server via API
+4. Server stores file in `uploads/buyer/documents/`
+5. Server returns file path
+6. File path is stored in component state and later saved to Firestore
+
+## Components Updated ✅
+
+### DocumentUploadService.js
+- ✅ Updated to use HTTP API instead of localStorage
+- ✅ Professional error handling
+- ✅ Real file system storage
+
+### DocumentSubmissionModal.jsx
+- ✅ Enhanced loading states
+- ✅ Better error handling
+- ✅ Upload progress indicators
+
+### Server (server/index.js)
+- ✅ Express.js server with multer middleware
+- ✅ CORS enabled for frontend communication
+- ✅ File validation and security
+
+## File Structure
 ```
 uploads/
-└── buyer/
-    └── documents/
-        ├── personal/     # Government IDs, TIN, Birth/Marriage certificates
-        ├── financial/    # Payslips, ITR, Bank statements, Remittance proof
-        ├── legal/        # Business registration, Employment certificates, Contracts
-        └── property/     # Property-related documents
+  buyer/
+    documents/
+      userId_governmentId_1640995200000.jpg
+      userId_payslips_1640995300000.pdf
+      ...
 ```
 
-### File Naming Convention
-Files are automatically renamed using the pattern:
+## Firestore Structure
+```javascript
+documentSubmissions: {
+  "userId_propertyId": {
+    // File objects are null (not stored)
+    governmentId: null,
+    payslips: [],
+    
+    // Only paths are stored
+    governmentIdPath: "uploads/buyer/documents/userId_governmentId_timestamp.jpg",
+    payslipsPaths: ["uploads/buyer/documents/userId_payslips_timestamp1.pdf"],
+    
+    // Other form data
+    tinNumber: "123-456-789-012",
+    civilStatus: "single"
+  }
+}
+```
 ```
 {userId}_{documentType}_{timestamp}.{extension}
 ```
