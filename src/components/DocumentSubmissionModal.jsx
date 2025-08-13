@@ -28,6 +28,7 @@ import {
   addDoc
 } from 'firebase/firestore';
 import { DocumentUploadService } from '../services/DocumentUploadService';
+import Toast from './Toast';
 
 const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
   const [user, loading] = useAuthState(auth);
@@ -38,6 +39,18 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
   const [lastSaved, setLastSaved] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [documentId, setDocumentId] = useState(null);
+  
+  // Professional close confirmation modal states
+  const [showCloseConfirmation, setShowCloseConfirmation] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  
+  // Toast notifications
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  
+  // Show toast helper function
+  const showToast = useCallback((message, type = 'success') => {
+    setToast({ show: true, message, type });
+  }, []);
   
   // Debug user authentication
   useEffect(() => {
@@ -267,9 +280,29 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
     }
   }, [user, selectedProperty, formData, documentId]);
 
-  // Auto-save when form data changes
+  // Auto-save when form data changes (only when there's meaningful data)
   useEffect(() => {
-    if (!user || !selectedProperty || !formData.tinNumber) return;
+    if (!user || !selectedProperty) return;
+    
+    // Check if there's meaningful data worth saving
+    const hasMeaningfulData = !!(
+      formData.tinNumber?.trim() || 
+      formData.civilStatus || 
+      formData.employmentType ||
+      formData.governmentId ||
+      formData.birthCertificate ||
+      formData.marriageCertificate ||
+      (formData.payslips && formData.payslips.length > 0) ||
+      formData.employmentCertificate ||
+      formData.itr ||
+      formData.businessRegistration ||
+      formData.auditedFinancialStatement ||
+      (formData.bankStatements && formData.bankStatements.length > 0) ||
+      formData.employmentContract ||
+      (formData.remittanceProof && formData.remittanceProof.length > 0)
+    );
+    
+    if (!hasMeaningfulData) return;
 
     const autoSaveTimer = setTimeout(() => {
       saveProgress(true);
@@ -722,19 +755,67 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
     setLastSaved(null);
   }, []);
 
-  // Handle modal close with confirmation
+  // Handle modal close with professional confirmation
   const handleClose = useCallback(async () => {
-    const hasUnsavedData = formData.tinNumber || formData.civilStatus || formData.employmentType;
+    // Check for actual unsaved data with more precise logic
+    const hasActualData = !!(
+      formData.tinNumber?.trim() || 
+      formData.civilStatus || 
+      formData.employmentType ||
+      formData.governmentId ||
+      formData.birthCertificate ||
+      formData.marriageCertificate ||
+      (formData.payslips && formData.payslips.length > 0) ||
+      formData.employmentCertificate ||
+      formData.itr ||
+      formData.businessRegistration ||
+      formData.auditedFinancialStatement ||
+      (formData.bankStatements && formData.bankStatements.length > 0) ||
+      formData.employmentContract ||
+      (formData.remittanceProof && formData.remittanceProof.length > 0)
+    );
     
-    if (hasUnsavedData && formData.status !== 'submitted') {
-      const shouldSave = window.confirm('You have unsaved changes. Would you like to save your progress before closing?');
-      if (shouldSave) {
-        await saveProgress(false);
-      }
+    // Only show confirmation if there's actual data AND it's not already submitted
+    if (hasActualData && formData.status !== 'submitted' && !lastSaved) {
+      // Show professional confirmation modal instead of default alert
+      setShowCloseConfirmation(true);
+      return;
     }
     
+    // Close directly if no actual data or already saved/submitted
     onClose();
-  }, [formData, onClose, saveProgress]);
+  }, [formData, lastSaved, onClose]);
+
+  // Handle save and close action
+  const handleSaveAndClose = useCallback(async () => {
+    setIsClosing(true);
+    try {
+      const saveResult = await saveProgress(false);
+      if (saveResult) {
+        showToast('Progress saved successfully!', 'success');
+        setTimeout(() => {
+          onClose();
+          setShowCloseConfirmation(false);
+        }, 1000);
+      } else {
+        showToast('Failed to save progress', 'error');
+      }
+    } catch (error) {
+      console.error('Error saving before close:', error);
+      showToast('Error saving progress', 'error');
+    } finally {
+      setIsClosing(false);
+    }
+  }, [saveProgress, onClose, showToast]);
+
+  // Handle close without saving
+  const handleCloseWithoutSaving = useCallback(() => {
+    showToast('Closing without saving changes', 'info');
+    setTimeout(() => {
+      onClose();
+      setShowCloseConfirmation(false);
+    }, 800);
+  }, [onClose, showToast]);
 
   // File upload component
   const FileUploadField = ({ 
@@ -1351,23 +1432,6 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
               <RiArrowLeftLine className="w-4 h-4" />
               Previous
             </button>
-            
-            {/* Manual Save Button */}
-            {user && (
-              <button
-                onClick={() => saveProgress(false)}
-                disabled={isSaving}
-                className="btn btn-ghost btn-sm gap-2 text-base-content/70 hover:text-base-content"
-                title="Save progress"
-              >
-                {isSaving ? (
-                  <span className="loading loading-spinner loading-xs"></span>
-                ) : (
-                  <RiSaveLine className="w-4 h-4" />
-                )}
-                Save Progress
-              </button>
-            )}
           </div>
 
           <div className="flex flex-col items-center gap-1">
@@ -1416,6 +1480,85 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
         </div>
       </div>
       <div className="modal-backdrop bg-base-300/50 backdrop-blur-sm" onClick={handleClose}></div>
+      
+      {/* Professional Close Confirmation Modal */}
+      {showCloseConfirmation && (
+        <div className="modal modal-open">
+          <div className="modal-box bg-base-100 text-base-content max-w-md">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="text-center py-4"
+            >
+              {/* Warning Icon */}
+              <div className="w-16 h-16 bg-warning/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <RiFileTextLine className="w-8 h-8 text-warning" />
+              </div>
+              
+              {/* Title */}
+              <h3 className="text-xl font-bold text-base-content mb-2">
+                Unsaved Changes Detected
+              </h3>
+              
+              {/* Message */}
+              <p className="text-base-content/70 mb-6 leading-relaxed">
+                You have entered information in your document submission. 
+                Would you like to save your progress before closing?
+              </p>
+              
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={handleSaveAndClose}
+                  disabled={isClosing}
+                  className="btn btn-primary gap-2 w-full"
+                >
+                  {isClosing ? (
+                    <>
+                      <span className="loading loading-spinner loading-xs"></span>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <RiSaveLine className="w-4 h-4" />
+                      Save & Close
+                    </>
+                  )}
+                </button>
+                
+                <button
+                  onClick={handleCloseWithoutSaving}
+                  disabled={isClosing}
+                  className="btn btn-ghost gap-2 w-full"
+                >
+                  <RiCloseLine className="w-4 h-4" />
+                  Close Without Saving
+                </button>
+                
+                <button
+                  onClick={() => setShowCloseConfirmation(false)}
+                  disabled={isClosing}
+                  className="btn btn-outline btn-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+          <div className="modal-backdrop bg-base-300/50 backdrop-blur-sm"></div>
+        </div>
+      )}
+      
+      {/* Toast Notifications */}
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        duration={3000}
+        position="top-right"
+        onClose={() => setToast(prev => ({ ...prev, show: false }))}
+      />
     </div>
   );
 };
