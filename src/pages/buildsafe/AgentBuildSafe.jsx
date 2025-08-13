@@ -16,6 +16,13 @@ import {
 } from 'react-icons/ri';
 import { projectService, STATIC_GUIDELINES } from '../../services/buildsafeService.js';
 
+/**
+ * AgentBuildSafe Component
+ * Purpose: Shows construction progress and milestones for properties that agents represent
+ * Note: This is different from application/document progress shown in BuyerBuildSafe and Clients
+ * - Construction Progress: Physical building completion status
+ * - Application Progress: Document submission status (handled in Clients.jsx)
+ */
 function AgentBuildSafe() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [viewMode, setViewMode] = useState('timeline'); // timeline, escrow, documents

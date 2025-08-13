@@ -92,8 +92,8 @@ function BuyerBSPH() {
       title: "Loan Calculator",
       description: "Calculate mortgage payments and loan terms",
       icon: RiMoneyDollarCircleLine,
-      color: "text-emerald-500",
-      bgGradient: "from-emerald-500/20 to-emerald-500/5"
+      color: "text-red-400",
+      bgGradient: "from-red-400/20 to-red-400/5"
     },
     {
       id: 3,
@@ -116,8 +116,8 @@ function BuyerBSPH() {
       title: "Smart Listings",
       description: "AI-powered property recommendations based on your profile",
       icon: RiLayoutGridLine,
-      color: "text-teal-500",
-      bgGradient: "from-teal-500/20 to-teal-500/5"
+      color: "text-emerald-500",
+      bgGradient: "from-emerald-500/20 to-emerald-500/5"
     }
   ];
 

@@ -31,7 +31,14 @@ import {
   RiCloseLine
 } from 'react-icons/ri';
 
-// Dynamic BuyerBuildSafe Component - Updated with real Firestore integration and fixed progress calculation v2.1
+// Dynamic BuyerBuildSafe Component - Updated with Clients.jsx calculation method for consistency v2.2
+/**
+ * BuyerBuildSafe Component  
+ * Purpose: Shows buyer's document submission progress for property applications
+ * Progress Type: Application/Document submission status (0-100% based on submitted documents)
+ * Data Source: Real-time from Firestore documentSubmissions collection
+ * Calculation Method: Identical to Clients.jsx for perfect consistency
+ */
 function BuyerBuildSafe() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [viewMode, setViewMode] = useState('timeline'); // timeline, escrow, documents
@@ -69,34 +76,31 @@ function BuyerBuildSafe() {
     return () => unsubscribe();
   }, []);
 
-  // Calculate progress based on document submission status
+  // Calculate progress based on document submission status - Method copied from Clients.jsx for consistency
   const calculateProgress = useCallback((submission) => {
     console.log('Calculating progress for submission:', submission);
     
-    // Define all possible document fields that can be submitted
+    // Define all possible document fields that can be submitted - matching Clients.jsx logic exactly
     const documentFields = [
       // Personal Identification (always required)
-      'governmentIdPath',
-      'birthCertificatePath',
+      'hasGovernmentId',
+      'hasBirthCertificate',
       
       // Civil Status (conditional - marriage certificate only if married)
-      ...(submission.civilStatus === 'married' ? ['marriageCertificatePath'] : []),
+      ...(submission.civilStatus === 'married' ? ['hasMarriageCertificate'] : []),
       
       // Employment Type Documents (conditional based on employment type)
       ...(submission.employmentType === 'employed' ? [
-        'payslipsPaths',
-        'employmentCertificatePath',
-        'itrPath'
+        'hasEmploymentDocs', // Represents payslips, employment cert, ITR
+        'hasIncomeDocs'      // Represents ITR specifically
       ] : []),
       ...(submission.employmentType === 'self-employed' ? [
-        'businessRegistrationPath',
-        'auditedFinancialStatementPath',
-        'bankStatementsPaths',
-        'itrPath'
+        'hasEmploymentDocs', // Represents business registration, audited financial statement
+        'hasIncomeDocs'      // Represents ITR and bank statements
       ] : []),
       ...(submission.employmentType === 'ofw' ? [
-        'employmentContractPath',
-        'remittanceProofPaths'
+        'hasEmploymentDocs', // Represents employment contract
+        'hasIncomeDocs'      // Represents remittance proof
       ] : [])
     ];
 
@@ -105,45 +109,64 @@ function BuyerBuildSafe() {
     console.log('Civil status:', submission.civilStatus);
     
     if (documentFields.length === 0) {
-      console.log('No required documents identified, using status-based progress');
-      switch (submission.status) {
-        case 'submitted': return 75;
-        case 'approved': return 100;
-        case 'rejected': return 50;
-        default: return 10; // Some progress for having basic info
-      }
+      console.log('No required documents identified, using TIN-based progress');
+      // Basic progress for having TIN number
+      return submission.tinNumber ? 20 : 0;
     }
     
     let totalDocuments = documentFields.length;
     let submittedDocuments = 0;
     
-    // Check each required document field
+    // Check each required document field using the same logic as Clients.jsx
     documentFields.forEach(field => {
-      const fieldValue = submission[field];
       let isSubmitted = false;
       
-      if (field.endsWith('Paths')) {
-        // Handle array fields (multiple files)
-        isSubmitted = Array.isArray(fieldValue) && fieldValue.length > 0 && 
-                     fieldValue.some(path => path && path.trim() !== '');
-        console.log(`Array field ${field}:`, fieldValue, 'Submitted:', isSubmitted);
-      } else if (field.endsWith('Path')) {
-        // Handle single file fields
-        isSubmitted = fieldValue && typeof fieldValue === 'string' && fieldValue.trim() !== '';
-        console.log(`Single field ${field}:`, fieldValue, 'Submitted:', isSubmitted);
+      // Map the document fields to actual submission data fields
+      switch (field) {
+        case 'hasGovernmentId':
+          isSubmitted = !!submission.governmentIdPath;
+          break;
+        case 'hasBirthCertificate':
+          isSubmitted = !!submission.birthCertificatePath;
+          break;
+        case 'hasMarriageCertificate':
+          isSubmitted = !!submission.marriageCertificatePath;
+          break;
+        case 'hasEmploymentDocs':
+          isSubmitted = !!submission.employmentCertificatePath || 
+                       !!submission.businessRegistrationPath || 
+                       !!submission.employmentContractPath;
+          break;
+        case 'hasIncomeDocs':
+          isSubmitted = !!submission.itrPath || 
+                       !!submission.auditedFinancialStatementPath || 
+                       !!(submission.remittanceProofPaths?.length);
+          break;
+        default:
+          isSubmitted = false;
       }
+      
+      console.log(`Document field ${field}:`, isSubmitted ? 'Submitted' : 'Missing');
       
       if (isSubmitted) {
         submittedDocuments++;
       }
     });
     
+    // Add TIN number as additional requirement if we have employment type - matching Clients.jsx
+    if (submission.employmentType) {
+      totalDocuments += 1;
+      if (submission.tinNumber) {
+        submittedDocuments += 1;
+      }
+    }
+    
     console.log(`Progress calculation: ${submittedDocuments}/${totalDocuments} documents submitted`);
     
     // Calculate percentage
     const progress = totalDocuments > 0 ? Math.round((submittedDocuments / totalDocuments) * 100) : 0;
     
-    // Ensure minimum progress for submissions that have been started
+    // Ensure minimum progress for applications that have been started
     if (progress === 0 && (submission.tinNumber || submission.civilStatus || submission.employmentType)) {
       console.log('Basic info provided, setting minimum progress');
       return 5; // Show some progress for having basic info
@@ -200,7 +223,7 @@ function BuyerBuildSafe() {
     }
   }, []);
 
-  // Get document progress breakdown for detailed view
+  // Get document progress breakdown for detailed view - Updated to match Clients.jsx calculation
   const getDocumentBreakdown = useCallback((submission) => {
     const breakdown = {
       completed: [],
@@ -209,48 +232,70 @@ function BuyerBuildSafe() {
       completedCount: 0
     };
 
-    // Define all possible document fields
+    // Define all possible document fields - matching the calculation method exactly
     const requiredDocs = [
-      { field: 'governmentIdPath', label: 'Government ID', required: true },
-      { field: 'birthCertificatePath', label: 'Birth Certificate', required: true },
-      { field: 'marriageCertificatePath', label: 'Marriage Certificate', required: submission.civilStatus === 'married' },
+      { field: 'hasGovernmentId', label: 'Government ID', required: true },
+      { field: 'hasBirthCertificate', label: 'Birth Certificate', required: true },
+      { field: 'hasMarriageCertificate', label: 'Marriage Certificate', required: submission.civilStatus === 'married' },
     ];
 
-    // Employment-specific documents
+    // Employment-specific documents - matching Clients.jsx logic
     if (submission.employmentType === 'employed') {
       requiredDocs.push(
-        { field: 'payslipsPaths', label: 'Payslips (3 months)', required: true, isArray: true },
-        { field: 'employmentCertificatePath', label: 'Employment Certificate', required: true },
-        { field: 'itrPath', label: 'Income Tax Return', required: true }
+        { field: 'hasEmploymentDocs', label: 'Employment Documents (Payslips, Certificate)', required: true },
+        { field: 'hasIncomeDocs', label: 'Income Tax Return', required: true }
       );
     } else if (submission.employmentType === 'self-employed') {
       requiredDocs.push(
-        { field: 'businessRegistrationPath', label: 'Business Registration (DTI/SEC)', required: true },
-        { field: 'auditedFinancialStatementPath', label: 'Audited Financial Statement', required: true },
-        { field: 'bankStatementsPaths', label: 'Bank Statements (6 months)', required: true, isArray: true },
-        { field: 'itrPath', label: 'Income Tax Return', required: true }
+        { field: 'hasEmploymentDocs', label: 'Business Registration & Financial Statement', required: true },
+        { field: 'hasIncomeDocs', label: 'ITR & Bank Statements', required: true }
       );
     } else if (submission.employmentType === 'ofw') {
       requiredDocs.push(
-        { field: 'employmentContractPath', label: 'OFW Employment Contract', required: true },
-        { field: 'remittanceProofPaths', label: 'Remittance Proof (6 months)', required: true, isArray: true }
+        { field: 'hasEmploymentDocs', label: 'OFW Employment Contract', required: true },
+        { field: 'hasIncomeDocs', label: 'Remittance Proof', required: true }
       );
+    }
+
+    // Add TIN requirement if employment type exists
+    if (submission.employmentType) {
+      requiredDocs.push({ field: 'tinNumber', label: 'TIN Number', required: true });
     }
 
     // Filter only required documents
     const applicableDocs = requiredDocs.filter(doc => doc.required);
     breakdown.total = applicableDocs.length;
 
-    // Check each document
+    // Check each document using the same mapping as the calculation function
     applicableDocs.forEach(doc => {
-      const fieldValue = submission[doc.field];
       let isSubmitted = false;
-
-      if (doc.isArray) {
-        isSubmitted = Array.isArray(fieldValue) && fieldValue.length > 0 && 
-                     fieldValue.some(path => path && path.trim() !== '');
-      } else {
-        isSubmitted = fieldValue && typeof fieldValue === 'string' && fieldValue.trim() !== '';
+      
+      // Map the document fields to actual submission data fields - same logic as calculateProgress
+      switch (doc.field) {
+        case 'hasGovernmentId':
+          isSubmitted = !!submission.governmentIdPath;
+          break;
+        case 'hasBirthCertificate':
+          isSubmitted = !!submission.birthCertificatePath;
+          break;
+        case 'hasMarriageCertificate':
+          isSubmitted = !!submission.marriageCertificatePath;
+          break;
+        case 'hasEmploymentDocs':
+          isSubmitted = !!submission.employmentCertificatePath || 
+                       !!submission.businessRegistrationPath || 
+                       !!submission.employmentContractPath;
+          break;
+        case 'hasIncomeDocs':
+          isSubmitted = !!submission.itrPath || 
+                       !!submission.auditedFinancialStatementPath || 
+                       !!(submission.remittanceProofPaths?.length);
+          break;
+        case 'tinNumber':
+          isSubmitted = !!submission.tinNumber;
+          break;
+        default:
+          isSubmitted = false;
       }
 
       if (isSubmitted) {

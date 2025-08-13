@@ -22,6 +22,13 @@ import {
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../../../config/Firebase';
 
+/**
+ * Clients Component
+ * Purpose: Agent dashboard showing client document submission progress for property applications
+ * Progress Type: Application/Document submission status (0-100% based on submitted documents)  
+ * Data Source: Real-time from Firestore documentSubmissions collection
+ * Calculation: Advanced method matching BuyerBuildSafe.jsx for consistency
+ */
 function Clients() {
   const [currentUser, setCurrentUser] = useState(null);
   const [clientRequests, setClientRequests] = useState([]);
@@ -340,31 +347,79 @@ function Clients() {
     fetchData();
   }, [currentUser, fetchAgentProperties, fetchClientSubmissions]);
 
-  // Calculate application progress percentage
+  // Calculate application progress percentage - Enhanced method matching BuyerBuildSafe.jsx
   const calculateProgress = useCallback((client) => {
-    let completed = 0;
-    let total = 0;
+    console.log('Calculating progress for client:', client);
     
-    // Basic documents (always required)
-    total += 3; // Government ID, Birth Certificate, TIN
-    if (client.hasGovernmentId) completed++;
-    if (client.hasBirthCertificate) completed++;
-    if (client.tinNumber) completed++;
+    // Define all possible document fields that can be submitted - matching BuyerBuildSafe logic
+    const documentFields = [
+      // Personal Identification (always required)
+      'hasGovernmentId',
+      'hasBirthCertificate',
+      
+      // Civil Status (conditional - marriage certificate only if married)
+      ...(client.civilStatus === 'married' ? ['hasMarriageCertificate'] : []),
+      
+      // Employment Type Documents (conditional based on employment type)
+      ...(client.employmentType === 'employed' ? [
+        'hasEmploymentDocs', // Represents payslips, employment cert, ITR
+        'hasIncomeDocs'      // Represents ITR specifically
+      ] : []),
+      ...(client.employmentType === 'self-employed' ? [
+        'hasEmploymentDocs', // Represents business registration, audited financial statement
+        'hasIncomeDocs'      // Represents ITR and bank statements
+      ] : []),
+      ...(client.employmentType === 'ofw' ? [
+        'hasEmploymentDocs', // Represents employment contract
+        'hasIncomeDocs'      // Represents remittance proof
+      ] : [])
+    ];
+
+    console.log('Required document fields for this client:', documentFields);
+    console.log('Employment type:', client.employmentType);
+    console.log('Civil status:', client.civilStatus);
     
-    // Civil status dependent
-    if (client.civilStatus === 'married') {
-      total += 1; // Marriage certificate
-      if (client.hasMarriageCertificate) completed++;
+    if (documentFields.length === 0) {
+      console.log('No required documents identified, using TIN-based progress');
+      // Basic progress for having TIN number
+      return client.tinNumber ? 20 : 0;
     }
     
-    // Employment dependent
+    let totalDocuments = documentFields.length;
+    let submittedDocuments = 0;
+    
+    // Check each required document field
+    documentFields.forEach(field => {
+      const isSubmitted = !!client[field];
+      
+      console.log(`Document field ${field}:`, isSubmitted ? 'Submitted' : 'Missing');
+      
+      if (isSubmitted) {
+        submittedDocuments++;
+      }
+    });
+    
+    // Add TIN number as additional requirement if we have employment type
     if (client.employmentType) {
-      total += 2; // Employment docs + Income docs
-      if (client.hasEmploymentDocs) completed++;
-      if (client.hasIncomeDocs) completed++;
+      totalDocuments += 1;
+      if (client.tinNumber) {
+        submittedDocuments += 1;
+      }
     }
     
-    return Math.round((completed / total) * 100);
+    console.log(`Progress calculation: ${submittedDocuments}/${totalDocuments} documents submitted`);
+    
+    // Calculate percentage
+    const progress = totalDocuments > 0 ? Math.round((submittedDocuments / totalDocuments) * 100) : 0;
+    
+    // Ensure minimum progress for applications that have been started
+    if (progress === 0 && (client.tinNumber || client.civilStatus || client.employmentType)) {
+      console.log('Basic info provided, setting minimum progress');
+      return 5; // Show some progress for having basic info
+    }
+    
+    console.log('Final calculated progress:', progress);
+    return progress;
   }, []);
 
   // Get status badge info

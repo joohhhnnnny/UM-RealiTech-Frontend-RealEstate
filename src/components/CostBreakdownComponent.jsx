@@ -269,7 +269,7 @@ function CostBreakdownComponent({ selectedProperty, isOpen }) {
                       <div className="bg-success/10 p-4 rounded-lg border-2 border-success/30">
                         <div className="text-center">
                           <h6 className="text-base font-bold text-success mb-1">
-                            🏠 TOTAL PAYMENT REQUIRED
+                            TOTAL PAYMENT REQUIRED
                           </h6>
                           <p className="text-xl font-extrabold text-success mb-2">
                             {formatCurrency(costData.totalCost)}
