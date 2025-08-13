@@ -66,8 +66,8 @@ function LoanCalculator() {
       <div className="card bg-base-100 shadow-lg border border-base-200 p-6">
         <div className="flex items-start justify-between mb-6">
           <div>
-            <RiMoneyDollarCircleLine className="w-8 h-8 text-emerald-500 mb-4" />
-            <h3 className="text-lg font-bold text-emerald-500">
+            <RiMoneyDollarCircleLine className="w-8 h-8 text-red-400 mb-4" />
+            <h3 className="text-lg font-bold text-red-400">
               Loan Calculator
             </h3>
             <p className="text-base-content/70 text-sm mt-2">

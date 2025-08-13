@@ -417,7 +417,7 @@ function AIGuide({ profileData, setProfileData, onComplete, isEditMode = false }
 
   return (
     <div className="card bg-base-100 shadow-lg border border-base-200 p-6">
-      <h2 className="text-2xl font-bold mb-4">
+      <h2 className="text-2xl font-bold mb-4 text-blue-500">
         {isEditMode ? 'Update AI Buyer Profile' : 'AI Buyer Profile Setup'}
       </h2>
       <ProgressBar step={step} />
