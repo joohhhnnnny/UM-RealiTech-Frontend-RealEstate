@@ -16,7 +16,8 @@ export const initializeSampleData = async () => {
         deals: 32,
         agency: 'RealiTech Realty',
         image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&backgroundColor=b6e3f4',
-        bio: 'Professional real estate agent with proven expertise in residential properties. Successfully closed 32 deals, maintaining a 4.8/5 client satisfaction rating.'
+        bio: 'Professional real estate agent with proven expertise in residential properties. Successfully closed 32 deals, maintaining a 4.8/5 client satisfaction rating.',
+        verificationStatus: 'verified'
       },
       {
         name: 'Michael Johnson',
@@ -26,7 +27,8 @@ export const initializeSampleData = async () => {
         deals: 28,
         agency: 'RealiTech Realty',
         image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a',
-        bio: 'Commercial real estate specialist with extensive experience in office buildings and retail spaces.'
+        bio: 'Commercial real estate specialist with extensive experience in office buildings and retail spaces.',
+        verificationStatus: 'verified'
       },
       {
         name: 'Emily Chen',
@@ -36,7 +38,19 @@ export const initializeSampleData = async () => {
         deals: 15,
         agency: 'RealiTech Realty',
         image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2',
-        bio: 'Industrial property expert specializing in warehouses and manufacturing facilities.'
+        bio: 'Industrial property expert specializing in warehouses and manufacturing facilities.',
+        verificationStatus: 'verified'
+      },
+      {
+        name: 'John Smith',
+        email: 'john@realitech.com',
+        specialization: 'Residential',
+        rating: 4.2,
+        deals: 8,
+        agency: 'RealiTech Realty',
+        image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John&backgroundColor=c0aede',
+        bio: 'New agent specializing in residential properties. Currently pending verification.',
+        verificationStatus: 'pending'
       }
     ];
 

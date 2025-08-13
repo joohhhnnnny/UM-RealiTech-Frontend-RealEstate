@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FaChartLine, FaMoneyBillWave, FaRegClock, FaSpinner, FaPlus } from 'react-icons/fa';
 import { commissionService } from '../../services/realtyConnectService';
+import VerificationService from '../../services/verificationService';
+import VerificationStatus from '../../components/VerificationStatus';
+import VerificationModal from '../../components/VerificationModal';
 
 // Try to import useAuth, but provide fallback if not available
 let useAuth;
@@ -15,6 +18,10 @@ function AgentRC() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [showProcessingModal, setShowProcessingModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState('not_submitted');
   const { currentUser } = useAuth(); // Get current user from auth context
 
   const [stats, setStats] = useState({
@@ -24,7 +31,7 @@ function AgentRC() {
     salesThisMonth: 0
   });
 
-  // Load commissions from Firebase
+  // Load commissions and verification status from Firebase
   useEffect(() => {
     // Use a default user ID for demonstration if no user is authenticated
     const userId = currentUser?.uid || 'demo-agent-user';
@@ -50,7 +57,32 @@ function AgentRC() {
       }
     };
 
-    loadCommissions();
+    // Load verification status
+    const loadVerificationStatus = async () => {
+      try {
+        const statusUnsubscribe = VerificationService.subscribeToVerificationStatus(
+          userId,
+          'agent',
+          (status) => {
+            setVerificationStatus(status.status);
+          }
+        );
+        return statusUnsubscribe;
+      } catch (err) {
+        console.error('Error loading verification status:', err);
+      }
+    };
+
+    const cleanupCommissions = loadCommissions();
+    const cleanupVerification = loadVerificationStatus();
+
+    return async () => {
+      const unsubscribeCommissions = await cleanupCommissions;
+      const unsubscribeVerification = await cleanupVerification;
+      
+      if (unsubscribeCommissions) unsubscribeCommissions();
+      if (unsubscribeVerification) unsubscribeVerification();
+    };
   }, [currentUser]);
 
   // Calculate stats from commissions data
@@ -108,6 +140,36 @@ function AgentRC() {
     }
   }, [currentUser]);
 
+  // Verification handlers
+  const handleStartVerification = useCallback(() => {
+    setShowVerificationModal(true);
+  }, []);
+
+  const handleVerificationSubmitted = useCallback(() => {
+    // Set to pending immediately and close modal
+    setVerificationStatus('pending');
+    setShowVerificationModal(false);
+    
+    // Show processing modal
+    setShowProcessingModal(true);
+    
+    // Auto-verify after 2 seconds for demo purposes
+    setTimeout(async () => {
+      try {
+        const userId = currentUser?.uid || 'demo-agent-user';
+        console.log('Auto-verifying agent after 2 seconds...');
+        setVerificationStatus('verified');
+        
+        // Close processing modal and show success modal
+        setShowProcessingModal(false);
+        setShowSuccessModal(true);
+      } catch (error) {
+        console.error('Error during auto-verification:', error);
+        setShowProcessingModal(false);
+      }
+    }, 2000); // 2 second delay to simulate processing
+  }, [currentUser]);
+
   const getStatusBadgeClass = (status) => {
     switch (status) {
       case 'completed':
@@ -146,6 +208,12 @@ function AgentRC() {
 
   return (
     <div className="space-y-6">
+      {/* Verification Status */}
+      <VerificationStatus 
+        status={verificationStatus}
+        onStartVerification={handleStartVerification}
+      />
+
       {/* Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat bg-base-100 rounded-box shadow">
@@ -193,13 +261,24 @@ function AgentRC() {
               <h2 className="card-title">Commission Tracker</h2>
               <p className="text-sm opacity-70">Track your commission payments and releases</p>
             </div>
-            <button 
-              className="btn btn-primary gap-2"
-              onClick={() => setShowAddModal(true)}
-            >
-              <FaPlus />
-              Add Commission
-            </button>
+            {verificationStatus === 'verified' ? (
+              <button 
+                className="btn btn-primary gap-2"
+                onClick={() => setShowAddModal(true)}
+              >
+                <FaPlus />
+                Add Commission
+              </button>
+            ) : (
+              <button 
+                className="btn btn-disabled gap-2"
+                disabled
+                title="Verification required to add commissions"
+              >
+                <FaPlus />
+                Add Commission
+              </button>
+            )}
           </div>
           
           {commissions.length === 0 ? (
@@ -273,7 +352,96 @@ function AgentRC() {
           onAdd={handleAddCommission}
         />
       )}
+
+      {/* Verification Modal */}
+      {showVerificationModal && (
+        <VerificationModal
+          isOpen={showVerificationModal}
+          onClose={() => setShowVerificationModal(false)}
+          userType="agent"
+          userId={currentUser?.uid || 'demo-agent-user'}
+          onVerificationSubmitted={handleVerificationSubmitted}
+        />
+      )}
+
+      {/* Processing Modal */}
+      {showProcessingModal && (
+        <dialog className="modal modal-bottom sm:modal-middle" open>
+          <div className="modal-box text-center">
+            <div className="py-8">
+              <div className="loading loading-spinner loading-lg text-primary mb-4"></div>
+              <h3 className="font-bold text-lg mb-2">Processing Verification</h3>
+              <p className="text-base-content/70">
+                We're reviewing your documents and credentials...
+              </p>
+              <div className="mt-4">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="loading loading-dots loading-sm"></span>
+                  <span className="text-sm">This usually takes a moment</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop bg-black/30"></div>
+        </dialog>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <dialog className="modal modal-bottom sm:modal-middle" open>
+          <div className="modal-box text-center">
+            <div className="py-8">
+              <div className="text-6xl mb-4">🎉</div>
+              <h3 className="font-bold text-xl text-success mb-2">
+                Verification Approved!
+              </h3>
+              <p className="text-base-content/70 mb-4">
+                Congratulations! Your agent credentials have been verified.
+                All platform features are now unlocked.
+              </p>
+              <div className="bg-success/10 p-4 rounded-lg mb-6">
+                <div className="text-success font-semibold mb-2">✅ What's Unlocked:</div>
+                <ul className="text-sm text-left space-y-1">
+                  <li>• Add and manage commissions</li>
+                  <li>• Access client management tools</li>
+                  <li>• Participate in RealtyConnect network</li>
+                  <li>• Full dashboard functionality</li>
+                </ul>
+              </div>
+            </div>
+            <div className="modal-action">
+              <button 
+                className="btn btn-success"
+                onClick={() => setShowSuccessModal(false)}
+              >
+                Start Using RealtyConnect
+              </button>
+            </div>
+          </div>
+          <div className="modal-backdrop bg-black/20" onClick={() => setShowSuccessModal(false)}></div>
+        </dialog>
+      )}
     </div>
+  );
+}
+
+// Processing Modal Component
+function ProcessingModal({ isOpen, onClose }) {
+  if (!isOpen) return null;
+  
+  return (
+    <dialog className="modal modal-bottom sm:modal-middle" open>
+      <div className="modal-box text-center">
+        <div className="py-8">
+          <div className="loading loading-spinner loading-lg text-primary mb-4"></div>
+          <h3 className="font-bold text-lg mb-2">Processing Verification</h3>
+          <p className="text-base-content/70">
+            We're reviewing your documents and credentials...
+          </p>
+        </div>
+      </div>
+      <div className="modal-backdrop bg-black/30"></div>
+    </dialog>
   );
 }
 

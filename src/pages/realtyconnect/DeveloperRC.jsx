@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FaBuilding, FaUsers, FaMoneyBillWave, FaChartLine, FaSpinner, FaPlus } from 'react-icons/fa';
+import { FaBuilding, FaMoneyBillWave, FaUsers, FaChartLine, FaPlus, FaSpinner } from 'react-icons/fa';
 import { contractService } from '../../services/realtyConnectService';
+import VerificationService from '../../services/verificationService';
+import VerificationStatus from '../../components/VerificationStatus';
+import VerificationModal from '../../components/VerificationModal';
 
 // Try to import useAuth, but provide fallback if not available
 let useAuth;
@@ -15,6 +18,10 @@ function DeveloperRC() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [showProcessingModal, setShowProcessingModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState('not_submitted');
   const { currentUser } = useAuth(); // Get current user from auth context
 
   const [stats, setStats] = useState({
@@ -24,7 +31,7 @@ function DeveloperRC() {
     deliveryRate: '0%'
   });
 
-  // Load contracts from Firebase
+  // Load contracts and verification status from Firebase
   useEffect(() => {
     // Use a default user ID for demonstration if no user is authenticated
     const userId = currentUser?.uid || 'demo-developer-user';
@@ -50,7 +57,32 @@ function DeveloperRC() {
       }
     };
 
-    loadContracts();
+    // Load verification status
+    const loadVerificationStatus = async () => {
+      try {
+        const statusUnsubscribe = VerificationService.subscribeToVerificationStatus(
+          userId,
+          'developer',
+          (status) => {
+            setVerificationStatus(status.status);
+          }
+        );
+        return statusUnsubscribe;
+      } catch (err) {
+        console.error('Error loading verification status:', err);
+      }
+    };
+
+    const cleanupContracts = loadContracts();
+    const cleanupVerification = loadVerificationStatus();
+
+    return async () => {
+      const unsubscribeContracts = await cleanupContracts;
+      const unsubscribeVerification = await cleanupVerification;
+      
+      if (unsubscribeContracts) unsubscribeContracts();
+      if (unsubscribeVerification) unsubscribeVerification();
+    };
   }, [currentUser]);
 
   // Calculate stats from contracts data
@@ -94,6 +126,36 @@ function DeveloperRC() {
     }
   }, [currentUser]);
 
+  // Verification handlers
+  const handleStartVerification = useCallback(() => {
+    setShowVerificationModal(true);
+  }, []);
+
+  const handleVerificationSubmitted = useCallback(() => {
+    // Set to pending immediately and close modal
+    setVerificationStatus('pending');
+    setShowVerificationModal(false);
+    
+    // Show processing modal
+    setShowProcessingModal(true);
+    
+    // Auto-verify after 2 seconds for demo purposes
+    setTimeout(async () => {
+      try {
+        const userId = currentUser?.uid || 'demo-developer-user';
+        console.log('Auto-verifying developer after 2 seconds...');
+        setVerificationStatus('verified');
+        
+        // Close processing modal and show success modal
+        setShowProcessingModal(false);
+        setShowSuccessModal(true);
+      } catch (error) {
+        console.error('Error during auto-verification:', error);
+        setShowProcessingModal(false);
+      }
+    }, 2000); // 2 second delay to simulate processing
+  }, [currentUser]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -119,6 +181,12 @@ function DeveloperRC() {
 
   return (
     <div className="space-y-6">
+      {/* Verification Status */}
+      <VerificationStatus 
+        status={verificationStatus}
+        onStartVerification={handleStartVerification}
+      />
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat bg-base-100 rounded-box shadow">
@@ -166,13 +234,24 @@ function DeveloperRC() {
               <h2 className="card-title">Smart Contract Manager</h2>
               <p className="text-sm opacity-70">Automated payment releases based on construction milestones</p>
             </div>
-            <button 
-              className="btn btn-primary gap-2"
-              onClick={() => setShowAddModal(true)}
-            >
-              <FaPlus />
-              Add Contract
-            </button>
+            {verificationStatus === 'verified' ? (
+              <button 
+                className="btn btn-primary gap-2"
+                onClick={() => setShowAddModal(true)}
+              >
+                <FaPlus />
+                Add Contract
+              </button>
+            ) : (
+              <button 
+                className="btn btn-disabled gap-2"
+                disabled
+                title="Verification required to add contracts"
+              >
+                <FaPlus />
+                Add Contract
+              </button>
+            )}
           </div>
 
           {contracts.length === 0 ? (
@@ -200,6 +279,64 @@ function DeveloperRC() {
           onClose={() => setShowAddModal(false)}
           onAdd={handleAddContract}
         />
+      )}
+
+      {/* Verification Modal */}
+      {showVerificationModal && (
+        <VerificationModal
+          isOpen={showVerificationModal}
+          onClose={() => setShowVerificationModal(false)}
+          userType="developer"
+          userId={currentUser?.uid || 'demo-developer-user'}
+          onVerificationSubmitted={handleVerificationSubmitted}
+        />
+      )}
+
+      {/* Processing Modal */}
+      {showProcessingModal && (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-md">
+            <div className="text-center py-6">
+              <div className="loading loading-spinner loading-lg mb-4"></div>
+              <h3 className="font-bold text-lg mb-2">Processing Verification</h3>
+              <p className="text-gray-600">
+                Please wait while we review your documents...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-md">
+            <div className="text-center py-6">
+              <div className="text-6xl mb-4">🎉</div>
+              <h3 className="font-bold text-lg mb-2 text-green-600">Verification Approved!</h3>
+              <p className="text-gray-600 mb-4">
+                Congratulations! Your verification has been approved and all features are now unlocked.
+              </p>
+              <div className="bg-green-50 p-4 rounded-lg mb-4">
+                <h4 className="font-semibold text-green-800 mb-2">Now Available:</h4>
+                <ul className="text-sm text-green-700 space-y-1">
+                  <li>• Add and manage contracts</li>
+                  <li>• Track property sales</li>
+                  <li>• Connect with verified agents</li>
+                  <li>• Access premium developer tools</li>
+                </ul>
+              </div>
+              <div className="modal-action">
+                <button 
+                  className="btn btn-primary w-full"
+                  onClick={() => setShowSuccessModal(false)}
+                >
+                  Start Using RealtyConnect
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

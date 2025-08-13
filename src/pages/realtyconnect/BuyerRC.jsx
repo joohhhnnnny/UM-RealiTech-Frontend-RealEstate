@@ -1,5 +1,5 @@
 import React, { useState, useMemo, memo, useCallback, useEffect } from 'react';
-import { FaUserTie, FaStar, FaSpinner } from 'react-icons/fa';
+import { FaUserTie, FaStar, FaSpinner, FaCheckCircle } from 'react-icons/fa';
 import { agentService } from '../../services/realtyConnectService';
 
 // Memoized Agent Card Component
@@ -12,8 +12,11 @@ const AgentCard = memo(({ agent, onViewProfile, onContactAgent, renderStars }) =
             <img src={agent.image || '/default-avatar.png'} alt={agent.name} loading="lazy" />
           </div>
         </div>
-        <div>
-          <h2 className="card-title">{agent.name}</h2>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h2 className="card-title">{agent.name}</h2>
+            <FaCheckCircle className="text-success w-4 h-4" title="Verified Agent" />
+          </div>
           <p className="text-sm opacity-70">{agent.specialization} Specialist</p>
         </div>
       </div>
@@ -144,7 +147,11 @@ function BuyerRC() {
         setLoading(true);
         // Subscribe to real-time updates
         const unsubscribe = agentService.subscribeToAgents((agentsData) => {
-          setAgents(agentsData);
+          // Filter only verified agents for buyer safety
+          const verifiedAgents = agentsData.filter(agent => 
+            agent.verificationStatus === 'verified'
+          );
+          setAgents(verifiedAgents);
           setLoading(false);
         });
 
