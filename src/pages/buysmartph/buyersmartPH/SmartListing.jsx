@@ -666,24 +666,15 @@ function SmartListing({ profileData }) {
             <div className="grid grid-cols-3 gap-1 sm:gap-2 text-sm w-full lg:flex-1">
               <div className="flex flex-col items-center p-1.5 sm:p-2 rounded-lg bg-base-200/30 backdrop-blur-sm border border-primary/10 hover:border-primary/20 transition-colors">
                 <RiHome3Line className="h-3 w-3 sm:h-4 sm:w-4 text-primary mb-1" />
-                <span className="text-base-content/70 text-xs">Area</span>
-                <span className="font-semibold mt-0.5 text-primary text-xs sm:text-sm">
-                  {listing.floor_area_sqm || '0'} sqm
-                </span>
+                <span className="text-base-content/70 text-xs">{listing.floor_area_sqm || '0'} sqm</span>
               </div>
               <div className="flex flex-col items-center p-1.5 sm:p-2 rounded-lg bg-base-200/30 backdrop-blur-sm border border-primary/10 hover:border-primary/20 transition-colors">
                 <RiHotelBedLine className="h-3 w-3 sm:h-4 sm:w-4 text-primary mb-1" />
-                <span className="text-base-content/70 text-xs">Beds</span>
-                <span className="font-semibold mt-0.5 text-primary text-xs sm:text-sm">
-                  {listing.beds || '0'}
-                </span>
+                <span className="text-base-content/70 text-xs">{listing.beds || '0'}</span>
               </div>
               <div className="flex flex-col items-center p-1.5 sm:p-2 rounded-lg bg-base-200/30 backdrop-blur-sm border border-primary/10 hover:border-primary/20 transition-colors">
                 <RiDropLine className="h-3 w-3 sm:h-4 sm:w-4 text-primary mb-1" />
-                <span className="text-base-content/70 text-xs">Baths</span>
-                <span className="font-semibold mt-0.5 text-primary text-xs sm:text-sm">
-                  {listing.baths || '0'}
-                </span>
+                <span className="text-base-content/70 text-xs">{listing.baths || '0'}</span>
               </div>
             </div>
             
