@@ -57,7 +57,7 @@ function Footer(){
                     <div className="space-y-4">
                         <h4 className="text-lg font-semibold text-white">Our Solutions</h4>
                         <ul className="space-y-3">
-                            {['DevTrackr', 'BuySmart PH', 'RealtyConnect', 'PropGuard'].map((solution) => (
+                            {['BuySmartPH', 'BuildSafe', 'RealtyConnect', 'PropGuard'].map((solution) => (
                                 <li key={solution}>
                                     <a 
                                         href="#" 
