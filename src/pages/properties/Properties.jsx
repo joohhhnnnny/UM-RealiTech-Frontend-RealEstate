@@ -10,6 +10,7 @@ import {
   where 
 } from 'firebase/firestore';
 import { db } from '../../config/Firebase';
+import { getThumbnailImageUrl } from '../../utils/imageHelpers';
 import {
   MagnifyingGlassIcon,
   AdjustmentsHorizontalIcon,
@@ -620,7 +621,7 @@ function Properties() {
                       <div className="h-64 relative overflow-hidden">
                         <img
                           src={
-                            property.images?.[0] || getDefaultImage(property)
+                            getThumbnailImageUrl(property) || getDefaultImage(property)
                           }
                           alt={property.title}
                           className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
@@ -737,7 +738,7 @@ function Properties() {
                     {/* List View */}
                     <div className="w-80 h-56 relative overflow-hidden flex-shrink-0">
                       <img
-                        src={property.images?.[0] || getDefaultImage(property)}
+                        src={getThumbnailImageUrl(property) || getDefaultImage(property)}
                         alt={property.title}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         onError={(e) => {

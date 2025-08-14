@@ -15,6 +15,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../../../config/Firebase';
 import ListingForm from '../../../components/ListingForm';
 import Toast from '../../../components/Toast';
+import { getThumbnailImageUrl } from '../../../utils/imageHelpers';
 import { DEFAULT_PROPERTY_IMAGE, INITIAL_LISTING_STATE, debugLog } from '../../../constants/propertyConstants';
 
 // Utility function to fix agent names
@@ -274,6 +275,7 @@ const fixMyAgentNames = async (agent) => {
         images: newListing.images ? 
           newListing.images.filter(img => img && img.trim() !== '') : 
           (newListing.image ? [newListing.image] : [DEFAULT_PROPERTY_IMAGE]),
+        thumbnailIndex: newListing.thumbnailIndex || 0,
         buyers: [],
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -298,6 +300,7 @@ const fixMyAgentNames = async (agent) => {
         images: newListing.images ? 
           newListing.images.filter(img => img && img.trim() !== '') : 
           (newListing.image ? [newListing.image] : ["https://images.unsplash.com/photo-1600596542815-ffad4c1539a9"]),
+        thumbnailIndex: newListing.thumbnailIndex || 0,
         agent_id: currentUser.uid,
         agent_name: fixAgentName(
           currentUser.fullName || currentUser.displayName || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim(),
@@ -370,6 +373,7 @@ const fixMyAgentNames = async (agent) => {
         images: updatedListing.images ? 
           updatedListing.images.filter(img => img && img.trim() !== '') : 
           (updatedListing.image ? [updatedListing.image] : []),
+        thumbnailIndex: updatedListing.thumbnailIndex || 0,
         updatedAt: serverTimestamp()
       };
 
@@ -388,6 +392,7 @@ const fixMyAgentNames = async (agent) => {
         images: updatedListing.images ? 
           updatedListing.images.filter(img => img && img.trim() !== '') : 
           (updatedListing.image ? [updatedListing.image] : []),
+        thumbnailIndex: updatedListing.thumbnailIndex || 0,
         updatedAt: serverTimestamp()
       };
 
@@ -526,7 +531,7 @@ const fixMyAgentNames = async (agent) => {
             <div key={listing.id} className="card bg-base-100 shadow-xl border border-base-200/60 hover:shadow-2xl transition-all duration-200">
               <figure className="h-48">
                 <img 
-                  src={listing.images?.[0] || listing.image || DEFAULT_PROPERTY_IMAGE} 
+                  src={getThumbnailImageUrl(listing) || listing.images?.[0] || listing.image || DEFAULT_PROPERTY_IMAGE} 
                   alt={listing.title} 
                   className="w-full h-full object-cover"
                   onError={(e) => {

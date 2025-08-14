@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { RiLoader4Line } from 'react-icons/ri';
 import Toast from './Toast';
+import { validateImageUrl as validateImageUrlHelper } from '../utils/imageHelpers';
 
 const ListingForm = ({ 
   listing, 
@@ -76,6 +77,17 @@ const ListingForm = ({
       return;
     }
     
+    // Ensure thumbnail index is valid
+    const thumbnailIndex = getThumbnailIndex();
+    if (thumbnailIndex >= validImages.length || !images[thumbnailIndex] || !validateImageUrl(images[thumbnailIndex])) {
+      // Reset thumbnail to first valid image
+      const firstValidIndex = images.findIndex(img => img && img.trim() && validateImageUrl(img));
+      onListingChange({
+        ...listing,
+        thumbnailIndex: firstValidIndex >= 0 ? firstValidIndex : 0
+      });
+    }
+    
     try {
       await onSubmit(e);
       // Success/error toasts should be handled by parent component
@@ -136,6 +148,46 @@ const ListingForm = ({
     }
   };
 
+  // Handle thumbnail selection
+  const handleThumbnailSelection = (selectedIndex) => {
+    const currentImages = getInitializedImages();
+    const validImages = currentImages.filter(img => img && img.trim() && validateImageUrl(img));
+    
+    if (validImages.length === 0) {
+      showToast('Please add valid images before selecting a thumbnail', 'warning');
+      return;
+    }
+    
+    // Ensure the selected index has a valid image
+    if (!currentImages[selectedIndex] || !validateImageUrl(currentImages[selectedIndex])) {
+      showToast('Cannot set invalid image as thumbnail', 'error');
+      return;
+    }
+    
+    // Update the thumbnailIndex in the listing immediately
+    const updatedListing = {
+      ...listing, 
+      thumbnailIndex: selectedIndex
+    };
+    
+    // Debug logging to track thumbnail changes
+    console.log('Thumbnail selection:', {
+      selectedIndex,
+      previousIndex: listing.thumbnailIndex,
+      imageUrl: currentImages[selectedIndex],
+      updatedListing
+    });
+    
+    onListingChange(updatedListing);
+    showToast(`Image ${selectedIndex + 1} set as thumbnail`, 'success');
+  };
+
+  // Get the currently selected thumbnail index with real-time updates
+  const getThumbnailIndex = () => {
+    // Use the current listing state directly for real-time updates
+    return listing.thumbnailIndex !== undefined ? listing.thumbnailIndex : 0;
+  };
+
   const addImageField = () => {
     const currentImages = getInitializedImages();
     if (currentImages.length < 4) {
@@ -151,22 +203,34 @@ const ListingForm = ({
     const currentImages = getInitializedImages();
     if (currentImages.length > 1) {
       const updatedImages = currentImages.filter((_, i) => i !== index);
-      onListingChange({...listing, images: updatedImages});
-      showToast(`Image ${index + 1} removed`, 'info');
+      const currentThumbnailIndex = getThumbnailIndex();
+      
+      let newThumbnailIndex = currentThumbnailIndex;
+      
+      // Handle thumbnail index adjustment when removing images
+      if (index === currentThumbnailIndex) {
+        // If removing the current thumbnail, set to first image (index 0)
+        newThumbnailIndex = 0;
+        showToast(`Image ${index + 1} removed. Thumbnail reset to first image.`, 'info');
+      } else if (index < currentThumbnailIndex) {
+        // If removing an image before the current thumbnail, adjust index
+        newThumbnailIndex = currentThumbnailIndex - 1;
+        showToast(`Image ${index + 1} removed. Thumbnail adjusted.`, 'info');
+      } else {
+        showToast(`Image ${index + 1} removed`, 'info');
+      }
+      
+      onListingChange({
+        ...listing, 
+        images: updatedImages,
+        thumbnailIndex: newThumbnailIndex
+      });
     } else {
       showToast('At least one image field is required', 'warning');
     }
   };
 
-  const validateImageUrl = (url) => {
-    if (!url || url.trim() === '') return true; // Empty is valid (optional)
-    try {
-      new URL(url);
-      return /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(url);
-    } catch {
-      return false;
-    }
-  };
+  const validateImageUrl = validateImageUrlHelper;
 
   const getImageFieldError = (url, index) => {
     if (!url || url.trim() === '') {
@@ -431,63 +495,135 @@ const ListingForm = ({
       <div className="form-control w-full">
         <label className="label">
           <span className={LABEL_CLASSES}>Property Images (1-4 images)</span>
-          <span className="label-text-alt text-primary font-medium">
-            {getInitializedImages().filter(img => img && img.trim()).length}/4 images
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="label-text-alt text-primary font-medium">
+              {getInitializedImages().filter(img => img && img.trim()).length}/4 images
+            </span>
+            {getInitializedImages().filter(img => img && img.trim() && validateImageUrl(img)).length > 0 && (
+              <span className="label-text-alt text-base-content/60 text-xs">
+                Thumbnail: Image {getThumbnailIndex() + 1}
+              </span>
+            )}
+          </div>
         </label>
           
-          <div className="space-y-3">
+          <div className="space-y-4">
             {getInitializedImages().map((imageUrl, index) => {
               const error = getImageFieldError(imageUrl, index);
               const isFirstImage = index === 0;
+              const isValidImage = imageUrl && imageUrl.trim() && validateImageUrl(imageUrl);
+              const currentThumbnailIndex = getThumbnailIndex();
+              const isCurrentThumbnail = currentThumbnailIndex === index && isValidImage;
               
               return (
-                <div key={index} className="flex gap-2 items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-base-content/70">
-                        Image {index + 1}
-                        {isFirstImage && <span className="text-primary ml-1">(Required)</span>}
-                      </span>
-                      {imageUrl && validateImageUrl(imageUrl) && (
-                        <div className="badge badge-success badge-xs">Valid</div>
+                <div key={`image-${index}-${currentThumbnailIndex}`} className="border border-base-300 rounded-lg p-4 bg-base-50">
+                  <div className="flex gap-3 items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-medium text-base-content">
+                          Image {index + 1}
+                          {isFirstImage && <span className="text-primary ml-1">(Required)</span>}
+                        </span>
+                        
+                        {/* Thumbnail Badge */}
+                        {isCurrentThumbnail && (
+                          <div className="badge badge-primary badge-sm animate-pulse">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 0 0 14-14 0z" />
+                            </svg>
+                            Thumbnail
+                          </div>
+                        )}
+                        
+                        {/* Validation Badges */}
+                        {isValidImage && !isCurrentThumbnail && (
+                          <div className="badge badge-success badge-xs">Valid</div>
+                        )}
+                        {imageUrl && imageUrl.trim() && !validateImageUrl(imageUrl) && (
+                          <div className="badge badge-error badge-xs">Invalid</div>
+                        )}
+                      </div>
+                      
+                      <input
+                        type="url"
+                        className={`${INPUT_CLASSES} ${error ? 'border-error focus:border-error' : ''}`}
+                        placeholder={isFirstImage ? "https://example.com/main-image.jpg (Required)" : "https://example.com/additional-image.jpg"}
+                        value={imageUrl}
+                        onChange={e => updateImageUrl(index, e.target.value)}
+                      />
+                      
+                      {error && (
+                        <label className="label">
+                          <span className="label-text-alt text-error">{error}</span>
+                        </label>
                       )}
-                      {imageUrl && !validateImageUrl(imageUrl) && (
-                        <div className="badge badge-error badge-xs">Invalid</div>
+                      
+                      {/* Image Preview (if valid URL) */}
+                      {isValidImage && (
+                        <div className="mt-2">
+                          <img 
+                            src={imageUrl} 
+                            alt={`Preview ${index + 1}`}
+                            className={`w-20 h-16 object-cover rounded transition-all duration-200 ${
+                              isCurrentThumbnail 
+                                ? 'border-2 border-primary shadow-md ring-2 ring-primary ring-opacity-30' 
+                                : 'border border-base-300'
+                            }`}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                          {isCurrentThumbnail && (
+                            <p className="text-xs text-primary font-medium mt-1">Thumbnail Preview</p>
+                          )}
+                        </div>
                       )}
                     </div>
                     
-                    <input
-                      type="url"
-                      className={`${INPUT_CLASSES} ${error ? 'border-error focus:border-error' : ''}`}
-                      placeholder={isFirstImage ? "https://example.com/main-image.jpg (Required)" : "https://example.com/additional-image.jpg"}
-                      value={imageUrl}
-                      onChange={e => updateImageUrl(index, e.target.value)}
-                    />
-                    
-                    {error && (
-                      <label className="label">
-                        <span className="label-text-alt text-error">{error}</span>
-                      </label>
-                    )}
+                    <div className="flex flex-col gap-2">
+                      {/* Set as Thumbnail Button */}
+                      {isValidImage && !isCurrentThumbnail && (
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-primary btn-xs hover:btn-primary transition-all duration-200"
+                          onClick={() => handleThumbnailSelection(index)}
+                          title={`Set image ${index + 1} as thumbnail`}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 0 0 14-14 0z" />
+                          </svg>
+                          Set Thumbnail
+                        </button>
+                      )}
+                      
+                      {/* Current Thumbnail Indicator */}
+                      {isCurrentThumbnail && (
+                        <div className="btn btn-primary btn-xs cursor-default" disabled>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Active Thumbnail
+                        </div>
+                      )}
+                      
+                      {/* Remove Button */}
+                      <button
+                        type="button"
+                        className={`btn btn-square btn-sm transition-all duration-200 ${
+                          getInitializedImages().length === 1 ? 
+                          'btn-disabled opacity-30' : 
+                          'btn-error btn-outline hover:btn-error'
+                        }`}
+                        onClick={() => removeImageField(index)}
+                        disabled={getInitializedImages().length === 1}
+                        title={getInitializedImages().length === 1 ? "At least one image is required" : `Remove image ${index + 1}`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                  
-                  {/* Remove button (disabled for first image if it's the only one) */}
-                  <button
-                    type="button"
-                    className={`btn btn-square btn-sm mt-6 ${
-                      getInitializedImages().length === 1 ? 
-                      'btn-disabled opacity-30' : 
-                      'btn-error btn-outline hover:btn-error'
-                    }`}
-                    onClick={() => removeImageField(index)}
-                    disabled={getInitializedImages().length === 1}
-                    title={getInitializedImages().length === 1 ? "At least one image is required" : `Remove image ${index + 1}`}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
                 </div>
               );
             })}
@@ -507,17 +643,19 @@ const ListingForm = ({
             </button>
           )}
           
-          <div className="alert alert-info mt-3">
+          <div className="alert alert-info mt-4">
             <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
             <div className="text-sm">
-              <div className="font-medium">Image Requirements:</div>
+              <div className="font-medium">Image Requirements & Tips:</div>
               <ul className="list-disc list-inside mt-1 space-y-0.5 text-xs">
-                <li>At least 1 image is required (first image will be the main display)</li>
+                <li>At least 1 image is required (first image will be the default thumbnail)</li>
                 <li>Maximum 4 images allowed</li>
                 <li>Must be direct image URLs (jpg, jpeg, png, gif, webp, bmp, svg)</li>
+                <li><span className="font-semibold text-primary">Use "Set Thumbnail" to choose which image appears on property cards</span></li>
                 <li>Images should be high-quality and showcase the property well</li>
+                <li>Thumbnail image will be the main image displayed in search results</li>
               </ul>
             </div>
           </div>
