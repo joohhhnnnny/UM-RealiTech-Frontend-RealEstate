@@ -55,6 +55,89 @@ function Properties() {
       : "https://images.pexels.com/photos/106399/pexels-photo-106399.jpeg";
   };
 
+  // Professional time-based property status helper function
+  const getPropertyStatus = (property) => {
+    // If days_on_market is explicitly set, use it
+    if (property.days_on_market) {
+      const days = parseInt(property.days_on_market);
+      if (!isNaN(days)) {
+        return days.toString();
+      }
+      return property.days_on_market;
+    }
+
+    // Calculate days since property was created
+    if (property.createdAt) {
+      let createdDate;
+      
+      // Handle Firestore timestamp format
+      if (property.createdAt.seconds) {
+        createdDate = new Date(property.createdAt.seconds * 1000);
+      } else if (property.createdAt.toDate) {
+        createdDate = property.createdAt.toDate();
+      } else {
+        createdDate = new Date(property.createdAt);
+      }
+
+      const now = new Date();
+      const daysDifference = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
+
+      // Define status based on time constraints
+      if (daysDifference < 0) {
+        return "New"; // Future date edge case
+      } else if (daysDifference === 0) {
+        return "Today";
+      } else if (daysDifference <= 3) {
+        return "New";
+      } else if (daysDifference <= 7) {
+        return "Fresh";
+      } else if (daysDifference <= 14) {
+        return `${daysDifference}d`;
+      } else if (daysDifference <= 30) {
+        return `${daysDifference}d`;
+      } else if (daysDifference <= 90) {
+        const weeks = Math.floor(daysDifference / 7);
+        return `${weeks}w`;
+      } else {
+        const months = Math.floor(daysDifference / 30);
+        return months > 12 ? `${Math.floor(months / 12)}y` : `${months}m`;
+      }
+    }
+
+    // Fallback if no date information is available
+    return "New";
+  };
+
+  // Helper function to get status color based on property age
+  const getStatusColor = (property) => {
+    const status = getPropertyStatus(property);
+    
+    // Calculate actual days for color determination
+    let days = 0;
+    if (property.createdAt) {
+      let createdDate;
+      if (property.createdAt.seconds) {
+        createdDate = new Date(property.createdAt.seconds * 1000);
+      } else if (property.createdAt.toDate) {
+        createdDate = property.createdAt.toDate();
+      } else {
+        createdDate = new Date(property.createdAt);
+      }
+      days = Math.floor((new Date() - createdDate) / (1000 * 60 * 60 * 24));
+    }
+
+    // Return colors based on property age
+    if (status === "New" || status === "Today" || days <= 3) {
+      return "#22C55E"; // Green for new listings
+    } else if (status === "Fresh" || days <= 7) {
+      return "#3B82F6"; // Blue for fresh listings
+    } else if (days <= 30) {
+      return "#F59E0B"; // Orange for recent listings
+    } else {
+      return "#6B7280"; // Gray for older listings
+    }
+  };
+
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("latest");
   const [propertyType, setPropertyType] = useState("all");
@@ -568,10 +651,10 @@ function Properties() {
                             </div>
                           )}
                           <div
-                            className="px-3 py-1.5 rounded-full text-white text-sm font-semibold shadow-lg backdrop-blur-sm"
-                            style={{ backgroundColor: "#22C55E" }}
+                            className="px-3 py-1.5 rounded-full text-white text-sm font-semibold shadow-lg backdrop-blur-sm transition-all duration-300"
+                            style={{ backgroundColor: getStatusColor(property) }}
                           >
-                            {property.days_on_market || "New"}
+                            {getPropertyStatus(property)}
                           </div>
                         </div>
                       </div>
@@ -728,10 +811,10 @@ function Properties() {
                             </div>
                           )}
                           <div
-                            className="px-2 py-1 rounded-full text-white text-sm font-medium"
-                            style={{ backgroundColor: "#22C55E" }}
+                            className="px-2 py-1 rounded-full text-white text-sm font-medium transition-all duration-300"
+                            style={{ backgroundColor: getStatusColor(property) }}
                           >
-                            {property.days_on_market || "New"}
+                            {getPropertyStatus(property)}
                           </div>
                         </div>
                       </div>

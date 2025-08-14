@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { RiLoader4Line } from 'react-icons/ri';
+import Toast from './Toast';
 
 const ListingForm = ({ 
   listing, 
@@ -7,8 +8,175 @@ const ListingForm = ({
   onSubmit, 
   onCancel, 
   submitting, 
-  mode = 'add' // 'add' or 'edit'
+  mode = 'add', // 'add' or 'edit'
+  showExternalToast // Optional: function to show toast from parent component
 }) => {
+  // Toast state management
+  const [toast, setToast] = useState({
+    show: false,
+    message: '',
+    type: 'success'
+  });
+
+  // Toast helper functions
+  const showToast = (message, type = 'success') => {
+    if (showExternalToast) {
+      showExternalToast(message, type);
+    } else {
+      setToast({
+        show: true,
+        message,
+        type
+      });
+    }
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, show: false }));
+  };
+
+  // Enhanced form submission with toast notifications
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validate required fields before submission
+    if (!listing.title?.trim()) {
+      showToast('Property title is required', 'error');
+      return;
+    }
+    
+    if (!listing.price?.trim()) {
+      showToast('Property price is required', 'error');
+      return;
+    }
+    
+    if (!listing.location?.trim()) {
+      showToast('Property location is required', 'error');
+      return;
+    }
+    
+    if (!listing.type?.trim()) {
+      showToast('Property type is required', 'error');
+      return;
+    }
+    
+    // Validate at least one image URL
+    const images = getInitializedImages();
+    const validImages = images.filter(img => img && img.trim() && validateImageUrl(img));
+    
+    if (validImages.length === 0) {
+      showToast('At least one valid image URL is required', 'error');
+      return;
+    }
+    
+    // Check for invalid image URLs
+    const invalidImages = images.filter(img => img && img.trim() && !validateImageUrl(img));
+    if (invalidImages.length > 0) {
+      showToast('Please fix invalid image URLs before submitting', 'error');
+      return;
+    }
+    
+    try {
+      await onSubmit(e);
+      // Success/error toasts should be handled by parent component
+      // since it knows the actual result of the API call
+    } catch (error) {
+      console.error('Form submission error:', error);
+      // Only show toast if parent doesn't handle it
+      if (!showExternalToast) {
+        showToast(
+          mode === 'edit' 
+            ? 'Failed to update property. Please try again.' 
+            : 'Failed to create listing. Please try again.', 
+          'error'
+        );
+      }
+    }
+  };
+  // Initialize images array if it doesn't exist (safe version to prevent setState during render)
+  const initializeImages = () => {
+    if (!listing.images || !Array.isArray(listing.images)) {
+      // If there's an old single image field, migrate it
+      const initialImages = listing.image ? [listing.image] : [''];
+      return initialImages;
+    }
+    return listing.images;
+  };
+
+  // Handle images initialization without causing re-render
+  const getInitializedImages = () => {
+    const images = initializeImages();
+    
+    // Only update if we actually need to migrate from old format
+    if (!listing.images || !Array.isArray(listing.images)) {
+      // Use setTimeout to avoid setState during render
+      setTimeout(() => {
+        onListingChange({
+          ...listing, 
+          images: images,
+          // Remove old single image field
+          image: undefined
+        });
+      }, 0);
+    }
+    
+    return images;
+  };
+
+  // Professional multiple image management functions
+  const updateImageUrl = (index, value) => {
+    const currentImages = getInitializedImages();
+    const updatedImages = [...currentImages];
+    updatedImages[index] = value;
+    onListingChange({...listing, images: updatedImages});
+    
+    // Provide immediate feedback for image URL validation
+    if (value && value.trim() && !validateImageUrl(value)) {
+      showToast('Please enter a valid image URL (jpg, jpeg, png, gif, webp, bmp, svg)', 'warning');
+    }
+  };
+
+  const addImageField = () => {
+    const currentImages = getInitializedImages();
+    if (currentImages.length < 4) {
+      const updatedImages = [...currentImages, ''];
+      onListingChange({...listing, images: updatedImages});
+      showToast(`Image field ${currentImages.length + 1} added`, 'info');
+    } else {
+      showToast('Maximum 4 images allowed', 'warning');
+    }
+  };
+
+  const removeImageField = (index) => {
+    const currentImages = getInitializedImages();
+    if (currentImages.length > 1) {
+      const updatedImages = currentImages.filter((_, i) => i !== index);
+      onListingChange({...listing, images: updatedImages});
+      showToast(`Image ${index + 1} removed`, 'info');
+    } else {
+      showToast('At least one image field is required', 'warning');
+    }
+  };
+
+  const validateImageUrl = (url) => {
+    if (!url || url.trim() === '') return true; // Empty is valid (optional)
+    try {
+      new URL(url);
+      return /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i.test(url);
+    } catch {
+      return false;
+    }
+  };
+
+  const getImageFieldError = (url, index) => {
+    if (!url || url.trim() === '') {
+      return index === 0 ? 'At least one image URL is required' : '';
+    }
+    if (!validateImageUrl(url)) {
+      return 'Please enter a valid image URL';
+    }
+    return '';
+  };
   // Smart price formatting functions
   const formatPrice = (value) => {
     if (!value) return '';
@@ -57,6 +225,15 @@ const ListingForm = ({
         formatPrice(numericValue) + '.00' : 
         formatPrice(numericValue);
       onListingChange({...listing, price: formattedValue});
+      
+      // Show success feedback for valid price formatting
+      if (parsedValue >= 1000) {
+        showToast('Price formatted successfully', 'success');
+      } else {
+        showToast('Price seems unusually low. Please verify.', 'warning');
+      }
+    } else {
+      showToast('Please enter a valid price amount', 'error');
     }
   };
 
@@ -107,7 +284,8 @@ const ListingForm = ({
   const LABEL_CLASSES = "label-text font-medium";
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <>
+      <form onSubmit={handleSubmit} className="space-y-6">
       {/* Title Input */}
       <div className="form-control w-full">
         <label className="label">
@@ -249,24 +427,101 @@ const ListingForm = ({
         </div>
       )}
 
-      {/* Image URL (for add mode only) */}
-      {mode === 'add' && (
-        <div className="form-control w-full">
-          <label className="label">
-            <span className={LABEL_CLASSES}>Property Image URL (Optional)</span>
-          </label>
-          <input
-            type="url"
-            className={INPUT_CLASSES}
-            placeholder="https://example.com/image.jpg"
-            value={listing.image}
-            onChange={e => onListingChange({...listing, image: e.target.value})}
-          />
-          <label className="label">
-            <span className="label-text-alt text-base-content/70">Provide a direct URL to the property image</span>
-          </label>
+      {/* Professional Multiple Image URLs (for add and edit modes) */}
+      <div className="form-control w-full">
+        <label className="label">
+          <span className={LABEL_CLASSES}>Property Images (1-4 images)</span>
+          <span className="label-text-alt text-primary font-medium">
+            {getInitializedImages().filter(img => img && img.trim()).length}/4 images
+          </span>
+        </label>
+          
+          <div className="space-y-3">
+            {getInitializedImages().map((imageUrl, index) => {
+              const error = getImageFieldError(imageUrl, index);
+              const isFirstImage = index === 0;
+              
+              return (
+                <div key={index} className="flex gap-2 items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-medium text-base-content/70">
+                        Image {index + 1}
+                        {isFirstImage && <span className="text-primary ml-1">(Required)</span>}
+                      </span>
+                      {imageUrl && validateImageUrl(imageUrl) && (
+                        <div className="badge badge-success badge-xs">Valid</div>
+                      )}
+                      {imageUrl && !validateImageUrl(imageUrl) && (
+                        <div className="badge badge-error badge-xs">Invalid</div>
+                      )}
+                    </div>
+                    
+                    <input
+                      type="url"
+                      className={`${INPUT_CLASSES} ${error ? 'border-error focus:border-error' : ''}`}
+                      placeholder={isFirstImage ? "https://example.com/main-image.jpg (Required)" : "https://example.com/additional-image.jpg"}
+                      value={imageUrl}
+                      onChange={e => updateImageUrl(index, e.target.value)}
+                    />
+                    
+                    {error && (
+                      <label className="label">
+                        <span className="label-text-alt text-error">{error}</span>
+                      </label>
+                    )}
+                  </div>
+                  
+                  {/* Remove button (disabled for first image if it's the only one) */}
+                  <button
+                    type="button"
+                    className={`btn btn-square btn-sm mt-6 ${
+                      getInitializedImages().length === 1 ? 
+                      'btn-disabled opacity-30' : 
+                      'btn-error btn-outline hover:btn-error'
+                    }`}
+                    onClick={() => removeImageField(index)}
+                    disabled={getInitializedImages().length === 1}
+                    title={getInitializedImages().length === 1 ? "At least one image is required" : `Remove image ${index + 1}`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          
+          {/* Add more images button */}
+          {getInitializedImages().length < 4 && (
+            <button
+              type="button"
+              className="btn btn-outline btn-primary btn-sm mt-3 self-start"
+              onClick={addImageField}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Image URL ({getInitializedImages().length}/4)
+            </button>
+          )}
+          
+          <div className="alert alert-info mt-3">
+            <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div className="text-sm">
+              <div className="font-medium">Image Requirements:</div>
+              <ul className="list-disc list-inside mt-1 space-y-0.5 text-xs">
+                <li>At least 1 image is required (first image will be the main display)</li>
+                <li>Maximum 4 images allowed</li>
+                <li>Must be direct image URLs (jpg, jpeg, png, gif, webp, bmp, svg)</li>
+                <li>Images should be high-quality and showcase the property well</li>
+              </ul>
+            </div>
+          </div>
         </div>
-      )}
 
       {/* Maps Embed URL */}
       <div className="form-control w-full">
@@ -317,6 +572,52 @@ const ListingForm = ({
         </button>
       </div>
     </form>
+
+    {/* Toast Notifications */}
+    <Toast
+      show={toast.show}
+      message={toast.message}
+      type={toast.type}
+      onClose={hideToast}
+      position="top-right"
+      duration={4000}
+    />
+  </>
+  );
+};
+
+// Export toast-enabled ListingForm with exposed toast functions
+export const ListingFormWithToast = (props) => {
+  const [toast, setToast] = useState({
+    show: false,
+    message: '',
+    type: 'success'
+  });
+
+  const showToast = (message, type = 'success') => {
+    setToast({
+      show: true,
+      message,
+      type
+    });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, show: false }));
+  };
+
+  return (
+    <>
+      <ListingForm {...props} showExternalToast={showToast} />
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={hideToast}
+        position="top-right"
+        duration={4000}
+      />
+    </>
   );
 };
 

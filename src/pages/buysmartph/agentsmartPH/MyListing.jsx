@@ -14,6 +14,7 @@ import {
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../../../config/Firebase';
 import ListingForm from '../../../components/ListingForm';
+import Toast from '../../../components/Toast';
 import { DEFAULT_PROPERTY_IMAGE, INITIAL_LISTING_STATE, debugLog } from '../../../constants/propertyConstants';
 
 // Utility function to fix agent names
@@ -38,6 +39,26 @@ function MyListing() {
   const [myListings, setMyListings] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [newListing, setNewListing] = useState(INITIAL_LISTING_STATE);
+
+  // Toast state management
+  const [toast, setToast] = useState({
+    show: false,
+    message: '',
+    type: 'success'
+  });
+
+  // Toast helper functions
+  const showToast = (message, type = 'success') => {
+    setToast({
+      show: true,
+      message,
+      type
+    });
+  };
+
+  const hideToast = () => {
+    setToast(prev => ({ ...prev, show: false }));
+  };
 
   // Function to fix existing agent names for current user
 const fixMyAgentNames = async (agent) => {
@@ -81,10 +102,11 @@ const fixMyAgentNames = async (agent) => {
         // Trigger a re-fetch by updating a state that the useEffect depends on
         setLoading(true);
       }
-      alert('Agent names have been fixed!');
+      
+      showToast('Agent names have been fixed!', 'success');
     } catch (error) {
       console.error('Error fixing agent names:', error);
-      alert('Error fixing agent names. Check console for details.');
+      showToast('Error fixing agent names. Check console for details.', 'error');
     }
   };
 
@@ -210,7 +232,7 @@ const fixMyAgentNames = async (agent) => {
     e.preventDefault();
     
     if (!currentUser?.uid) {
-      alert('You must be logged in to add a listing');
+      showToast('You must be logged in to add a listing', 'error');
       return;
     }
     
@@ -247,7 +269,11 @@ const fixMyAgentNames = async (agent) => {
           currentUser.email
         ),
         agentEmail: currentUser.email,
-        image: newListing.image || DEFAULT_PROPERTY_IMAGE,
+        image: newListing.images?.[0] || newListing.image || DEFAULT_PROPERTY_IMAGE,
+        // Professional image handling - filter out empty URLs and ensure array format
+        images: newListing.images ? 
+          newListing.images.filter(img => img && img.trim() !== '') : 
+          (newListing.image ? [newListing.image] : [DEFAULT_PROPERTY_IMAGE]),
         buyers: [],
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -268,7 +294,10 @@ const fixMyAgentNames = async (agent) => {
         furnishing: "Bare", // Default value, can be enhanced later
         days_on_market: "New",
         amenities: [], // Can be enhanced later with amenities input
-        images: [newListing.image || "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9"],
+        // Professional image handling for properties collection - filter out empty URLs
+        images: newListing.images ? 
+          newListing.images.filter(img => img && img.trim() !== '') : 
+          (newListing.image ? [newListing.image] : ["https://images.unsplash.com/photo-1600596542815-ffad4c1539a9"]),
         agent_id: currentUser.uid,
         agent_name: fixAgentName(
           currentUser.fullName || currentUser.displayName || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim(),
@@ -306,10 +335,10 @@ const fixMyAgentNames = async (agent) => {
       // Reset form
       setNewListing(INITIAL_LISTING_STATE);
       
-      alert('Listing added successfully!');
+      showToast('Listing added successfully!', 'success');
     } catch (error) {
       console.error('Error adding listing:', error);
-      alert('Error adding listing. Please try again.');
+      showToast('Error adding listing. Please try again.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -317,12 +346,15 @@ const fixMyAgentNames = async (agent) => {
 
   const handleUpdateListing = async (updatedListing) => {
     if (!updatedListing.firestoreId) {
-      alert('Error updating listing');
+      showToast('Error updating listing', 'error');
       return;
     }
 
     try {
       setSubmitting(true);
+      
+      console.log('MyListing: Updating listing with data:', updatedListing);
+      console.log('MyListing: Images to save:', updatedListing.images);
       
       const updateData = {
         title: updatedListing.title,
@@ -334,6 +366,10 @@ const fixMyAgentNames = async (agent) => {
         floorArea: updatedListing.floorArea,
         lotArea: updatedListing.lotArea || "N/A",
         maps_embed_url: updatedListing.maps_embed_url || "",
+        // Professional image handling - filter out empty URLs
+        images: updatedListing.images ? 
+          updatedListing.images.filter(img => img && img.trim() !== '') : 
+          (updatedListing.image ? [updatedListing.image] : []),
         updatedAt: serverTimestamp()
       };
 
@@ -348,8 +384,15 @@ const fixMyAgentNames = async (agent) => {
         floor_area_sqm: updatedListing.floorArea,
         lot_area_sqm: updatedListing.lotArea || "N/A",
         maps_embed_url: updatedListing.maps_embed_url || "",
+        // Professional image handling for properties collection
+        images: updatedListing.images ? 
+          updatedListing.images.filter(img => img && img.trim() !== '') : 
+          (updatedListing.image ? [updatedListing.image] : []),
         updatedAt: serverTimestamp()
       };
+
+      console.log('MyListing: Final updateData for listings collection:', updateData);
+      console.log('MyListing: Final propertyUpdateData for properties collection:', propertyUpdateData);
 
       // Update listings collection
       await updateDoc(doc(db, 'listings', updatedListing.firestoreId), updateData);
@@ -380,10 +423,10 @@ const fixMyAgentNames = async (agent) => {
       
       setShowEditListingModal(false);
       setSelectedListing(null);
-      alert('Listing updated successfully!');
+      showToast('Listing updated successfully!', 'success');
     } catch (error) {
       console.error('Error updating listing:', error);
-      alert('Error updating listing. Please try again.');
+      showToast('Error updating listing. Please try again.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -391,7 +434,7 @@ const fixMyAgentNames = async (agent) => {
 
   const handleDeleteListing = async (listing) => {
     if (!listing.firestoreId) {
-      alert('Error deleting listing');
+      showToast('Error deleting listing', 'error');
       return;
     }
 
@@ -425,10 +468,10 @@ const fixMyAgentNames = async (agent) => {
       // Remove from local state
       setMyListings(prev => prev.filter(l => l.id !== listing.id));
       
-      alert('Listing deleted successfully!');
+      showToast('Listing deleted successfully!', 'success');
     } catch (error) {
       console.error('Error deleting listing:', error);
-      alert('Error deleting listing. Please try again.');
+      showToast('Error deleting listing. Please try again.', 'error');
     }
   };
 
@@ -483,7 +526,7 @@ const fixMyAgentNames = async (agent) => {
             <div key={listing.id} className="card bg-base-100 shadow-xl border border-base-200/60 hover:shadow-2xl transition-all duration-200">
               <figure className="h-48">
                 <img 
-                  src={listing.image} 
+                  src={listing.images?.[0] || listing.image || DEFAULT_PROPERTY_IMAGE} 
                   alt={listing.title} 
                   className="w-full h-full object-cover"
                   onError={(e) => {
@@ -498,7 +541,7 @@ const fixMyAgentNames = async (agent) => {
                 <div className="flex gap-2 text-sm text-base-content/60">
                   <span>{listing.bedrooms} beds</span>
                   <span>{listing.bathrooms} baths</span>
-                  <span>{listing.floorArea}</span>
+                  <span>{listing.floorArea} sqm</span>
                 </div>
                 <div className={`badge ${
                   listing.status === 'Available' ? 'badge-success' :
@@ -570,6 +613,7 @@ const fixMyAgentNames = async (agent) => {
               }}
               submitting={submitting}
               mode="edit"
+              showExternalToast={showToast}
             />
           </div>
         </div>
@@ -590,6 +634,7 @@ const fixMyAgentNames = async (agent) => {
               }}
               submitting={submitting}
               mode="add"
+              showExternalToast={showToast}
             />
           </div>
         </div>
@@ -630,6 +675,16 @@ const fixMyAgentNames = async (agent) => {
           </div>
         </div>
       )}
+
+      {/* Toast Notifications */}
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={hideToast}
+        position="top-right"
+        duration={4000}
+      />
     </div>
   );
 }

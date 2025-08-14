@@ -513,7 +513,7 @@ function AgentBuildSafe() {
               onClick={() => setSelectedProject(property.id)}
             >
               <figure className="h-48">
-                <img src={property.image} alt={property.name} className="w-full h-full object-cover" />
+                <img src={property.images?.[0] || property.image || "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9"} alt={property.name} className="w-full h-full object-cover" />
               </figure>
               <div className="card-body">
                 <h2 className="card-title">

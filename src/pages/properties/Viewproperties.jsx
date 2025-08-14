@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../../config/Firebase';
@@ -245,24 +245,47 @@ function ViewProperties() {
       : "https://images.pexels.com/photos/106399/pexels-photo-106399.jpeg";
   };
 
+  // Memoize images array to prevent unnecessary re-renders
+  const images = useMemo(() => {
+    if (!property) return [];
+    
+    console.log('ViewProperties: Processing images for property:', property.id);
+    console.log('ViewProperties: Raw images array:', property.images);
+    
+    const propertyImages = property.images?.length > 0 
+      ? property.images.filter(img => img && img.trim() !== '') // Filter out empty images
+      : [getDefaultImage(property)];
+      
+    console.log('ViewProperties: Processed images array:', propertyImages);
+    console.log('ViewProperties: Total images count:', propertyImages.length);
+      
+    return propertyImages;
+  }, [property]);
+  
+  // Reset currentImageIndex if it's out of bounds
+  useEffect(() => {
+    if (currentImageIndex >= images.length) {
+      setCurrentImageIndex(0);
+    }
+  }, [images.length, currentImageIndex]);
+
+  // Calculate location for display
+  const location = property 
+    ? (property.location ||
+       getLocationFromDescription(property.description) ||
+       "Location details in description")
+    : "";
+
   const formatPrice = (price) => {
     if (!price) return "Price on request";
     return price.includes("/mo") ? price : price.trim();
   };
 
   const handlePrevImage = () => {
-    const images =
-      property.images?.length > 0
-        ? property.images
-        : [getDefaultImage(property)];
     setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   };
 
   const handleNextImage = () => {
-    const images =
-      property.images?.length > 0
-        ? property.images
-        : [getDefaultImage(property)];
     setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
@@ -348,9 +371,7 @@ function ViewProperties() {
     );
   }
 
-  const images =
-    property.images?.length > 0 ? property.images : [getDefaultImage(property)];
-  const location =
+
     property.location ||
     getLocationFromDescription(property.description) ||
     "Location details in description";
