@@ -1,26 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { initializeApp } from 'firebase/app';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth, db } from '../../config/Firebase';
 import { EyeIcon, EyeSlashIcon, EnvelopeIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 import SuccessNotification from '../../components/SuccessNotification';
-
-// Initialize Firebase (using your config)
-const firebaseConfig = {
-  apiKey: "AIzaSyCPBHSIrx8o7guk5t4ZrlPyXMo95ugpJMk",
-  authDomain: "um-realitech-hackestate.firebaseapp.com",
-  projectId: "um-realitech-hackestate",
-  storageBucket: "um-realitech-hackestate.firebasestorage.app",
-  messagingSenderId: "789818018946",
-  appId: "1:789818018946:web:ff3b65362d33febab8f89b",
-  measurementId: "G-EQ79GK6QML"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+import ActivityLoggerService from '../../services/ActivityLoggerService';
 
 const Login = ({ onToggle }) => {
   const navigate = useNavigate();
@@ -240,21 +226,19 @@ const Login = ({ onToggle }) => {
 
         // Log the successful login
         try {
-          await addDoc(collection(db, 'audit_logs'), {
-            timestamp: serverTimestamp(),
-            action: 'LOGIN',
-            status: 'SUCCESS',
-            userEmail: userData.email,
-            userRole: userData.role,
-            userId: user.uid,
-            userAgent: navigator.userAgent,
-            platform: navigator.platform,
-            details: {
-              loginMethod: 'EMAIL_PASSWORD',
+          await ActivityLoggerService.logAuthActivity(
+            user.uid,
+            ActivityLoggerService.ACTIVITY_TYPES.LOGIN,
+            {
+              email: userData.email,
+              loginMethod: 'email_password',
+              userRole: userData.role,
               userNumber: userData.userNumber,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              isAccountActive: userData.isActive !== false,
+              platform: navigator.platform
             }
-          });
+          );
         } catch (logError) {
           console.error('Error logging login:', logError);
           // Continue with login even if logging fails
@@ -301,20 +285,19 @@ const Login = ({ onToggle }) => {
 
       // Log the failed login attempt
       try {
-        await addDoc(collection(db, 'audit_logs'), {
-          timestamp: serverTimestamp(),
-          action: 'LOGIN',
-          status: 'FAILED',
-          userEmail: loginData.email,
-          userAgent: navigator.userAgent,
-          platform: navigator.platform,
-          details: {
-            error: error.message,
+        await ActivityLoggerService.logGeneralActivity(
+          'anonymous',
+          'login_failed',
+          ActivityLoggerService.CATEGORIES.AUTHENTICATION,
+          {
+            email: loginData.email.replace(/(.{2})(.*)(@.*)/, '$1***$3'), // Partially hide email
             errorCode: error.code,
-            loginMethod: 'EMAIL_PASSWORD',
-            timestamp: new Date().toISOString()
+            errorMessage: error.message,
+            loginMethod: 'email_password',
+            timestamp: new Date().toISOString(),
+            platform: navigator.platform
           }
-        });
+        );
       } catch (logError) {
         console.error('Error logging failed login:', logError);
       }

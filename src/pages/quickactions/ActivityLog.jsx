@@ -1,297 +1,580 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  RiHistoryLine,
-  RiFilter3Line, 
-  RiCalendarLine, 
-  RiSearchLine,
-  RiInformationLine
-} from 'react-icons/ri';
-import DashboardLayout from '../../layouts/DashboardLayout';
-import { getAuth } from 'firebase/auth';
-import { 
-  getFirestore, 
-  collection, 
-  query, 
-  orderBy, 
-  getDocs, 
-  where, 
-  Timestamp
-} from 'firebase/firestore';
+import React, { useState, useMemo } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { format } from 'date-fns';
-import { db } from '../../config/Firebase';
-import { useNavigate } from 'react-router-dom';
+import ActivityLoggerService from '../../services/ActivityLoggerService';
+import DashboardNavbar from '../../components/Sidebar';
+import FirebaseIndexStatus from '../../components/FirebaseIndexStatus';
+import ManualActivityCreator from '../../components/ManualActivityCreator';
+import {
+  RiBarChartBoxLine,
+  RiShieldKeyholeLine,
+  RiHomeLine,
+  RiUserLine,
+  RiFileTextLine,
+  RiSearchLine,
+  RiNavigationLine,
+  RiFileList3Line,
+  RiErrorWarningLine,
+  RiCalendarLine,
+  RiPieChartLine,
+  RiArrowUpLine
+} from 'react-icons/ri';
 
-function ActivityLog() {
-  const [timeFilter, setTimeFilter] = useState('all');
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('ActivityLog Error Boundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex min-h-screen bg-base-100">
+          <div className="max-w-7xl mx-auto px-4 py-8">
+            <div className="bg-error/10 border border-error/20 rounded-lg p-6 text-center shadow-sm">
+              <RiErrorWarningLine className="text-error text-3xl mb-4 mx-auto" />
+              <h3 className="text-xl font-semibold text-base-content mb-3">Something went wrong</h3>
+              <p className="text-base-content/70 mb-4">
+                The Activity Log component encountered an unexpected error. This might be due to a configuration issue.
+              </p>
+              <div className="space-y-2">
+                <button
+                  onClick={() => this.setState({ hasError: false, error: null })}
+                  className="btn btn-error hover:scale-105 transition-transform mr-2"
+                >
+                  Try Again
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="btn btn-ghost hover:bg-base-200"
+                >
+                  Refresh Page
+                </button>
+              </div>
+              {import.meta.env.DEV && (
+                <details className="mt-4 text-left">
+                  <summary className="cursor-pointer text-error font-medium">
+                    Technical Details (Development Mode)
+                  </summary>
+                  <pre className="mt-2 p-4 bg-error/10 rounded text-sm text-base-content overflow-auto border border-error/20">
+                    {this.state.error?.toString()}
+                  </pre>
+                </details>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+const ActivityLog = () => {
+  // Hook will now always be available since AuthProvider wraps the app
+  const { currentUser, loading: authLoading } = useAuth();
+  
+  const [activities, setActivities] = useState([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [dateRange, setDateRange] = useState('7'); // days
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isOpen, setIsOpen] = useState(true); // Sidebar state
 
-  const auth = getAuth();
-  const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState(null); // Changed to state
-
-  // Monitor auth state
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (!user) {
-        setError('Please login to view activity logs');
-        setLoading(false);
-        navigate('/login');
-      } else {
-        setCurrentUser(user); // Set current user in state
-        setError(null);
-      }
+  // Watch for theme changes to ensure components adapt properly
+  React.useEffect(() => {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+          // Force re-render when theme changes
+          setActivities(prev => [...prev]); // This triggers a re-render
+        }
+      });
     });
 
-    return () => unsubscribe();
-  }, [auth, navigate]);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    });
 
-  useEffect(() => {
-    const fetchLogs = async () => {
-      if (!currentUser) return;
+    return () => observer.disconnect();
+  }, []);
 
-      try {
-        const now = new Date();
-        let timeFilterDate = new Date();
-        
-        // Determine the time filter date
-        switch(timeFilter) {
-          case '24h':
-            timeFilterDate.setDate(now.getDate() - 1);
-            break;
-          case '7d':
-            timeFilterDate.setDate(now.getDate() - 7);
-            break;
-          case '30d':
-          case 'all':
-            timeFilterDate.setDate(now.getDate() - 30);
-            break;
-        }
+  // Activity categories - Simplified to core business activities
+  const categories = useMemo(() => [
+    { value: 'all', label: 'All Activities', icon: RiBarChartBoxLine },
+    { value: 'authentication', label: 'Login/Logout', icon: RiShieldKeyholeLine },
+    { value: 'property_management', label: 'Property Listings', icon: RiHomeLine },
+    { value: 'application_management', label: 'Applications', icon: RiUserLine }
+  ], []);
 
-        // Create query to get only the current user's logs
-        let q = query(
-          collection(db, 'audit_logs'),
-          where('userId', '==', currentUser.uid), // Filter by current user's ID
-          where('timestamp', '>=', Timestamp.fromDate(timeFilterDate)),
-          orderBy('timestamp', 'desc')
-        );
-
-        const querySnapshot = await getDocs(q);
-        let logsData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          timestamp: doc.data().timestamp?.toDate()
-        }));
-
-        // Apply type filter in memory if needed
-        if (typeFilter !== 'all') {
-          logsData = logsData.filter(log => 
-            log.action?.toLowerCase() === typeFilter.toLowerCase()
-          );
-        }
-
-        // Apply search filter in memory if needed
-        if (searchQuery.trim()) {
-          const searchLower = searchQuery.toLowerCase();
-          logsData = logsData.filter(log => 
-            (log.action?.toLowerCase().includes(searchLower)) ||
-            (log.details?.userNumber?.toLowerCase()?.includes(searchLower))
-          );
-        }
-
-        setLogs(logsData); 
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching logs:', err);
-        setError('Failed to load activity logs');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLogs();
-  }, [timeFilter, typeFilter, searchQuery, currentUser]);
-
-  // Helper function to get badge style based on action type
-  const getActivityBadge = (action) => {
-    const actionUpper = action?.toUpperCase();
+  // Fetch activities using the new ActivityLoggerService
+  const fetchActivities = React.useCallback(async () => {
+    if (!currentUser) return;
     
-    switch(action?.toLowerCase()) {
-      case 'login':
-        return { class: 'badge-success', text: 'LOGIN' };
-      case 'logout':
-        return { class: 'badge-error', text: 'LOGOUT' };
-      case 'create':
-        return { class: 'badge-primary', text: 'CREATE' };
-      case 'update':
-        return { class: 'badge-warning', text: 'UPDATE' };
-      case 'delete':
-        return { class: 'badge-error', text: 'DELETE' };
-      default:
-        return { class: 'badge-neutral', text: actionUpper || 'UNKNOWN' };
+    setActivitiesLoading(true);
+    setError(null);
+    
+    try {
+      const activities = await ActivityLoggerService.getUserActivities(currentUser.uid, {
+        category: selectedCategory !== 'all' ? selectedCategory : undefined,
+        days: parseInt(dateRange),
+        limit: 100
+      });
+
+      // Add category icons to activities
+      const activitiesWithIcons = activities.map(activity => {
+        const category = categories.find(cat => cat.value === activity.category);
+        return {
+          ...activity,
+          categoryLabel: category?.label || activity.category,
+          categoryIcon: category?.icon || RiBarChartBoxLine
+        };
+      });
+
+      setActivities(activitiesWithIcons);
+    } catch (err) {
+      console.error('Error fetching activities:', err);
+      setError('Failed to load activity log. Please try again.');
+    } finally {
+      setActivitiesLoading(false);
+    }
+  }, [currentUser, dateRange, selectedCategory, categories]);
+
+  // Check for authentication context issues
+  React.useEffect(() => {
+    if (currentUser === undefined || authLoading) {
+      // Still loading auth state
+      setActivitiesLoading(true);
+      return;
+    }
+    
+    if (!currentUser) {
+      // User is not logged in
+      setActivitiesLoading(false);
+      return;
+    }
+    
+    // User is logged in, fetch activities
+    fetchActivities();
+  }, [currentUser, authLoading, fetchActivities]);
+
+  // Filter activities based on category and search term
+  const filteredActivities = useMemo(() => {
+    let filtered = activities;
+    
+    // Filter by category
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(activity => activity.category === selectedCategory);
+    }
+    
+    // Filter by search term
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(activity => 
+        activity.action?.toLowerCase().includes(term) ||
+        activity.details?.title?.toLowerCase().includes(term) ||
+        activity.details?.query?.toLowerCase().includes(term) ||
+        activity.details?.formType?.toLowerCase().includes(term) ||
+        JSON.stringify(activity.details).toLowerCase().includes(term)
+      );
+    }
+    
+    return filtered;
+  }, [activities, selectedCategory, searchTerm]);
+
+  // Calculate statistics
+  const statistics = useMemo(() => {
+    const stats = {
+      total: activities.length,
+      today: 0,
+      byCategory: {}
+    };
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    categories.forEach(cat => {
+      if (cat.value !== 'all') {
+        stats.byCategory[cat.value] = 0;
+      }
+    });
+    
+    activities.forEach(activity => {
+      // Count today's activities
+      const activityDate = new Date(activity.timestamp);
+      activityDate.setHours(0, 0, 0, 0);
+      
+      if (activityDate.getTime() === today.getTime()) {
+        stats.today++;
+      }
+      
+      // Count by category
+      if (activity.category && Object.prototype.hasOwnProperty.call(stats.byCategory, activity.category)) {
+        stats.byCategory[activity.category]++;
+      }
+    });
+    
+    return stats;
+  }, [activities, categories]);
+
+  // Format timestamp
+  const formatTimestamp = (timestamp) => {
+    try {
+      const date = timestamp?.toDate ? timestamp.toDate() : new Date(timestamp);
+      return format(date, 'MMM dd, yyyy HH:mm:ss');
+    } catch {
+      return 'Invalid date';
     }
   };
 
-  return (
-    <DashboardLayout>
-      <div className="min-h-screen bg-base-100 p-8">
-        {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-3">
-                <RiHistoryLine className="text-primary" />
-                Activity Log
-              </h1>
-              <p className="text-base-content/70 mt-2">
-                Track and monitor your system activities
-              </p>
+  // Get action color with theme compatibility
+  const getActionColor = (action) => {
+    const colorMap = {
+      login: 'text-success bg-success/10 border border-success/20',
+      logout: 'text-warning bg-warning/10 border border-warning/20',
+      create: 'text-primary bg-primary/10 border border-primary/20',
+      update: 'text-info bg-info/10 border border-info/20',
+      delete: 'text-error bg-error/10 border border-error/20',
+      search: 'text-secondary bg-secondary/10 border border-secondary/20',
+      upload: 'text-accent bg-accent/10 border border-accent/20',
+      navigation: 'text-base-content/70 bg-base-200 border border-base-300',
+      error: 'text-error bg-error/20 border border-error/30'
+    };
+    
+    return colorMap[action] || 'text-base-content/70 bg-base-200 border border-base-300';
+  };
+
+  // Format activity details for core business activities
+  const formatDetails = (activity) => {
+    const details = activity.details || {};
+    
+    switch (activity.category) {
+      case 'authentication':
+        return details.loginMethod ? `Login via ${details.loginMethod}` : 'Authentication activity';
+      
+      case 'property_management':
+        if (activity.activityType === 'create') {
+          return details.title ? `Added property: "${details.title}"` : 'New property listing created';
+        } else if (activity.activityType === 'update') {
+          return details.title ? `Updated property: "${details.title}"` : 'Property listing updated';
+        } else if (activity.activityType === 'delete') {
+          return details.title ? `Removed property: "${details.title}"` : 'Property listing deleted';
+        }
+        return details.description || 'Property activity';
+      
+      case 'application_management':
+        if (activity.activityType === 'create') {
+          return details.propertyTitle ? `Applied for: "${details.propertyTitle}"` : 'New application submitted';
+        } else if (activity.activityType === 'update') {
+          return details.propertyTitle ? `Updated application for: "${details.propertyTitle}"` : 'Application updated';
+        } else if (activity.activityType === 'delete') {
+          return details.propertyTitle ? `Cancelled application for: "${details.propertyTitle}"` : 'Application cancelled';
+        }
+        return details.description || 'Application activity';
+      
+      default:
+        return details.description || activity.details?.action || 'Activity performed';
+    }
+  };
+
+  // Show loading state while checking authentication or if auth is still loading
+  if (authLoading || (currentUser === undefined)) {
+    return (
+      <div className="flex min-h-screen bg-base-100">
+        <DashboardNavbar userRole="buyer" isOpen={isOpen} setIsOpen={setIsOpen} />
+        <main className={`flex-1 transition-all duration-300 ${isOpen ? 'ml-64' : 'ml-20'}`}>
+          <div className="max-w-7xl mx-auto px-4 py-8">
+            <div className="bg-base-100 border border-base-200 rounded-lg p-6 text-center shadow-sm">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+              <h3 className="text-lg font-semibold text-base-content mb-2">Loading Authentication</h3>
+              <p className="text-base-content/70">Checking your authentication status...</p>
             </div>
-            <div className="flex gap-2">
-              <div className="badge badge-neutral gap-2">
-                <RiInformationLine />
-                Retention: 30 days
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Show login required message
+  if (!currentUser) {
+    return (
+      <div className="flex min-h-screen bg-base-100">
+        <DashboardNavbar userRole="buyer" isOpen={isOpen} setIsOpen={setIsOpen} />
+        <main className={`flex-1 transition-all duration-300 ${isOpen ? 'ml-64' : 'ml-20'}`}>
+          <div className="max-w-7xl mx-auto px-4 py-8">
+            <div className="bg-warning/10 border border-warning/20 rounded-lg p-6 text-center shadow-sm">
+              <RiShieldKeyholeLine className="text-warning text-xl mb-2 mx-auto" />
+              <h3 className="text-lg font-semibold text-base-content mb-2">Authentication Required</h3>
+              <p className="text-base-content/70">Please log in to view your activity log.</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen bg-base-100">
+      <DashboardNavbar userRole="buyer" isOpen={isOpen} setIsOpen={setIsOpen} />
+      
+      <main className={`flex-1 transition-all duration-300 ${isOpen ? 'ml-64' : 'ml-20'}`}>
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-base-content mb-2">Activity Log</h1>
+                <p className="text-base-content/70">Track your account activity and system interactions</p>
+              </div>
+              <button
+                onClick={fetchActivities}
+                disabled={activitiesLoading}
+                className="btn btn-outline btn-primary btn-sm gap-2"
+              >
+                <RiArrowUpLine className={activitiesLoading ? 'animate-spin' : ''} />
+                {activitiesLoading ? 'Loading...' : 'Refresh'}
+              </button>
+            </div>
+          </div>
+
+          {/* Firebase Index Status - Temporary debugging component */}
+          <FirebaseIndexStatus />
+
+          {/* Manual Activity Creator - Development tool */}
+          <ManualActivityCreator />
+
+          {/* Statistics Cards - Simplified */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="bg-base-100 rounded-lg shadow-sm border border-base-200 p-6 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-base-content/70">Total Activities</p>
+                  <p className="text-2xl font-bold text-base-content">{statistics.total}</p>
+                </div>
+                <RiBarChartBoxLine className="text-2xl text-primary" />
+              </div>
+            </div>
+            
+            <div className="bg-base-100 rounded-lg shadow-sm border border-base-200 p-6 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-base-content/70">Today</p>
+                  <p className="text-2xl font-bold text-primary">{statistics.today}</p>
+                </div>
+                <RiCalendarLine className="text-2xl text-info" />
+              </div>
+            </div>
+            
+            <div className="bg-base-100 rounded-lg shadow-sm border border-base-200 p-6 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-base-content/70">Property Actions</p>
+                  <p className="text-2xl font-bold text-success">{statistics.byCategory.property_management || 0}</p>
+                </div>
+                <RiHomeLine className="text-2xl text-success" />
+              </div>
+            </div>
+            
+            <div className="bg-base-100 rounded-lg shadow-sm border border-base-200 p-6 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-base-content/70">Applications</p>
+                  <p className="text-2xl font-bold text-secondary">{statistics.byCategory.application_management || 0}</p>
+                </div>
+                <RiUserLine className="text-2xl text-secondary" />
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Filters Section */}
-        <div className="card bg-base-100 shadow-lg border border-base-200 mb-6">
-          <div className="card-body">
-            <div className="flex flex-col md:flex-row gap-4">
+          {/* Filters */}
+          <div className="bg-base-100 rounded-lg shadow-sm border border-base-200 p-6 mb-6">
+            <div className="flex flex-col lg:flex-row gap-4">
+              {/* Category Filter */}
+              <div className="flex-1">
+                <label htmlFor="category" className="block text-sm font-medium text-base-content mb-2">
+                  Category
+                </label>
+                <select
+                  id="category"
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="select select-bordered w-full bg-base-100 border-base-300 text-base-content focus:border-primary"
+                >
+                  {categories.map((category) => (
+                    <option key={category.value} value={category.value}>
+                      {category.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date Range Filter */}
+              <div className="flex-1">
+                <label htmlFor="dateRange" className="block text-sm font-medium text-base-content mb-2">
+                  Time Period
+                </label>
+                <select
+                  id="dateRange"
+                  value={dateRange}
+                  onChange={(e) => setDateRange(e.target.value)}
+                  className="select select-bordered w-full bg-base-100 border-base-300 text-base-content focus:border-primary"
+                >
+                  <option value="1">Last 24 hours</option>
+                  <option value="7">Last 7 days</option>
+                  <option value="30">Last 30 days</option>
+                  <option value="90">Last 90 days</option>
+                </select>
+              </div>
+
               {/* Search */}
-              <div className="form-control flex-1">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search your activities..."
-                    className="input input-bordered w-full pl-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <RiSearchLine className="text-base-content/50 text-lg" />
-                  </div>
+              <div className="flex-1">
+                <label htmlFor="search" className="block text-sm font-medium text-base-content mb-2">
+                  Search
+                </label>
+                <input
+                  type="text"
+                  id="search"
+                  placeholder="Search activities..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="input input-bordered w-full bg-base-100 border-base-300 text-base-content placeholder:text-base-content/50 focus:border-primary"
+                />
+              </div>
+
+              {/* Refresh Button */}
+              <div className="flex items-end">
+                <button
+                  onClick={fetchActivities}
+                  disabled={activitiesLoading}
+                  className="btn btn-primary hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {activitiesLoading ? '🔄' : '↻'} Refresh
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Activity List */}
+          <div className="bg-base-100 rounded-lg shadow-sm border border-base-200 overflow-hidden">
+            {activitiesLoading ? (
+              <div className="p-8 text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <p className="mt-2 text-base-content/70">Loading activities...</p>
+              </div>
+            ) : error ? (
+              <div className="p-8 text-center">
+                <RiErrorWarningLine className="text-error text-2xl mb-2 mx-auto" />
+                <h3 className="text-lg font-semibold text-base-content mb-2">Error Loading Activities</h3>
+                <p className="text-base-content/70 mb-4">{error}</p>
+                <div className="space-y-2">
+                  <button
+                    onClick={fetchActivities}
+                    className="btn btn-error hover:scale-105 transition-transform mr-2"
+                  >
+                    Try Again
+                  </button>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="btn btn-ghost hover:bg-base-200"
+                  >
+                    Refresh Page
+                  </button>
                 </div>
               </div>
-
-              {/* Time Filter */}
-              <select
-                className="select select-bordered w-full md:w-48"
-                value={timeFilter}
-                onChange={(e) => setTimeFilter(e.target.value)}
-              >
-                <option value="all">Last 30 Days</option>
-                <option value="24h">Last 24 Hours</option>
-                <option value="7d">Last 7 Days</option>
-              </select>
-
-              {/* Type Filter */}
-              <select
-                className="select select-bordered w-full md:w-48"
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-              >
-                <option value="all">All Activities</option>
-                <option value="login">Login Events</option>
-                <option value="logout">Logout Events</option>
-                <option value="update">Update Events</option>
-                <option value="create">Create Events</option>
-                <option value="delete">Delete Events</option>
-              </select>
-            </div>
+            ) : filteredActivities.length === 0 ? (
+              <div className="p-8 text-center">
+                <RiFileList3Line className="text-base-content/40 text-4xl mb-4 mx-auto" />
+                <h3 className="text-lg font-semibold text-base-content mb-2">No Activities Found</h3>
+                <p className="text-base-content/70 mb-4">
+                  {searchTerm || selectedCategory !== 'all' 
+                    ? 'No activities match your current filters.' 
+                    : 'No activities recorded yet. Start using the platform to see your activity history.'}
+                </p>
+                {(searchTerm || selectedCategory !== 'all') && (
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setSelectedCategory('all');
+                    }}
+                    className="btn btn-ghost hover:bg-base-200"
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="divide-y divide-base-200">
+                <div className="p-4 bg-base-200/50 border-b border-base-200">
+                  <h3 className="text-lg font-semibold text-base-content">
+                    Recent Activities ({filteredActivities.length})
+                  </h3>
+                </div>
+                
+                <div className="max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-base-300 scrollbar-track-base-100">
+                  {filteredActivities.map((activity) => (
+                    <div key={activity.id} className="p-4 hover:bg-base-200/50 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <activity.categoryIcon className="text-lg text-base-content/70" />
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getActionColor(activity.action)}`}>
+                              {activity.action?.toUpperCase() || 'ACTIVITY'}
+                            </span>
+                            <span className="text-sm text-base-content/70">{activity.categoryLabel}</span>
+                          </div>
+                          
+                          <p className="text-sm text-base-content mb-1">
+                            {formatDetails(activity)}
+                          </p>
+                          
+                          <p className="text-xs text-base-content/50">
+                            {formatTimestamp(activity.timestamp)}
+                          </p>
+                        </div>
+                        
+                        {activity.category === 'system_error' && (
+                          <div className="ml-4">
+                            <span className="badge badge-error badge-sm">
+                              Error
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Footer Info */}
+          <div className="mt-6 text-center text-sm text-base-content/50">
+            <p>Activity data is stored securely and only visible to you. Data retention: 90 days.</p>
           </div>
         </div>
-
-        {/* Activity Log Content */}
-        <div className="card bg-base-100 shadow-lg border border-base-200">
-          <div className="card-body">
-            <div className="overflow-x-auto">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Timestamp</th>
-                    <th>Activity</th>
-                    <th>Type</th>
-                    <th>Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan="4" className="text-center py-8">
-                        <span className="loading loading-spinner loading-lg"></span>
-                      </td>
-                    </tr>
-                  ) : error ? (
-                    <tr>
-                      <td colSpan="4" className="text-center py-8">
-                        <div className="alert alert-error">
-                          <RiInformationLine className="text-xl" />
-                          <span>{error}</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : logs.length === 0 ? (
-                    <tr>
-                      <td colSpan="4" className="text-center py-8">
-                        <div className="flex flex-col items-center gap-2 text-base-content/70">
-                          <RiHistoryLine className="text-4xl" />
-                          <p>No activities to display</p>
-                          <p className="text-sm">Your activities will appear here</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    logs.map(log => (
-                      <tr key={log.id}>
-                        <td>{format(log.timestamp, 'PPpp')}</td>
-                        <td>
-                          <span className={`badge ${getActivityBadge(log.action).class}`}>
-                            {getActivityBadge(log.action).text}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="badge badge-primary">{log.userRole}</span>
-                        </td>
-                        <td>
-                          <details className="dropdown dropdown-left">
-                            <summary className="btn btn-xs btn-ghost">View Details</summary>
-                            <div className="dropdown-content z-[1] menu p-4 shadow bg-base-200 rounded-box w-80">
-                              <div className="text-xs space-y-2">
-                                <div>
-                                  <span className="font-semibold">Browser:</span> {log.userAgent}
-                                </div>
-                                <div>
-                                  <span className="font-semibold">Platform:</span> {log.platform}
-                                </div>
-                                {log.details && (
-                                  <div>
-                                    <span className="font-semibold">Additional Details:</span>
-                                    <pre className="mt-1 p-2 bg-base-300 rounded">
-                                      {JSON.stringify(log.details, null, 2)}
-                                    </pre>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </details>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>  
-          </div>
-        </div>
-      </div>
-    </DashboardLayout>
+      </main>
+    </div>
   );
-}
+};
 
-export default ActivityLog;
+// Enhanced export with Error Boundary as default
+const ActivityLogWithErrorBoundary = () => (
+  <ErrorBoundary>
+    <ActivityLog />
+  </ErrorBoundary>
+);
+
+export default ActivityLogWithErrorBoundary;
+export { ActivityLog };

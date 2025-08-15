@@ -12,7 +12,7 @@ import {
   SparklesIcon, ShieldCheckIcon, MoonIcon, SunIcon
 } from '@heroicons/react/24/outline';
 import { getAuth, signOut } from 'firebase/auth';
-import { auditLogger } from '../utils/AuditLogger';
+import ActivityLoggerService from '../services/ActivityLoggerService';
 
 import lightLogo from '/src/assets/logo/logo-for-light.png';
 import darkLogo from '/src/assets/logo/logo-for-dark.png';
@@ -71,18 +71,19 @@ const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
   const handleLogout = async () => {
     try {
       // Log the logout event before signing out
-      await auditLogger.logEvent({
-        type: 'AUTH',
-        action: 'LOGOUT',
-        status: 'SUCCESS',
-        userId: currentUser.uid,
-        userEmail: currentUser.email,
-        userRole: userRole,
-        details: {
+      await ActivityLoggerService.logAuthActivity(
+        currentUser.uid,
+        ActivityLoggerService.ACTIVITY_TYPES.LOGOUT,
+        {
+          email: currentUser.email,
+          userRole: userRole,
           userNumber: currentUser.userNumber,
-          logoutMethod: 'USER_INITIATED'
+          logoutMethod: 'user_initiated',
+          timestamp: new Date().toISOString(),
+          sessionDuration: currentUser.metadata?.lastSignInTime ? 
+            Date.now() - new Date(currentUser.metadata.lastSignInTime).getTime() : 0
         }
-      });
+      );
 
       await signOut(auth);
       // Clear localStorage
@@ -96,18 +97,22 @@ const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
       console.error('Logout error:', error);
       
       // Log the failed logout attempt
-      await auditLogger.logEvent({
-        type: 'AUTH',
-        action: 'LOGOUT',
-        status: 'FAILED',
-        userId: currentUser?.uid,
-        userEmail: currentUser?.email,
-        userRole: userRole,
-        error: error.code,
-        details: {
-          errorMessage: error.message
-        }
-      });
+      try {
+        await ActivityLoggerService.logGeneralActivity(
+          currentUser?.uid || 'unknown',
+          'logout_failed',
+          ActivityLoggerService.CATEGORIES.AUTHENTICATION,
+          {
+            email: currentUser?.email || 'unknown',
+            userRole: userRole,
+            errorCode: error.code,
+            errorMessage: error.message,
+            timestamp: new Date().toISOString()
+          }
+        );
+      } catch (logError) {
+        console.error('Error logging failed logout:', logError);
+      }
     }
   };
 

@@ -178,7 +178,7 @@ function ViewProperties() {
               lot_area_sqm: listingData.lotArea,
               description: listingData.description,
               maps_embed_url: listingData.maps_embed_url,
-              furnishing: listingData.furnishing || "Bare",
+              furnishing: listingData.furnishing || "Unfurnished",
               days_on_market: listingData.days_on_market || "New",
               amenities: listingData.amenities || [],
               images: listingData.images || [listingData.image] || [],

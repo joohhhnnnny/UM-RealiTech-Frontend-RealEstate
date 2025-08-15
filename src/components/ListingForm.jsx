@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { RiLoader4Line } from 'react-icons/ri';
 import Toast from './Toast';
 import { validateImageUrl as validateImageUrlHelper } from '../utils/imageHelpers';
+import { PROPERTY_TYPES, FURNISHING_OPTIONS } from '../constants/propertyConstants';
 
 const ListingForm = ({ 
   listing, 
@@ -58,6 +59,11 @@ const ListingForm = ({
     
     if (!listing.type?.trim()) {
       showToast('Property type is required', 'error');
+      return;
+    }
+    
+    if (!listing.furnishing?.trim()) {
+      showToast('Furnishing status is required', 'error');
       return;
     }
     
@@ -334,15 +340,6 @@ const ListingForm = ({
     }
   };
 
-  // Property type options - centralized
-  const PROPERTY_TYPES = [
-    { value: '', label: 'Select property type' },
-    { value: 'House', label: 'House' },
-    { value: 'Townhouse', label: 'Townhouse' },
-    { value: 'Condo', label: 'Condo' },
-    { value: 'Lot', label: 'Lot' }
-  ];
-
   // Common input classes - centralized styling
   const INPUT_CLASSES = "input input-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary";
   const LABEL_CLASSES = "label-text font-medium";
@@ -413,6 +410,23 @@ const ListingForm = ({
         >
           {PROPERTY_TYPES.map(type => (
             <option key={type.value} value={type.value}>{type.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Furnishing Status Select */}
+      <div className="form-control w-full">
+        <label className="label">
+          <span className={LABEL_CLASSES}>Furnishing Status</span>
+        </label>
+        <select
+          className="select select-bordered w-full mt-1 bg-base-100 text-base-content border-base-300 focus:border-primary"
+          value={listing.furnishing || ''}
+          onChange={e => onListingChange({...listing, furnishing: e.target.value})}
+          required
+        >
+          {FURNISHING_OPTIONS.map(option => (
+            <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </select>
       </div>

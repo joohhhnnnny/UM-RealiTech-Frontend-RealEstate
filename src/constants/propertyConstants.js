@@ -15,6 +15,13 @@ export const PROPERTY_STATUS = [
   { value: 'Reserved', label: 'Reserved', color: 'badge-info' }
 ];
 
+export const FURNISHING_OPTIONS = [
+  { value: '', label: 'Select furnishing status' },
+  { value: 'Unfurnished', label: 'Unfurnished' },
+  { value: 'Semi-furnished', label: 'Semi-furnished' },
+  { value: 'Fully Furnished', label: 'Fully Furnished' }
+];
+
 export const DEFAULT_PROPERTY_IMAGE = "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9";
 
 export const FORM_STYLES = {
@@ -29,6 +36,7 @@ export const INITIAL_LISTING_STATE = {
   price: "",
   location: "",
   type: "",
+  furnishing: "",
   bedrooms: "",
   bathrooms: "",
   floorArea: "",

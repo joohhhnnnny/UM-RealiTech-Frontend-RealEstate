@@ -17,6 +17,7 @@ import ListingForm from '../../../components/ListingForm';
 import Toast from '../../../components/Toast';
 import { getThumbnailImageUrl } from '../../../utils/imageHelpers';
 import { DEFAULT_PROPERTY_IMAGE, INITIAL_LISTING_STATE, debugLog } from '../../../constants/propertyConstants';
+import ActivityLoggerService from '../../../services/ActivityLoggerService';
 
 // Utility function to fix agent names
 const fixAgentName = (agentName, agentEmail) => {
@@ -257,6 +258,7 @@ const fixMyAgentNames = async (agent) => {
         price: newListing.price,
         location: newListing.location,
         type: newListing.type,
+        furnishing: newListing.furnishing,
         bedrooms: parseInt(newListing.bedrooms) || 0,
         bathrooms: parseInt(newListing.bathrooms) || 0,
         floorArea: newListing.floorArea,
@@ -293,7 +295,7 @@ const fixMyAgentNames = async (agent) => {
         lot_area_sqm: newListing.lotArea || "N/A",
         description: newListing.description || "",
         maps_embed_url: newListing.maps_embed_url || "",
-        furnishing: "Bare", // Default value, can be enhanced later
+        furnishing: newListing.furnishing,
         days_on_market: "New",
         amenities: [], // Can be enhanced later with amenities input
         // Professional image handling for properties collection - filter out empty URLs
@@ -338,6 +340,24 @@ const fixMyAgentNames = async (agent) => {
       // Reset form
       setNewListing(INITIAL_LISTING_STATE);
       
+      // Log the creation activity
+      try {
+        await ActivityLoggerService.logCreateActivity(
+          currentUser.uid,
+          'property',
+          listingDocRef.id,
+          {
+            title: newListing.title,
+            price: newListing.price,
+            location: newListing.location,
+            type: newListing.type
+          }
+        );
+      } catch (logError) {
+        console.error('Error logging create activity:', logError);
+        // Don't fail the create operation if logging fails
+      }
+      
       showToast('Listing added successfully!', 'success');
     } catch (error) {
       console.error('Error adding listing:', error);
@@ -364,6 +384,7 @@ const fixMyAgentNames = async (agent) => {
         price: updatedListing.price,
         location: updatedListing.location,
         type: updatedListing.type,
+        furnishing: updatedListing.furnishing,
         bedrooms: parseInt(updatedListing.bedrooms) || 0,
         bathrooms: parseInt(updatedListing.bathrooms) || 0,
         floorArea: updatedListing.floorArea,
@@ -388,6 +409,7 @@ const fixMyAgentNames = async (agent) => {
         floor_area_sqm: updatedListing.floorArea,
         lot_area_sqm: updatedListing.lotArea || "N/A",
         maps_embed_url: updatedListing.maps_embed_url || "",
+        furnishing: updatedListing.furnishing,
         // Professional image handling for properties collection
         images: updatedListing.images ? 
           updatedListing.images.filter(img => img && img.trim() !== '') : 
@@ -425,6 +447,24 @@ const fixMyAgentNames = async (agent) => {
       setMyListings(prev => prev.map(l => 
         l.id === updatedListing.id ? { ...updatedListing, ...updateData } : l
       ));
+      
+      // Log the update activity
+      try {
+        await ActivityLoggerService.logUpdateActivity(
+          currentUser.uid,
+          'property',
+          updatedListing.firestoreId,
+          updateData,
+          {
+            title: updatedListing.title,
+            listingId: updatedListing.firestoreId,
+            changes: 'Property details updated'
+          }
+        );
+      } catch (logError) {
+        console.error('Error logging update activity:', logError);
+        // Don't fail the update operation if logging fails
+      }
       
       setShowEditListingModal(false);
       setSelectedListing(null);
@@ -472,6 +512,23 @@ const fixMyAgentNames = async (agent) => {
       
       // Remove from local state
       setMyListings(prev => prev.filter(l => l.id !== listing.id));
+      
+      // Log the deletion activity
+      try {
+        await ActivityLoggerService.logDeleteActivity(
+          currentUser.uid,
+          'property',
+          listing.firestoreId,
+          {
+            title: listing.title,
+            listingId: listing.firestoreId,
+            permanentlyRemoved: true
+          }
+        );
+      } catch (logError) {
+        console.error('Error logging delete activity:', logError);
+        // Don't fail the delete operation if logging fails
+      }
       
       showToast('Listing deleted successfully!', 'success');
     } catch (error) {
