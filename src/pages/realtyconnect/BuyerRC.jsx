@@ -145,12 +145,8 @@ function BuyerRC() {
     const loadAgents = async () => {
       try {
         setLoading(true);
-        // Subscribe to real-time updates
-        const unsubscribe = agentService.subscribeToAgents((agentsData) => {
-          // Filter only verified agents for buyer safety
-          const verifiedAgents = agentsData.filter(agent => 
-            agent.verificationStatus === 'verified'
-          );
+        // Subscribe to verified agents only
+        const unsubscribe = agentService.subscribeToVerifiedAgents((verifiedAgents) => {
           setAgents(verifiedAgents);
           setLoading(false);
         });

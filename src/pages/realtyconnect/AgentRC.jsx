@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FaChartLine, FaMoneyBillWave, FaRegClock, FaSpinner, FaPlus } from 'react-icons/fa';
-import { commissionService } from '../../services/realtyConnectService';
+import { commissionService, agentService, testFirebaseConnection } from '../../services/realtyConnectService';
 import VerificationService from '../../services/verificationService';
 import VerificationStatus from '../../components/VerificationStatus';
 import VerificationModal from '../../components/VerificationModal';
+import { db } from '../../config/Firebase';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 
 // Try to import useAuth, but provide fallback if not available
 let useAuth;
@@ -23,6 +25,38 @@ function AgentRC() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState('not_submitted');
   const { currentUser } = useAuth(); // Get current user from auth context
+
+  // Debug log for verification status changes
+  useEffect(() => {
+    console.log('AgentRC - Verification status changed to:', verificationStatus);
+  }, [verificationStatus]);
+
+  // Firebase connection debug
+  useEffect(() => {
+    console.log('=== FIREBASE DEBUG INFO ===');
+    console.log('Firebase db object:', db);
+    console.log('Current user:', currentUser);
+    console.log('agentService:', agentService);
+    console.log('commissionService:', commissionService);
+    console.log('VerificationService:', VerificationService);
+    console.log('testFirebaseConnection:', testFirebaseConnection);
+    console.log('============================');
+
+    // Test Firebase connection
+    const runConnectionTest = async () => {
+      console.log('Running Firebase connection test...');
+      const isConnected = await testFirebaseConnection();
+      console.log('Firebase connection result:', isConnected ? 'SUCCESS' : 'FAILED');
+      
+      if (!isConnected) {
+        console.error('❌ Firebase connection failed! Check your Firebase configuration.');
+      } else {
+        console.log('✅ Firebase is connected and working!');
+      }
+    };
+    
+    runConnectionTest();
+  }, [currentUser]);
 
   const [stats, setStats] = useState({
     activeListings: 0,
@@ -60,16 +94,30 @@ function AgentRC() {
     // Load verification status
     const loadVerificationStatus = async () => {
       try {
-        const statusUnsubscribe = VerificationService.subscribeToVerificationStatus(
-          userId,
-          'agent',
-          (status) => {
-            setVerificationStatus(status.status);
-          }
-        );
-        return statusUnsubscribe;
+        // First, check if agent profile exists
+        const agentProfile = await agentService.getAgentByUserId(userId);
+        
+        if (agentProfile) {
+          // If agent exists, set status from their profile
+          setVerificationStatus(agentProfile.verificationStatus || 'not_submitted');
+          
+          // Subscribe to agent profile changes
+          const unsubscribe = agentService.subscribeToAgents((agents) => {
+            const currentAgent = agents.find(agent => agent.userId === userId);
+            if (currentAgent) {
+              setVerificationStatus(currentAgent.verificationStatus || 'not_submitted');
+            }
+          });
+          return unsubscribe;
+        } else {
+          // If no agent profile exists, status is not_submitted
+          setVerificationStatus('not_submitted');
+          return () => {};
+        }
       } catch (err) {
         console.error('Error loading verification status:', err);
+        setVerificationStatus('not_submitted');
+        return () => {};
       }
     };
 
@@ -145,7 +193,9 @@ function AgentRC() {
     setShowVerificationModal(true);
   }, []);
 
-  const handleVerificationSubmitted = useCallback(() => {
+  const handleVerificationSubmitted = useCallback(async (verificationData, documents) => {
+    console.log('Starting verification submission with documents:', documents);
+    
     // Set to pending immediately and close modal
     setVerificationStatus('pending');
     setShowVerificationModal(false);
@@ -153,21 +203,73 @@ function AgentRC() {
     // Show processing modal
     setShowProcessingModal(true);
     
-    // Auto-verify after 2 seconds for demo purposes
-    setTimeout(async () => {
-      try {
-        const userId = currentUser?.uid || 'demo-agent-user';
-        console.log('Auto-verifying agent after 2 seconds...');
-        setVerificationStatus('verified');
-        
-        // Close processing modal and show success modal
-        setShowProcessingModal(false);
-        setShowSuccessModal(true);
-      } catch (error) {
-        console.error('Error during auto-verification:', error);
-        setShowProcessingModal(false);
-      }
-    }, 2000); // 2 second delay to simulate processing
+    try {
+      const userId = currentUser?.uid || 'demo-agent-user';
+      console.log('Creating agent profile for user:', userId);
+      
+      // Submit verification with actual documents to VerificationService
+      const verificationResult = await VerificationService.submitVerification(
+        userId,
+        'agent',
+        verificationData,
+        documents
+      );
+      
+      console.log('Verification submitted to Firebase:', verificationResult);
+      
+      // Create or update agent profile with basic info
+      const agentProfileData = {
+        name: verificationData.fullName || currentUser?.displayName || 'Agent User',
+        email: verificationData.email || currentUser?.email || 'agent@realitech.com',
+        specialization: 'Residential', // Default, can be updated later
+        rating: 4.5,
+        deals: 0, // Starting with 0 deals
+        agency: 'RealiTech Realty',
+        image: currentUser?.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Agent&backgroundColor=b6e3f4',
+        bio: 'Professional real estate agent committed to providing excellent service.',
+        verificationStatus: 'pending', // Set to pending initially
+        verificationId: verificationResult.verificationId
+      };
+
+      // Create or update agent profile
+      const agentId = await agentService.createOrUpdateAgentProfile(userId, agentProfileData);
+      console.log('Agent profile created/updated with ID:', agentId);
+      
+      // Auto-verify after 2 seconds for demo purposes
+      setTimeout(async () => {
+        try {
+          console.log('Auto-verifying agent after 2 seconds...');
+          
+          // Update agent profile with verified status
+          const existingAgent = await agentService.getAgentByUserId(userId);
+          if (existingAgent) {
+            await agentService.updateAgent(existingAgent.id, {
+              verificationStatus: 'verified'
+            });
+            console.log('Agent verification status updated to verified in Firebase');
+            
+            // Update local state
+            setVerificationStatus('verified');
+            console.log('Local verification status updated to verified');
+          } else {
+            console.error('Could not find agent profile to update');
+          }
+          
+          // Close processing modal and show success modal
+          setShowProcessingModal(false);
+          setShowSuccessModal(true);
+        } catch (error) {
+          console.error('Error during auto-verification update:', error);
+          setShowProcessingModal(false);
+          setVerificationStatus('not_submitted'); // Reset on error
+        }
+      }, 2000); // 2 second delay to simulate processing
+      
+    } catch (error) {
+      console.error('Error during verification submission:', error);
+      setShowProcessingModal(false);
+      setVerificationStatus('not_submitted'); // Reset on error
+    }
   }, [currentUser]);
 
   const getStatusBadgeClass = (status) => {

@@ -9,6 +9,7 @@ export const initializeSampleData = async () => {
     // Sample agents data
     const sampleAgents = [
       {
+        userId: 'sample-agent-1',
         name: 'Sarah Garcia',
         email: 'sarah@realitech.com',
         specialization: 'Residential',
@@ -20,6 +21,7 @@ export const initializeSampleData = async () => {
         verificationStatus: 'verified'
       },
       {
+        userId: 'sample-agent-2',
         name: 'Michael Johnson',
         email: 'michael@realitech.com',
         specialization: 'Commercial',
@@ -31,6 +33,7 @@ export const initializeSampleData = async () => {
         verificationStatus: 'verified'
       },
       {
+        userId: 'sample-agent-3',
         name: 'Emily Chen',
         email: 'emily@realitech.com',
         specialization: 'Industrial',
@@ -42,6 +45,7 @@ export const initializeSampleData = async () => {
         verificationStatus: 'verified'
       },
       {
+        userId: 'sample-agent-4',
         name: 'John Smith',
         email: 'john@realitech.com',
         specialization: 'Residential',

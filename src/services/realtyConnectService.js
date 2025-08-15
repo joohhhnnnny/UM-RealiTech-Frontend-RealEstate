@@ -5,6 +5,7 @@ import {
   deleteDoc, 
   doc, 
   getDocs, 
+  getDoc,
   query, 
   where, 
   orderBy, 
@@ -12,6 +13,21 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 import { db } from '../config/Firebase';
+
+// Test Firebase connection
+export const testFirebaseConnection = async () => {
+  try {
+    console.log('Testing Firebase connection from realtyConnectService...');
+    console.log('Firebase db object:', db);
+    const testQuery = query(collection(db, 'agents'));
+    const snapshot = await getDocs(testQuery);
+    console.log('Firebase connection successful! Agents collection size:', snapshot.size);
+    return true;
+  } catch (error) {
+    console.error('Firebase connection failed:', error);
+    return false;
+  }
+};
 
 // Collections
 const AGENTS_COLLECTION = 'agents';
@@ -31,6 +47,7 @@ const mockAgents = [
     agency: 'RealiTech Realty',
     image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&backgroundColor=b6e3f4',
     bio: 'Professional real estate agent with proven expertise in residential properties.',
+    verificationStatus: 'verified',
     createdAt: new Date()
   },
   {
@@ -43,6 +60,20 @@ const mockAgents = [
     agency: 'RealiTech Realty',
     image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a',
     bio: 'Commercial real estate specialist with extensive experience.',
+    verificationStatus: 'verified',
+    createdAt: new Date()
+  },
+  {
+    id: '3',
+    name: 'Emma Rodriguez',
+    email: 'emma@realitech.com',
+    specialization: 'Industrial',
+    rating: 4.9,
+    deals: 45,
+    agency: 'RealiTech Realty',
+    image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emma&backgroundColor=c084fc',
+    bio: 'Industrial property specialist with comprehensive market knowledge.',
+    verificationStatus: 'verified',
     createdAt: new Date()
   }
 ];
@@ -140,6 +171,69 @@ export const agentService = {
     }
   },
 
+  // Get agent by user ID (for current user's profile)
+  getAgentByUserId: async (userId) => {
+    try {
+      const q = query(collection(db, AGENTS_COLLECTION), where('userId', '==', userId));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        return { id: doc.id, ...doc.data() };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching agent by user ID:', error);
+      return null;
+    }
+  },
+
+  // Get only verified agents (for buyers to see)
+  getVerifiedAgents: async () => {
+    try {
+      const q = query(
+        collection(db, AGENTS_COLLECTION), 
+        where('verificationStatus', '==', 'verified'),
+        orderBy('createdAt', 'desc')
+      );
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error fetching verified agents, using mock data:', error);
+      // Return only verified mock agents
+      return mockAgents.filter(agent => agent.verificationStatus === 'verified' || !agent.verificationStatus);
+    }
+  },
+
+  // Create or update agent profile
+  createOrUpdateAgentProfile: async (userId, profileData) => {
+    try {
+      // Check if agent profile already exists
+      const existingAgent = await agentService.getAgentByUserId(userId);
+      
+      if (existingAgent) {
+        // Update existing profile
+        await agentService.updateAgent(existingAgent.id, {
+          ...profileData,
+          updatedAt: serverTimestamp()
+        });
+        return existingAgent.id;
+      } else {
+        // Create new profile
+        const docRef = await addDoc(collection(db, AGENTS_COLLECTION), {
+          ...profileData,
+          userId,
+          verificationStatus: 'not_submitted',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        return docRef.id;
+      }
+    } catch (error) {
+      console.error('Error creating/updating agent profile:', error);
+      throw error;
+    }
+  },
+
   // Subscribe to agents changes
   subscribeToAgents: (callback) => {
     try {
@@ -157,6 +251,32 @@ export const agentService = {
     } catch (error) {
       console.error('Error setting up agents subscription, using mock data:', error);
       callback(mockAgents);
+      return () => {}; // Return empty unsubscribe function
+    }
+  },
+
+  // Subscribe to verified agents only (for buyers)
+  subscribeToVerifiedAgents: (callback) => {
+    try {
+      const q = query(
+        collection(db, AGENTS_COLLECTION), 
+        where('verificationStatus', '==', 'verified'),
+        orderBy('createdAt', 'desc')
+      );
+      return onSnapshot(q, 
+        (snapshot) => {
+          const agents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          callback(agents);
+        },
+        (error) => {
+          console.error('Error in verified agents subscription, using mock data:', error);
+          // Return only verified mock agents for buyers
+          callback(mockAgents.filter(agent => agent.verificationStatus === 'verified' || !agent.verificationStatus));
+        }
+      );
+    } catch (error) {
+      console.error('Error setting up verified agents subscription, using mock data:', error);
+      callback(mockAgents.filter(agent => agent.verificationStatus === 'verified' || !agent.verificationStatus));
       return () => {}; // Return empty unsubscribe function
     }
   }

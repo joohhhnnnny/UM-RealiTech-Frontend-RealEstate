@@ -58,20 +58,20 @@ const VerificationModal = ({ isOpen, onClose, userType, userId, onVerificationSu
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Skip file validation for demo (Storage not available on Spark plan)
+    // Check if documents are uploaded
     if (documents.length < 1) {
-      alert('Please upload at least 1 document for demo purposes');
+      alert('Please upload at least 1 document for verification');
       return;
     }
 
     setIsSubmitting(true);
     
     try {
-      // Skip Firebase Storage upload - just simulate verification
-      console.log('Demo mode: Skipping file upload, proceeding with verification...');
+      console.log('Submitting verification with documents:', documents);
+      console.log('Form data:', formData);
       
-      // Just call the verification handler directly (no Storage upload)
-      onVerificationSubmitted();
+      // Pass the form data and documents to the parent handler
+      onVerificationSubmitted(formData, documents);
       onClose();
       
     } catch (error) {

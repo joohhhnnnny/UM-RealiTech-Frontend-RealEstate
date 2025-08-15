@@ -9,9 +9,6 @@ import {
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../../config/Firebase';
-import BuyerTimelineView from './buyerportal/BuyerTimelineView';
-import BuyerDocumentViewer from './buyerportal/BuyerDocumentViewer';
-import NotificationSystem from './buyerportal/NotificationSystem';
 import { 
   RiStarFill,
   RiFlag2Line,
@@ -31,33 +28,18 @@ import {
   RiLoader4Line,
   RiPercentLine,
   RiCheckLine,
-  RiCloseLine,
-  RiArrowLeftLine,
-  RiBuildingLine
+  RiCloseLine
 } from 'react-icons/ri';
 
-// BuildSafe Component - Construction Progress Tracking for Purchased Properties
-/**
- * BuyerBuildSafe Component  
- * Purpose: Track construction progress of PURCHASED properties (NOT application document submission)
- * Progress Type: Construction milestone completion (0-100% based on completed construction phases)
- * Data Source: Real-time from Firestore for purchased properties construction updates
- * Flow: User comes here AFTER purchasing property through BuySmartPH
- */
+
 function BuyerBuildSafe() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [viewMode, setViewMode] = useState('timeline'); // timeline, escrow, documents
+  const [showReportModal, setShowReportModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [purchasedProperties, setPurchasedProperties] = useState([]);
+  const [myProperties, setMyProperties] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
-  
-  // BuildSafe-specific states for construction tracking
-  const [notifications, setNotifications] = useState([]);
-  const [constructionMilestones, setConstructionMilestones] = useState([]);
-  const [mediaUploads, setMediaUploads] = useState([]);
-  const [propertyDocuments, setPropertyDocuments] = useState([]);
-  const [escrowStatus, setEscrowStatus] = useState({});
 
   // Get current authenticated user
   useEffect(() => {
@@ -87,317 +69,409 @@ function BuyerBuildSafe() {
     return () => unsubscribe();
   }, []);
 
-  // Calculate construction progress based on completed milestones - NOT document submission
-  const calculateConstructionProgress = useCallback((property) => {
-    console.log('Calculating construction progress for property:', property);
+  // Calculate progress based on document submission status - Method copied from Clients.jsx for consistency
+  const calculateProgress = useCallback((submission) => {
+    console.log('Calculating progress for submission:', submission);
     
-    if (!property.constructionMilestones || property.constructionMilestones.length === 0) {
-      return 0;
+    // Define all possible document fields that can be submitted - matching Clients.jsx logic exactly
+    const documentFields = [
+      // Personal Identification (always required)
+      'hasGovernmentId',
+      'hasBirthCertificate',
+      
+      // Civil Status (conditional - marriage certificate only if married)
+      ...(submission.civilStatus === 'married' ? ['hasMarriageCertificate'] : []),
+      
+      // Employment Type Documents (conditional based on employment type)
+      ...(submission.employmentType === 'employed' ? [
+        'hasEmploymentDocs', // Represents payslips, employment cert, ITR
+        'hasIncomeDocs'      // Represents ITR specifically
+      ] : []),
+      ...(submission.employmentType === 'self-employed' ? [
+        'hasEmploymentDocs', // Represents business registration, audited financial statement
+        'hasIncomeDocs'      // Represents ITR and bank statements
+      ] : []),
+      ...(submission.employmentType === 'ofw' ? [
+        'hasEmploymentDocs', // Represents employment contract
+        'hasIncomeDocs'      // Represents remittance proof
+      ] : [])
+    ];
+
+    console.log('Required document fields for this submission:', documentFields);
+    console.log('Employment type:', submission.employmentType);
+    console.log('Civil status:', submission.civilStatus);
+    
+    if (documentFields.length === 0) {
+      console.log('No required documents identified, using TIN-based progress');
+      // Basic progress for having TIN number
+      return submission.tinNumber ? 20 : 0;
     }
     
-    const completedMilestones = property.constructionMilestones.filter(milestone => milestone.completed);
-    const totalMilestones = property.constructionMilestones.length;
+    let totalDocuments = documentFields.length;
+    let submittedDocuments = 0;
     
-    const progress = Math.round((completedMilestones.length / totalMilestones) * 100);
+    // Check each required document field using the same logic as Clients.jsx
+    documentFields.forEach(field => {
+      let isSubmitted = false;
+      
+      // Map the document fields to actual submission data fields
+      switch (field) {
+        case 'hasGovernmentId':
+          isSubmitted = !!submission.governmentIdPath;
+          break;
+        case 'hasBirthCertificate':
+          isSubmitted = !!submission.birthCertificatePath;
+          break;
+        case 'hasMarriageCertificate':
+          isSubmitted = !!submission.marriageCertificatePath;
+          break;
+        case 'hasEmploymentDocs':
+          isSubmitted = !!submission.employmentCertificatePath || 
+                       !!submission.businessRegistrationPath || 
+                       !!submission.employmentContractPath;
+          break;
+        case 'hasIncomeDocs':
+          isSubmitted = !!submission.itrPath || 
+                       !!submission.auditedFinancialStatementPath || 
+                       !!(submission.remittanceProofPaths?.length);
+          break;
+        default:
+          isSubmitted = false;
+      }
+      
+      console.log(`Document field ${field}:`, isSubmitted ? 'Submitted' : 'Missing');
+      
+      if (isSubmitted) {
+        submittedDocuments++;
+      }
+    });
     
-    console.log(`Construction progress: ${completedMilestones.length}/${totalMilestones} = ${progress}%`);
+    // Add TIN number as additional requirement if we have employment type - matching Clients.jsx
+    if (submission.employmentType) {
+      totalDocuments += 1;
+      if (submission.tinNumber) {
+        submittedDocuments += 1;
+      }
+    }
     
+    console.log(`Progress calculation: ${submittedDocuments}/${totalDocuments} documents submitted`);
+    
+    // Calculate percentage
+    const progress = totalDocuments > 0 ? Math.round((submittedDocuments / totalDocuments) * 100) : 0;
+    
+    // Ensure minimum progress for applications that have been started
+    if (progress === 0 && (submission.tinNumber || submission.civilStatus || submission.employmentType)) {
+      console.log('Basic info provided, setting minimum progress');
+      return 5; // Show some progress for having basic info
+    }
+    
+    console.log('Final calculated progress:', progress);
     return progress;
   }, []);
 
   // Format date properly
   const formatDate = useCallback((dateValue) => {
-    if (!dateValue) return 'Not provided';
+    if (!dateValue) return 'Not available';
     
-    // Handle Firestore Timestamp
-    if (dateValue && typeof dateValue.toDate === 'function') {
-      return dateValue.toDate().toLocaleDateString();
-    }
-    
-    // Handle date string
-    if (typeof dateValue === 'string') {
-      const date = new Date(dateValue);
-      return !isNaN(date.getTime()) ? date.toLocaleDateString() : dateValue;
-    }
-    
-    return dateValue;
-  }, []);
+    try {
+      let date;
+      
+      // Handle Firestore Timestamp
+      if (dateValue && typeof dateValue.toDate === 'function') {
+        date = dateValue.toDate();
+      }
+      // Handle ISO string or date string
+      else if (typeof dateValue === 'string') {
+        date = new Date(dateValue);
+      }
+      // Handle Date object
+      else if (dateValue instanceof Date) {
+        date = dateValue;
+      }
+      // Handle timestamp number
+      else if (typeof dateValue === 'number') {
+        date = new Date(dateValue);
+      }
+      else {
+        return 'Invalid date';
+      }
 
-  // Get construction status info with appropriate styling
-  const getConstructionStatus = useCallback((constructionProgress) => {
-    if (constructionProgress >= 100) {
-      return {
-        badge: 'badge-success',
-        text: 'Construction Complete',
-        bgColor: 'bg-success/10 border-success/20',
-        textColor: 'text-success'
-      };
-    } else if (constructionProgress >= 80) {
-      return {
-        badge: 'badge-info',
-        text: 'Final Phase',
-        bgColor: 'bg-info/10 border-info/20',
-        textColor: 'text-info'
-      };
-    } else if (constructionProgress >= 40) {
-      return {
-        badge: 'badge-warning',
-        text: `${constructionProgress}% Built`,
-        bgColor: 'bg-warning/10 border-warning/20',
-        textColor: 'text-warning'
-      };
-    } else {
-      return {
-        badge: 'badge-primary',
-        text: 'Early Phase',
-        bgColor: 'bg-primary/10 border-primary/20',
-        textColor: 'text-primary'
-      };
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return 'Invalid date';
+      }
+
+      // Format as: "Jan 15, 2024 at 2:30 PM"
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      console.warn('Error formatting date:', error, dateValue);
+      return 'Date error';
     }
   }, []);
 
-  // Fetch purchased properties from Firestore - Focus on PURCHASED properties for construction tracking
-  const fetchPurchasedProperties = useCallback(async () => {
-    if (!currentUser?.uid) {
-      console.log('No current user, skipping purchased properties fetch');
-      return;
+  // Get document progress breakdown for detailed view - Updated to match Clients.jsx calculation
+  const getDocumentBreakdown = useCallback((submission) => {
+    const breakdown = {
+      completed: [],
+      missing: [],
+      total: 0,
+      completedCount: 0
+    };
+
+    // Define all possible document fields - matching the calculation method exactly
+    const requiredDocs = [
+      { field: 'hasGovernmentId', label: 'Government ID', required: true },
+      { field: 'hasBirthCertificate', label: 'Birth Certificate', required: true },
+      { field: 'hasMarriageCertificate', label: 'Marriage Certificate', required: submission.civilStatus === 'married' },
+    ];
+
+    // Employment-specific documents - matching Clients.jsx logic
+    if (submission.employmentType === 'employed') {
+      requiredDocs.push(
+        { field: 'hasEmploymentDocs', label: 'Employment Documents (Payslips, Certificate)', required: true },
+        { field: 'hasIncomeDocs', label: 'Income Tax Return', required: true }
+      );
+    } else if (submission.employmentType === 'self-employed') {
+      requiredDocs.push(
+        { field: 'hasEmploymentDocs', label: 'Business Registration & Financial Statement', required: true },
+        { field: 'hasIncomeDocs', label: 'ITR & Bank Statements', required: true }
+      );
+    } else if (submission.employmentType === 'ofw') {
+      requiredDocs.push(
+        { field: 'hasEmploymentDocs', label: 'OFW Employment Contract', required: true },
+        { field: 'hasIncomeDocs', label: 'Remittance Proof', required: true }
+      );
     }
+
+    // Add TIN requirement if employment type exists
+    if (submission.employmentType) {
+      requiredDocs.push({ field: 'tinNumber', label: 'TIN Number', required: true });
+    }
+
+    // Filter only required documents
+    const applicableDocs = requiredDocs.filter(doc => doc.required);
+    breakdown.total = applicableDocs.length;
+
+    // Check each document using the same mapping as the calculation function
+    applicableDocs.forEach(doc => {
+      let isSubmitted = false;
+      
+      // Map the document fields to actual submission data fields - same logic as calculateProgress
+      switch (doc.field) {
+        case 'hasGovernmentId':
+          isSubmitted = !!submission.governmentIdPath;
+          break;
+        case 'hasBirthCertificate':
+          isSubmitted = !!submission.birthCertificatePath;
+          break;
+        case 'hasMarriageCertificate':
+          isSubmitted = !!submission.marriageCertificatePath;
+          break;
+        case 'hasEmploymentDocs':
+          isSubmitted = !!submission.employmentCertificatePath || 
+                       !!submission.businessRegistrationPath || 
+                       !!submission.employmentContractPath;
+          break;
+        case 'hasIncomeDocs':
+          isSubmitted = !!submission.itrPath || 
+                       !!submission.auditedFinancialStatementPath || 
+                       !!(submission.remittanceProofPaths?.length);
+          break;
+        case 'tinNumber':
+          isSubmitted = !!submission.tinNumber;
+          break;
+        default:
+          isSubmitted = false;
+      }
+
+      if (isSubmitted) {
+        breakdown.completed.push(doc.label);
+        breakdown.completedCount++;
+      } else {
+        breakdown.missing.push(doc.label);
+      }
+    });
+
+    return breakdown;
+  }, []);
+
+  // Get status info with appropriate styling
+  const getStatusInfo = useCallback((status, progress) => {
+    switch (status) {
+      case 'submitted':
+        return {
+          label: 'Under Review',
+          class: 'badge-info',
+          icon: RiTimeLine,
+          description: 'Application submitted and under review'
+        };
+      case 'approved':
+        return {
+          label: 'Approved',
+          class: 'badge-success',
+          icon: RiCheckboxCircleLine,
+          description: 'Application approved'
+        };
+      case 'rejected':
+        return {
+          label: 'Rejected',
+          class: 'badge-error',
+          icon: RiAlertLine,
+          description: 'Application rejected'
+        };
+      case 'draft':
+      default:
+        return {
+          label: progress > 0 ? 'In Progress' : 'Draft',
+          class: progress > 50 ? 'badge-warning' : 'badge-ghost',
+          icon: RiFileTextLine,
+          description: 'Application in progress'
+        };
+    }
+  }, []);
+
+  // Fetch property applications from Firestore
+  const fetchPropertyApplications = useCallback(async () => {
+    if (!currentUser?.uid) return;
 
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching purchased properties for user:', currentUser.uid);
-
-      // In a real implementation, this would query for properties where:
-      // - User has completed purchase (approved applications from BuySmartPH)
-      // - Property is in construction phase
-      // For now, we'll simulate this with sample data based on approved submissions
-
-      // Query approved document submissions (these become purchased properties in BuildSafe)
-      const submissionsQuery = query(
-        collection(db, 'documentSubmissions'),
-        where('userNumber', '==', currentUser.uid),
-        where('status', '==', 'approved') // Only approved = purchased properties
-      );
-
-      const submissionsSnapshot = await getDocs(submissionsQuery);
-      console.log('Found approved submissions (purchased properties):', submissionsSnapshot.size);
-
-      if (submissionsSnapshot.empty) {
-        console.log('No purchased properties found for user - redirect to BuySmartPH');
-        setPurchasedProperties([]);
-        return;
-      }
-
-      const properties = [];
-
-      for (const submissionDoc of submissionsSnapshot.docs) {
-        const submissionData = submissionDoc.data();
-        console.log('Processing purchased property:', submissionDoc.id, submissionData);
-
-        // Generate construction milestones for each purchased property
-        const constructionMilestones = [
-          {
-            id: 'ms1',
-            name: 'Land Development & Site Preparation',
-            description: 'Site clearing, excavation, and foundation preparation',
-            completed: true,
-            verified: true,
-            date: '2024-03-15',
-            completedDate: '2024-03-15',
-            verifiedDate: '2024-03-20',
-            paymentAmount: '₱500,000',
-            progressPercentage: 100
-          },
-          {
-            id: 'ms2', 
-            name: 'Foundation & Structural Framework',
-            description: 'Concrete foundation, steel framework, and structural elements',
-            completed: true,
-            verified: false,
-            date: '2024-06-30',
-            completedDate: '2024-06-28',
-            paymentAmount: '₱800,000',
-            progressPercentage: 85
-          },
-          {
-            id: 'ms3',
-            name: 'Roofing & Exterior Work',
-            description: 'Roof installation, exterior walls, and weatherproofing',
-            completed: false,
-            verified: false,
-            date: '2024-09-15',
-            paymentAmount: '₱600,000',
-            progressPercentage: 60
-          },
-          {
-            id: 'ms4',
-            name: 'Interior Construction',
-            description: 'Interior walls, electrical, plumbing, and HVAC systems',
-            completed: false,
-            verified: false,
-            date: '2024-11-30',
-            paymentAmount: '₱750,000',
-            progressPercentage: 25
-          },
-          {
-            id: 'ms5',
-            name: 'Finishing & Final Inspection',
-            description: 'Paint, flooring, fixtures, and government inspection',
-            completed: false,
-            verified: false,
-            date: '2025-02-15',
-            paymentAmount: '₱450,000',
-            progressPercentage: 0
-          }
-        ];
-
-        // Calculate construction progress
-        const constructionProgress = calculateConstructionProgress({ constructionMilestones });
+      
+      console.log('Fetching property applications for user:', currentUser.uid);
+      
+      // Fetch user's document submissions
+      const submissionsRef = collection(db, 'documentSubmissions');
+      const userQuery = query(submissionsRef, where('userId', '==', currentUser.uid));
+      const submissionsSnapshot = await getDocs(userQuery);
+      
+      console.log('Found submissions:', submissionsSnapshot.size);
+      
+      const applications = [];
+      
+      for (const docSnap of submissionsSnapshot.docs) {
+        const submissionData = docSnap.data();
+        console.log('Processing submission:', docSnap.id, submissionData);
         
-        // Get construction status info
-        const statusInfo = getConstructionStatus(constructionProgress);
-
-        // Try to get property details
+        // Get property details
         let propertyDetails = null;
         if (submissionData.propertyId) {
           try {
-            const propertyDoc = await getDoc(doc(db, 'properties', submissionData.propertyId));
-            if (propertyDoc.exists()) {
-              propertyDetails = propertyDoc.data();
+            // Try listings collection first
+            const listingDoc = await getDoc(doc(db, 'listings', submissionData.propertyId));
+            if (listingDoc.exists()) {
+              propertyDetails = { id: listingDoc.id, ...listingDoc.data(), source: 'listings' };
+            } else {
+              // Try properties collection
+              const propertyDoc = await getDoc(doc(db, 'properties', submissionData.propertyId));
+              if (propertyDoc.exists()) {
+                propertyDetails = { id: propertyDoc.id, ...propertyDoc.data(), source: 'properties' };
+              }
             }
-          } catch (propError) {
-            console.warn('Could not fetch property details:', propError);
+          } catch (error) {
+            console.warn('Error fetching property details:', error);
           }
         }
 
-        // Create purchased property object for construction tracking
-        const property = {
-          id: submissionDoc.id,
-          purchaseData: submissionData, // Original purchase/approval data
-          
-          // Property Details
-          projectName: propertyDetails?.name || submissionData.projectName || 'Your Property',
-          name: propertyDetails?.name || submissionData.projectName || 'Your Property',
-          location: propertyDetails?.location || submissionData.location || 'Location not specified',
-          city: propertyDetails?.city || submissionData.city || propertyDetails?.location || 'City not specified',
-          unit: submissionData.unitNumber || submissionData.unit || 'N/A',
-          unitNumber: submissionData.unitNumber,
-          
-          // Financial Details
-          price: propertyDetails?.price || submissionData.price || 'Price not specified',
-          totalPrice: propertyDetails?.totalPrice || propertyDetails?.price || submissionData.price || 'Price not specified',
-          totalInvestment: propertyDetails?.totalPrice || propertyDetails?.price || submissionData.price || '₱2,500,000',
-          
-          // Construction Status and Progress (THIS IS THE KEY DIFFERENCE FROM BUYSMARTPH)
-          constructionStatus: 'in_progress',
-          constructionProgress: constructionProgress,
-          statusInfo: statusInfo,
-          constructionMilestones: constructionMilestones,
-          
-          // Dates
-          purchaseDate: formatDate(submissionData.submissionDate || submissionData.createdAt),
-          constructionStartDate: '2024-01-15',
-          expectedCompletion: '2025-12-31',
-          expectedTurnover: '2026-01-15',
-          
-          // Escrow Information
-          escrowStatus: {
-            totalAmount: '₱3,100,000',
-            releasedAmount: '₱1,300,000',
-            heldAmount: '₱1,800,000',
-            releasedPercentage: 42
-          },
-          
-          // Property Documents (delivered by developer)
-          propertyDocuments: [
-            { 
-              id: 'doc1',
-              name: 'Purchase Contract', 
-              status: 'delivered', 
-              date: '2024-01-20', 
-              downloadUrl: '#',
-              type: 'contract'
-            },
-            { 
-              id: 'doc2',
-              name: 'Building Permit', 
-              status: 'delivered', 
-              date: '2024-02-05', 
-              downloadUrl: '#',
-              type: 'permit'
-            },
-            { 
-              id: 'doc3',
-              name: 'Title Transfer Documents', 
-              status: 'processing', 
-              date: '2024-07-20', 
-              downloadUrl: null,
-              type: 'title'
+        // Get agent details if available
+        let agentDetails = null;
+        const agentId = propertyDetails?.agentId || propertyDetails?.agent_id;
+        if (agentId) {
+          try {
+            const agentDoc = await getDoc(doc(db, 'agents', agentId));
+            if (agentDoc.exists()) {
+              agentDetails = agentDoc.data();
             }
-          ]
-        };
+          } catch (error) {
+            console.warn('Error fetching agent details:', error);
+          }
+        }
 
-        properties.push(property);
+        const progress = calculateProgress(submissionData);
+        const status = submissionData.status || 'draft';
+        const statusInfo = getStatusInfo(status, progress);
+        
+        console.log('Calculated progress for submission:', {
+          submissionId: docSnap.id,
+          progress,
+          status,
+          employmentType: submissionData.employmentType,
+          civilStatus: submissionData.civilStatus,
+          documentFields: {
+            governmentIdPath: !!submissionData.governmentIdPath,
+            birthCertificatePath: !!submissionData.birthCertificatePath,
+            marriageCertificatePath: !!submissionData.marriageCertificatePath,
+            payslipsPaths: submissionData.payslipsPaths?.length || 0,
+            employmentCertificatePath: !!submissionData.employmentCertificatePath,
+            itrPath: !!submissionData.itrPath,
+            businessRegistrationPath: !!submissionData.businessRegistrationPath,
+            auditedFinancialStatementPath: !!submissionData.auditedFinancialStatementPath,
+            bankStatementsPaths: submissionData.bankStatementsPaths?.length || 0,
+            employmentContractPath: !!submissionData.employmentContractPath,
+            remittanceProofPaths: submissionData.remittanceProofPaths?.length || 0
+          }
+        });
+
+        applications.push({
+          id: docSnap.id,
+          submissionId: docSnap.id,
+          name: propertyDetails?.title || propertyDetails?.name || 'Property Application',
+          unit: propertyDetails?.unit || 'Unit Details Pending',
+          developer: propertyDetails?.developer || propertyDetails?.developerName || 'Developer Info Pending',
+          developerLogo: propertyDetails?.developerLogo || `https://ui-avatars.com/api/?name=${encodeURIComponent(propertyDetails?.developer || 'Dev')}&background=3b82f6&color=ffffff&size=100`,
+          agent: agentDetails ? 
+            (agentDetails.fullName || `${agentDetails.firstName || ''} ${agentDetails.lastName || ''}`.trim()) : 
+            'Agent Info Pending',
+          agentContact: agentDetails?.phone || agentDetails?.phoneNumber || 'Contact Pending',
+          agentEmail: agentDetails?.email || 'Email Pending',
+          agentProfilePicture: agentDetails?.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(agentDetails?.fullName || 'Agent')}&background=10b981&color=ffffff&size=100`,
+          progress,
+          status,
+          statusInfo,
+          submittedAt: submissionData.submittedAt || submissionData.createdAt,
+          lastUpdate: submissionData.updatedAt || submissionData.submittedAt || submissionData.createdAt,
+          lastUpdateFormatted: formatDate(submissionData.updatedAt || submissionData.submittedAt || submissionData.createdAt),
+          image: propertyDetails?.images?.[0] || propertyDetails?.image || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
+          propertyDetails,
+          submissionData,
+          documents: submissionData.documents || {},
+          personalInfo: submissionData.personalInfo || {},
+          isStatic: false
+        });
       }
 
-      console.log('Final purchased properties for construction tracking:', properties);
-      setPurchasedProperties(properties);
+      console.log('Processed applications:', applications);
+      setMyProperties(applications);
       
     } catch (error) {
-      console.error('Error fetching purchased properties:', error);
-      setError('Failed to load your purchased properties. Please try again.');
+      console.error('Error fetching property applications:', error);
+      setError('Failed to load property applications. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [currentUser?.uid, calculateConstructionProgress, getConstructionStatus, formatDate]);
+  }, [currentUser?.uid, calculateProgress, getStatusInfo, formatDate]);
 
-  // Load purchased properties when user is available
+  // Load user's property applications when user is available
   useEffect(() => {
     if (currentUser) {
-      fetchPurchasedProperties();
-      
-      // Initialize sample construction media uploads
-      const sampleMedia = [
-        {
-          id: 'media1',
-          milestoneId: 'ms1',
-          fileName: 'foundation_complete.jpg',
-          fileType: 'image/jpeg',
-          url: '/api/placeholder/400/300',
-          uploadDate: '2024-03-15',
-          description: 'Foundation work completed and inspected'
-        },
-        {
-          id: 'media2',
-          milestoneId: 'ms1',
-          fileName: 'site_preparation.jpg', 
-          fileType: 'image/jpeg',
-          url: '/api/placeholder/400/300',
-          uploadDate: '2024-03-10',
-          description: 'Site clearing and preparation'
-        },
-        {
-          id: 'media3',
-          milestoneId: 'ms2',
-          fileName: 'structural_frame.jpg',
-          fileType: 'image/jpeg', 
-          url: '/api/placeholder/400/300',
-          uploadDate: '2024-06-25',
-          description: 'Steel framework installation progress'
-        }
-      ];
-      setMediaUploads(sampleMedia);
+      fetchPropertyApplications();
     }
-  }, [currentUser, fetchPurchasedProperties]);
+  }, [currentUser, fetchPropertyApplications]);
 
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-base-100 flex items-center justify-center">
         <div className="text-center">
-          <RiLoader4Line className="animate-spin text-4xl text-primary mx-auto mb-4" />
-          <p>Loading your properties...</p>
+          <div className="loading loading-spinner loading-lg text-primary"></div>
+          <p className="mt-4 text-base-content/70">Loading your properties...</p>
         </div>
       </div>
     );
@@ -406,18 +480,19 @@ function BuyerBuildSafe() {
   // Show error state
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-base-100 flex items-center justify-center">
         <div className="text-center">
-          <RiAlertLine className="text-4xl text-error mx-auto mb-4" />
-          <p className="text-error font-medium">{error}</p>
+          <div className="alert alert-error max-w-md">
+            <div>
+              <h3 className="font-bold">Connection Error</h3>
+              <div className="text-xs">{error}</div>
+            </div>
+          </div>
           <button 
             className="btn btn-primary mt-4"
-            onClick={() => {
-              setError(null);
-              fetchPurchasedProperties();
-            }}
+            onClick={() => window.location.reload()}
           >
-            Try Again
+            Retry
           </button>
         </div>
       </div>
@@ -425,7 +500,7 @@ function BuyerBuildSafe() {
   }
 
   if (selectedProject) {
-    const project = purchasedProperties.find(p => p.id === selectedProject);
+    const project = myProperties.find(p => p.id === selectedProject);
     
     return (
       <div className="space-y-6">
@@ -435,51 +510,154 @@ function BuyerBuildSafe() {
             onClick={() => setSelectedProject(null)}
             className="btn btn-ghost btn-sm"
           >
-            <RiArrowLeftLine className="w-4 h-4" />
-            Back to My Properties
+            ← Back to My Properties
           </button>
           <div className="tabs">
             <a 
               className={`tab tab-lg tab-bordered ${viewMode === 'timeline' ? 'tab-active' : ''}`}
               onClick={() => setViewMode('timeline')}
             >
-              <RiTimeLine className="w-4 h-4 mr-2" />
+              <RiEyeLine className="w-4 h-4 mr-1" />
               Timeline
-            </a>
+            </a> 
             <a 
               className={`tab tab-lg tab-bordered ${viewMode === 'escrow' ? 'tab-active' : ''}`}
               onClick={() => setViewMode('escrow')}
             >
-              <RiMoneyDollarCircleLine className="w-4 h-4 mr-2" />
-              Payments
-            </a>
+              <RiMoneyDollarCircleLine className="w-4 h-4 mr-1" />
+              Escrow Status
+            </a> 
             <a 
               className={`tab tab-lg tab-bordered ${viewMode === 'documents' ? 'tab-active' : ''}`}
               onClick={() => setViewMode('documents')}
             >
-              <RiFileTextLine className="w-4 h-4 mr-2" />
+              <RiFileTextLine className="w-4 h-4 mr-1" />
               Documents
             </a>
           </div>
         </div>
 
+        {/* Project Header */}
+        <div className="card bg-base-200 shadow-xl">
+          <figure className="h-64">
+            <img src={project.image} alt={project.name} className="w-full h-full object-cover" />
+          </figure>
+          <div className="card-body">
+            <div className="flex flex-col md:flex-row justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold">{project.name}</h2>
+                <p className="text-lg text-primary font-semibold">{project.unit}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <div className={`badge badge-lg ${
+                    project.status === 'On Track' ? 'badge-success' : 
+                    project.status === 'Delayed' ? 'badge-warning' : 'badge-info'
+                  }`}>
+                    {project.status}
+                  </div>
+                  <span className="text-sm">Last update: {project.lastUpdate}</span>
+                </div>
+              </div>
+              
+              <div className="flex flex-col items-end">
+                <div className="stat p-0 text-right">
+                  <div className="stat-title">Document Submission Progress</div>
+                  <div className="stat-value text-primary">{project.progress}%</div>
+                  <div className="stat-desc">Application Status: {project.status}</div>
+                </div>
+                <progress 
+                  className={`progress w-64 ${
+                    project.progress === 100 ? 'progress-success' : 
+                    project.progress >= 70 ? 'progress-primary' : 
+                    project.progress >= 40 ? 'progress-warning' : 
+                    'progress-info'
+                  }`}
+                  value={project.progress} 
+                  max="100"
+                ></progress>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Timeline View */}
         {viewMode === 'timeline' && (
-          <BuyerTimelineView
-            propertyInfo={{
-              name: project.projectName || project.name,
-              location: project.location || project.city,
-              unit: project.unit || `Unit ${project.unitNumber || 'N/A'}`,
-              startDate: project.constructionStartDate || '2024-01-15',
-              expectedCompletion: project.expectedCompletion || '2025-12-31',
-              totalInvestment: project.totalPrice || project.price || '₱2,500,000',
-              progress: project.constructionProgress
-            }}
-            constructionMilestones={project.constructionMilestones || []}
-            mediaUploads={mediaUploads}
-            notifications={notifications}
-            setNotifications={setNotifications}
-          />
+          <div className="space-y-6">
+            {/* Milestone Timeline */}
+            <div className="card bg-base-200 shadow-xl">
+              <div className="card-body">
+                <h3 className="text-xl font-bold mb-4">Construction Timeline</h3>
+                <div className="space-y-4">
+                  {project.milestones.map((milestone, index) => (
+                    <div key={index} className="flex items-start gap-4 p-4 bg-base-100 rounded-lg border border-base-300">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                        milestone.completed ? 'bg-success text-success-content' : 'bg-base-300'
+                      }`}>
+                        {milestone.completed ? (
+                          <RiCheckboxCircleLine className="w-6 h-6" />
+                        ) : (
+                          <span className="text-sm font-bold">{milestone.percentage}%</span>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-semibold">{milestone.title}</p>
+                            <p className="text-sm text-base-content/70">Scheduled: {milestone.date}</p>
+                            {milestone.completed && (
+                              <p className="text-xs mt-1">
+                                Verified: {milestone.verification.date} by {milestone.verification.by}
+                              </p>
+                            )}
+                          </div>
+                          <div className={`badge ${
+                            milestone.completed ? 'badge-success' : 'badge-warning'
+                          }`}>
+                            {milestone.completed ? 'Completed' : 'Upcoming'}
+                          </div>
+                        </div>
+                        
+                        {/* Media updates for this milestone */}
+                        {milestone.media.length > 0 && (
+                          <div className="mt-3">
+                            <div className="flex gap-2 overflow-x-auto pb-2">
+                              {milestone.media.map((photo, i) => (
+                                <img 
+                                  key={i}
+                                  src={photo} 
+                                  alt={`Progress ${i + 1}`} 
+                                  className="h-24 rounded-lg object-cover cursor-pointer"
+                                  onClick={() => {/* Open lightbox */}}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-4 flex-wrap">
+              <button 
+                className="btn btn-warning"
+                onClick={() => setShowReportModal(true)}
+              >
+                <RiFlag2Line className="w-4 h-4" />
+                Report an Issue
+              </button>
+              <button className="btn btn-info">
+                <RiImageLine className="w-4 h-4" />
+                View All Progress Photos
+              </button>
+              <button className="btn btn-ghost">
+                <RiDownloadLine className="w-4 h-4" />
+                Download Progress Report
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Escrow View */}
@@ -490,72 +668,69 @@ function BuyerBuildSafe() {
                 <h3 className="text-xl font-bold mb-6">Milestone Payment Status</h3>
                 
                 {/* Payment Summary */}
-                <div className="stats shadow bg-base-100">
+                <div className="stats shadow bg-base-100 mb-6">
                   <div className="stat">
-                    <div className="stat-figure text-primary">
-                      <RiMoneyDollarCircleLine className="w-8 h-8" />
-                    </div>
                     <div className="stat-title">Total Investment</div>
-                    <div className="stat-value text-primary">{project.escrowStatus?.totalAmount || '₱3.1M'}</div>
-                    <div className="stat-desc">Property purchase amount</div>
+                    <div className="stat-value text-primary">{project.totalInvestment}</div>
                   </div>
-                  
                   <div className="stat">
-                    <div className="stat-figure text-success">
-                      <RiLockUnlockLine className="w-8 h-8" />
-                    </div>
-                    <div className="stat-title">Released</div>
-                    <div className="stat-value text-success">{project.escrowStatus?.releasedAmount || '₱1.3M'}</div>
-                    <div className="stat-desc">{project.escrowStatus?.releasedPercentage || 42}% of total amount</div>
+                    <div className="stat-title">Paid So Far</div>
+                    <div className="stat-value text-success">{project.paidSoFar}</div>
                   </div>
-                  
                   <div className="stat">
-                    <div className="stat-figure text-warning">
-                      <RiLockLine className="w-8 h-8" />
-                    </div>
-                    <div className="stat-title">In Escrow</div>
-                    <div className="stat-value text-warning">{project.escrowStatus?.heldAmount || '₱1.8M'}</div>
-                    <div className="stat-desc">{100 - (project.escrowStatus?.releasedPercentage || 42)}% held securely</div>
+                    <div className="stat-title">Held in Escrow</div>
+                    <div className="stat-value text-info">{project.inEscrow}</div>
                   </div>
                 </div>
-
-                {/* Payment Timeline */}
-                <div className="space-y-4 mt-6">
-                  {[
-                    { milestone: 'Foundation Complete', amount: '₱500,000', status: 'released', date: '2024-03-20' },
-                    { milestone: 'Structure Framework', amount: '₱800,000', status: 'released', date: '2024-06-30' },
-                    { milestone: 'Roofing Work', amount: '₱600,000', status: 'pending', date: '2024-09-15' },
-                    { milestone: 'Interior Work', amount: '₱750,000', status: 'locked', date: '2024-11-30' },
-                    { milestone: 'Final Completion', amount: '₱450,000', status: 'locked', date: '2025-02-15' }
-                  ].map((payment, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 bg-base-100 rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          payment.status === 'released' ? 'bg-success text-success-content' :
-                          payment.status === 'pending' ? 'bg-warning text-warning-content' : 'bg-base-300'
-                        }`}>
-                          {payment.status === 'released' ? (
-                            <RiCheckboxCircleLine className="w-5 h-5" />
-                          ) : (
-                            <RiLockLine className="w-5 h-5" />
-                          )}
-                        </div>
-                        <div>
-                          <h4 className="font-medium">{payment.milestone}</h4>
-                          <p className="text-sm text-base-content/70">Target: {payment.date}</p>
-                        </div>
+                
+                {/* Milestone Payments */}
+                <div className="space-y-4">
+                  {project.milestones.map((milestone, index) => (
+                    <div key={index} className="flex items-start gap-4 p-4 bg-base-100 rounded-lg border border-base-300">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                        milestone.paymentReleased ? 'bg-success text-success-content' : 'bg-base-300'
+                      }`}>
+                        {milestone.paymentReleased ? (
+                          <RiLockUnlockLine className="w-6 h-6" />
+                        ) : (
+                          <RiLockLine className="w-6 h-6" />
+                        )}
                       </div>
-                      <div className="text-right">
-                        <div className="font-bold">{payment.amount}</div>
-                        <div className={`badge ${
-                          payment.status === 'released' ? 'badge-success' :
-                          payment.status === 'pending' ? 'badge-warning' : 'badge-outline'
-                        }`}>
-                          {payment.status}
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-semibold">{milestone.title}</p>
+                            <p className="text-sm text-base-content/70">Amount: {milestone.amount}</p>
+                          </div>
+                          <div className={`badge ${
+                            milestone.paymentReleased ? 'badge-success' : 
+                            milestone.completed ? 'badge-warning' : 'badge-neutral'
+                          }`}>
+                            {milestone.paymentReleased ? 'Funds Released' : 
+                             milestone.completed ? 'Pending Verification' : 'Locked'}
+                          </div>
                         </div>
+                        
+                        {milestone.verification.verified && (
+                          <div className="mt-2 text-sm">
+                            <p>Verified on: {milestone.verification.date}</p>
+                            <p>By: {milestone.verification.by}</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="alert alert-info">
+              <RiShieldCheckLine className="w-6 h-6" />
+              <div>
+                <h3 className="font-bold">Escrow Protection</h3>
+                <div className="text-xs">
+                  Your funds are securely held in escrow and will only be released to the developer 
+                  after independent verification of each construction milestone.
                 </div>
               </div>
             </div>
@@ -564,22 +739,173 @@ function BuyerBuildSafe() {
 
         {/* Documents View */}
         {viewMode === 'documents' && (
-          <BuyerDocumentViewer
-            propertyInfo={{
-              name: project.projectName || project.name,
-              location: project.location || project.city,
-              unit: project.unit || `Unit ${project.unitNumber || 'N/A'}`
-            }}
-            buyerDocuments={project.propertyDocuments || []}
-            documentStatuses={{
-              contracts: { total: 2, submitted: 2, processing: 0, delivered: 2 },
-              permits: { total: 1, submitted: 1, processing: 0, delivered: 1 },
-              titles: { total: 1, submitted: 1, processing: 1, delivered: 0 },
-              receipts: { total: 2, submitted: 2, processing: 0, delivered: 2 }
-            }}
-            notifications={notifications}
-            setNotifications={setNotifications}
-          />
+          <div className="space-y-6">
+            {/* User's Document Submission Progress */}
+            <div className="card bg-base-200 shadow-xl">
+              <div className="card-body">
+                <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                  <RiFileTextLine className="w-6 h-6 text-primary" />
+                  Your Document Submission Progress
+                </h3>
+                
+                {(() => {
+                  const breakdown = getDocumentBreakdown(project.submissionData || {});
+                  
+                  return (
+                    <div className="space-y-4">
+                      {/* Progress Summary */}
+                      <div className="stats bg-base-100 shadow">
+                        <div className="stat">
+                          <div className="stat-figure text-primary">
+                            <RiCheckboxCircleLine className="w-8 h-8" />
+                          </div>
+                          <div className="stat-title">Documents Submitted</div>
+                          <div className="stat-value text-primary">{breakdown.completedCount}</div>
+                          <div className="stat-desc">of {breakdown.total} required</div>
+                        </div>
+                        
+                        <div className="stat">
+                          <div className="stat-figure text-warning">
+                            <RiTimeLine className="w-8 h-8" />
+                          </div>
+                          <div className="stat-title">Remaining</div>
+                          <div className="stat-value text-warning">{breakdown.missing.length}</div>
+                          <div className="stat-desc">documents needed</div>
+                        </div>
+                        
+                        <div className="stat">
+                          <div className="stat-figure text-info">
+                            <RiPercentLine className="w-8 h-8" />
+                          </div>
+                          <div className="stat-title">Completion</div>
+                          <div className="stat-value text-info">{project.progress}%</div>
+                          <div className="stat-desc">
+                            {project.progress === 100 ? 'All done!' : 'In progress'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Document Checklist */}
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {/* Completed Documents */}
+                        {breakdown.completed.length > 0 && (
+                          <div className="card bg-base-100 border border-success/20">
+                            <div className="card-body p-4">
+                              <h4 className="font-bold text-success flex items-center gap-2 mb-3">
+                                <RiCheckboxCircleLine className="w-5 h-5" />
+                                Submitted Documents ({breakdown.completed.length})
+                              </h4>
+                              <div className="space-y-2">
+                                {breakdown.completed.map((doc, index) => (
+                                  <div key={index} className="flex items-center gap-2 text-sm">
+                                    <RiCheckLine className="w-4 h-4 text-success flex-shrink-0" />
+                                    <span className="text-base-content">{doc}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Missing Documents */}
+                        {breakdown.missing.length > 0 && (
+                          <div className="card bg-base-100 border border-warning/20">
+                            <div className="card-body p-4">
+                              <h4 className="font-bold text-warning flex items-center gap-2 mb-3">
+                                <RiTimeLine className="w-5 h-5" />
+                                Pending Documents ({breakdown.missing.length})
+                              </h4>
+                              <div className="space-y-2">
+                                {breakdown.missing.map((doc, index) => (
+                                  <div key={index} className="flex items-center gap-2 text-sm">
+                                    <RiCloseLine className="w-4 h-4 text-warning flex-shrink-0" />
+                                    <span className="text-base-content/70">{doc}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action Button */}
+                      {breakdown.missing.length > 0 && (
+                        <div className="alert alert-warning">
+                          <RiAlertLine className="w-6 h-6" />
+                          <div>
+                            <h3 className="font-bold">Documents Still Needed</h3>
+                            <div className="text-xs">
+                              You have {breakdown.missing.length} remaining documents to submit. 
+                              Complete your submission to proceed with your property application.
+                            </div>
+                          </div>
+                          <button className="btn btn-warning btn-sm">
+                            Continue Submission
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Official Property Documents */}
+            <div className="card bg-base-200 shadow-xl">
+              <div className="card-body">
+                <h3 className="text-xl font-bold mb-6">Official Property Documents</h3>
+                
+                <div className="overflow-x-auto">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Document</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {project.documents.map((doc, index) => (
+                        <tr key={index}>
+                          <td>{doc.name}</td>
+                          <td>
+                            <span className={`badge ${
+                              doc.status === 'verified' ? 'badge-success' : 'badge-warning'
+                            }`}>
+                              {doc.status}
+                            </span>
+                          </td>
+                          <td>{doc.date}</td>
+                          <td>
+                            {doc.downloadUrl ? (
+                              <button className="btn btn-xs btn-primary">
+                                <RiDownloadLine className="w-3 h-3" />
+                                Download
+                              </button>
+                            ) : (
+                              <span className="text-xs text-base-content/70">Not available yet</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div className="alert alert-warning">
+              <RiAlertLine className="w-6 h-6" />
+              <div>
+                <h3 className="font-bold">Missing Documents?</h3>
+                <div className="text-xs">
+                  If any required documents are missing or delayed, please contact your agent 
+                  or use our support system to inquire about the status.
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     );
@@ -587,32 +913,25 @@ function BuyerBuildSafe() {
 
   return (
     <div className="space-y-8">
-      {/* My Purchased Properties Dashboard */}
+      {/* My Properties Dashboard */}
       <div>
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">My Property Construction Progress</h2>
-          <div className="flex items-center gap-4">
-            <NotificationSystem 
-              notifications={notifications} 
-              setNotifications={setNotifications} 
-              userRole="buyer" 
-            />
-            <div className="stats shadow bg-gradient-to-r from-primary to-secondary text-primary-content">
-              <div className="stat">
-                <div className="stat-title text-primary-content/80">Properties Owned</div>
-                <div className="stat-value">{purchasedProperties.length}</div>
+          <h2 className="text-2xl font-bold">My Property Applications</h2>
+          <div className="stats shadow bg-gradient-to-r from-primary to-secondary text-primary-content">
+            <div className="stat">
+              <div className="stat-title text-primary-content/80">Total Applications</div>
+              <div className="stat-value">{myProperties.length}</div>
+            </div>
+            <div className="stat">
+              <div className="stat-title text-primary-content/80">Approved</div>
+              <div className="stat-value text-success">
+                {myProperties.filter(p => p.status === 'approved').length}
               </div>
-              <div className="stat">
-                <div className="stat-title text-primary-content/80">Completed</div>
-                <div className="stat-value text-success">
-                  {purchasedProperties.filter(p => p.constructionProgress >= 100).length}
-                </div>
-              </div>
-              <div className="stat">
-                <div className="stat-title text-primary-content/80">In Construction</div>
-                <div className="stat-value text-info">
-                  {purchasedProperties.filter(p => p.constructionProgress < 100).length}
-                </div>
+            </div>
+            <div className="stat">
+              <div className="stat-title text-primary-content/80">In Review</div>
+              <div className="stat-value text-info">
+                {myProperties.filter(p => p.status === 'submitted').length}
               </div>
             </div>
           </div>
@@ -630,78 +949,176 @@ function BuyerBuildSafe() {
                       <div className="h-2 bg-base-300 rounded"></div>
                       <div className="h-8 bg-base-300 rounded"></div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : purchasedProperties.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {purchasedProperties.map((property) => (
-              <div 
-                key={property.id} 
-                className={`card bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border ${property.statusInfo.bgColor}`}
-                onClick={() => setSelectedProject(property.id)}
-              >
-                <figure className="h-48 bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-                  <RiBuildingLine className="text-6xl text-primary/60" />
-                </figure>
-                <div className="card-body p-6">
-                  <h2 className="card-title flex items-center justify-between">
-                    {property.projectName}
-                    <div className={`badge ${property.statusInfo.badge}`}>
-                      {property.statusInfo.text}
+                    <div className="flex gap-2">
+                      <div className="h-8 bg-base-300 rounded w-20"></div>
+                      <div className="h-8 bg-base-300 rounded w-24"></div>
                     </div>
-                  </h2>
-                  
-                  <div className="space-y-2 text-sm text-base-content/70">
-                    <p>📍 {property.location}</p>
-                    <p>🏠 {property.unit}</p>
-                    <p>💰 {property.totalPrice}</p>
-                    <p>📅 Purchased: {property.purchaseDate}</p>
-                    <p>🏗️ Expected Completion: {property.expectedCompletion}</p>
-                  </div>
-
-                  {/* Construction Progress Bar */}
-                  <div className="mt-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium">Construction Progress</span>
-                      <span className="text-sm font-bold">{property.constructionProgress}%</span>
-                    </div>
-                    <progress 
-                      className="progress progress-primary w-full" 
-                      value={property.constructionProgress} 
-                      max="100"
-                    ></progress>
-                  </div>
-
-                  <div className="card-actions justify-between items-center mt-4">
-                    <div className="flex gap-1">
-                      {property.constructionProgress >= 100 && <RiStarFill className="w-4 h-4 text-success" />}
-                      <RiShieldCheckLine className="w-4 h-4 text-primary" />
-                      <RiEyeLine className="w-4 h-4 text-info" />
-                    </div>
-                    <button className="btn btn-primary btn-sm">
-                      Track Construction
-                    </button>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-16">
-            <RiFileTextLine className="mx-auto text-6xl text-base-content/30 mb-6" />
-            <h3 className="text-xl font-bold text-base-content mb-2">No Purchased Properties Yet</h3>
-            <p className="text-base-content/60 mb-6">
-              You don't have any purchased properties under construction yet. 
-              Complete a property purchase through BuySmartPH first!
-            </p>
-            <button className="btn btn-primary">
-              <RiContactsLine className="w-4 h-4 mr-2" />
-              Go to BuySmartPH
-            </button>
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {myProperties.length === 0 ? (
+            <div className="col-span-full">
+              <div className="card bg-base-100 shadow-lg border border-base-200">
+                <div className="card-body text-center py-12">
+                  <RiFileTextLine className="w-16 h-16 mx-auto text-base-content/30 mb-4" />
+                  <h3 className="text-xl font-bold text-base-content mb-2">No Property Applications Yet</h3>
+                  <p className="text-base-content/70 mb-4">
+                    You haven't submitted any property applications yet. Start browsing properties to begin your journey!
+                  </p>
+                  <button className="btn btn-primary" onClick={() => window.location.href = '/dashboard/buysmartph'}>
+                    Browse Properties
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            myProperties.map((property) => {
+              const { statusInfo } = property;
+              const StatusIcon = statusInfo.icon;
+              
+              return (
+                <div 
+                  key={property.id} 
+                  className="card bg-base-100 shadow-lg border border-base-200 hover:shadow-xl transition-all duration-300 cursor-pointer"
+                  onClick={() => setSelectedProject(property.id)}
+                >
+                  <figure className="h-48 relative">
+                    <img src={property.image} alt={property.name} className="w-full h-full object-cover" />
+                    <div className="absolute top-4 right-4">
+                      <div className={`badge ${statusInfo.class} gap-1`}>
+                        <StatusIcon className="w-3 h-3" />
+                        <span className="text-xs">{statusInfo.label}</span>
+                      </div>
+                    </div>
+                  </figure>
+                  
+                  <div className="card-body p-6">
+                    {/* Property Header */}
+                    <div className="mb-4">
+                      <h2 className="card-title text-lg font-bold text-base-content mb-2 leading-tight">
+                        {property.name}
+                      </h2>
+                      <p className="text-sm text-base-content/80">{property.unit}</p>
+                    </div>
+
+                    {/* Application Progress */}
+                    <div className="mb-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-base-content/70">Application Progress</span>
+                        <span className={`font-bold ${
+                          property.progress === 100 ? 'text-success' : 
+                          property.progress >= 70 ? 'text-primary' : 
+                          property.progress >= 40 ? 'text-warning' : 
+                          property.progress > 0 ? 'text-info' : 'text-base-content/50'
+                        }`}>
+                          {property.progress}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-base-300 rounded-full h-3 mb-2">
+                        <div 
+                          className={`h-3 rounded-full transition-all duration-700 ${
+                            property.progress === 100 ? 'bg-gradient-to-r from-success to-success-content shadow-lg' : 
+                            property.progress >= 70 ? 'bg-gradient-to-r from-primary to-primary-focus shadow-md' : 
+                            property.progress >= 40 ? 'bg-gradient-to-r from-warning to-warning-content shadow-sm' : 
+                            property.progress > 0 ? 'bg-gradient-to-r from-info to-info-content' : 
+                            'bg-base-content/20'
+                          }`}
+                          style={{ width: `${Math.max(property.progress, 2)}%` }}
+                        ></div>
+                      </div>
+                      {/* Progress Description */}
+                      <div className="text-xs text-base-content/60">
+                        {property.progress === 100 ? 'All documents submitted ✓' :
+                         property.progress >= 70 ? 'Almost complete - few documents remaining' :
+                         property.progress >= 40 ? 'Making good progress on documents' :
+                         property.progress > 0 ? 'Getting started with document submission' :
+                         'Ready to begin document submission'}
+                      </div>
+                    </div>
+
+                    {/* Developer & Agent Info */}
+                    <div className="space-y-3 mb-4">
+                      {/* Developer */}
+                      <div className="flex items-center gap-3">
+                        <div className="avatar">
+                          <div className="w-8 h-8 rounded bg-primary/10">
+                            <img 
+                              src={property.developerLogo} 
+                              alt="Developer" 
+                              className="w-full h-full object-cover rounded"
+                              onError={(e) => {
+                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(property.developer)}&background=3b82f6&color=ffffff&size=100`;
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs text-base-content/60 font-medium">Developer</p>
+                          <p className="text-sm font-semibold text-base-content truncate">{property.developer}</p>
+                        </div>
+                      </div>
+
+                      {/* Agent */}
+                      <div className="flex items-center gap-3">
+                        <div className="avatar">
+                          <div className="w-8 h-8 rounded-full bg-success/10">
+                            <img 
+                              src={property.agentProfilePicture} 
+                              alt="Agent" 
+                              className="w-full h-full object-cover rounded-full"
+                              onError={(e) => {
+                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(property.agent)}&background=10b981&color=ffffff&size=100`;
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs text-base-content/60 font-medium">Agent</p>
+                          <p className="text-sm font-semibold text-base-content truncate">{property.agent}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Last Update */}
+                    <div className="mb-4 p-3 bg-base-200/50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <RiTimeLine className="w-4 h-4 text-base-content/60" />
+                        <div className="flex-1">
+                          <p className="text-xs text-base-content/60">Last Updated</p>
+                          <p className="text-sm font-medium text-base-content">
+                            {property.lastUpdateFormatted || 'Not available'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="card-actions justify-between">
+                      <button 
+                        className="btn btn-ghost btn-sm gap-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(`mailto:${property.agentEmail}`, '_blank');
+                        }}
+                      >
+                        <RiContactsLine className="w-4 h-4" />
+                        Contact Agent
+                      </button>
+                      <button className="btn btn-primary btn-sm gap-2">
+                        <RiEyeLine className="w-4 h-4" />
+                        View Details
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
         )}
       </div>
     </div>
