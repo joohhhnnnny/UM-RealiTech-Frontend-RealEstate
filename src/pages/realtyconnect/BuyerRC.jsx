@@ -1,6 +1,14 @@
 import React, { useState, useMemo, memo, useCallback, useEffect } from 'react';
-import { FaUserTie, FaStar, FaSpinner, FaCheckCircle } from 'react-icons/fa';
+import { FaUserTie, FaStar, FaSpinner, FaCheckCircle, FaPhone, FaEnvelope, FaCalendarAlt } from 'react-icons/fa';
 import { agentService } from '../../services/realtyConnectService';
+
+// Try to import useAuth, but provide fallback if not available
+let useAuth;
+try {
+  useAuth = require('../../contexts/AuthContext').useAuth;
+} catch (error) {
+  useAuth = () => ({ currentUser: null });
+}
 
 // Memoized Agent Card Component
 const AgentCard = memo(({ agent, onViewProfile, onContactAgent, renderStars }) => (
@@ -50,7 +58,7 @@ const AgentCard = memo(({ agent, onViewProfile, onContactAgent, renderStars }) =
 ));
 
 // Memoized Agent Profile Modal Component
-const AgentProfileModal = memo(({ selectedAgent, onClose, onScheduleMeeting, renderStars }) => {
+const AgentProfileModal = memo(({ selectedAgent, onClose, onScheduleMeeting, onContactAgent, renderStars, connectionLoading }) => {
   if (!selectedAgent) return null;
 
   return (
@@ -79,9 +87,14 @@ const AgentProfileModal = memo(({ selectedAgent, onClose, onScheduleMeeting, ren
             <h3 className="font-semibold text-lg">Contact Information</h3>
             <div className="space-y-2">
               <p className="flex items-center gap-2">
-                <FaUserTie className="text-purple-500" />
+                <FaEnvelope className="text-purple-500" />
                 <span className="text-base-content/70">Email:</span>
                 <span>{selectedAgent.email}</span>
+              </p>
+              <p className="flex items-center gap-2">
+                <FaUserTie className="text-purple-500" />
+                <span className="text-base-content/70">Agency:</span>
+                <span>{selectedAgent.agency || 'RealiTech Realty'}</span>
               </p>
               <p className="flex items-center gap-2">
                 <FaStar className="text-purple-500" />
@@ -115,9 +128,26 @@ const AgentProfileModal = memo(({ selectedAgent, onClose, onScheduleMeeting, ren
           <button 
             className="btn btn-primary gap-2"
             onClick={() => onScheduleMeeting(selectedAgent)}
+            disabled={connectionLoading}
           >
-            <FaUserTie />
+            {connectionLoading ? (
+              <FaSpinner className="animate-spin" />
+            ) : (
+              <FaCalendarAlt />
+            )}
             Schedule Meeting
+          </button>
+          <button 
+            className="btn btn-secondary gap-2"
+            onClick={() => onContactAgent(selectedAgent)}
+            disabled={connectionLoading}
+          >
+            {connectionLoading ? (
+              <FaSpinner className="animate-spin" />
+            ) : (
+              <FaEnvelope />
+            )}
+            Contact Agent
           </button>
           <button 
             className="btn btn-ghost"
@@ -139,6 +169,8 @@ function BuyerRC() {
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [connectionLoading, setConnectionLoading] = useState(false);
+  const { currentUser } = useAuth(); // Get current user from auth context
 
   // Load agents from Firebase
   useEffect(() => {
@@ -207,16 +239,78 @@ function BuyerRC() {
     setSelectedAgent(null);
   }, []);
 
-  const handleContactAgent = useCallback((agent) => {
-    // Implement contact functionality
-    alert(`Contacting ${agent.name} at ${agent.email}`);
-  }, []);
+  const handleContactAgent = useCallback(async (agent) => {
+    if (connectionLoading) return;
+    
+    setConnectionLoading(true);
+    try {
+      const buyerId = currentUser?.uid || 'demo-buyer-user';
+      
+      // Create a connection record in Firebase
+      await agentService.createConnection({
+        buyerId,
+        agentId: agent.userId || agent.id,
+        agentName: agent.name,
+        agentEmail: agent.email,
+        buyerName: currentUser?.displayName || 'Buyer User',
+        buyerEmail: currentUser?.email || 'buyer@realitech.com',
+        connectionType: 'contact',
+        status: 'initiated',
+        message: `${currentUser?.displayName || 'A buyer'} is interested in contacting you regarding real estate services.`,
+        createdAt: new Date()
+      });
+      
+      // Show success message with contact details
+      alert(`✅ Connection request sent to ${agent.name}!\n\n` +
+            `📧 Email: ${agent.email}\n` +
+            `📱 You can now contact them directly.\n\n` +
+            `The agent has been notified of your interest.`);
+            
+      console.log(`Buyer-Agent connection created: ${buyerId} -> ${agent.name}`);
+    } catch (error) {
+      console.error('Error creating connection:', error);
+      alert(`❌ Failed to connect with ${agent.name}. Please try again.`);
+    }
+    setConnectionLoading(false);
+  }, [currentUser, connectionLoading]);
 
-  const handleScheduleMeeting = useCallback((agent) => {
-    // Implement schedule meeting functionality
-    alert(`Scheduling meeting with ${agent.name}`);
-    setSelectedAgent(null);
-  }, []);
+  const handleScheduleMeeting = useCallback(async (agent) => {
+    if (connectionLoading) return;
+    
+    setConnectionLoading(true);
+    try {
+      const buyerId = currentUser?.uid || 'demo-buyer-user';
+      
+      // Create a meeting request in Firebase
+      await agentService.createConnection({
+        buyerId,
+        agentId: agent.userId || agent.id,
+        agentName: agent.name,
+        agentEmail: agent.email,
+        buyerName: currentUser?.displayName || 'Buyer User',
+        buyerEmail: currentUser?.email || 'buyer@realitech.com',
+        connectionType: 'meeting',
+        status: 'requested',
+        message: `${currentUser?.displayName || 'A buyer'} would like to schedule a meeting with you to discuss real estate services.`,
+        requestedDate: new Date(),
+        createdAt: new Date()
+      });
+      
+      // Show success message
+      alert(`✅ Meeting request sent to ${agent.name}!\n\n` +
+            `📅 Meeting request has been submitted\n` +
+            `📧 Agent will contact you at: ${currentUser?.email || 'your email'}\n` +
+            `⏰ They will reach out to schedule a convenient time.\n\n` +
+            `You can also contact them directly at: ${agent.email}`);
+            
+      console.log(`Meeting request created: ${buyerId} -> ${agent.name}`);
+      setSelectedAgent(null);
+    } catch (error) {
+      console.error('Error creating meeting request:', error);
+      alert(`❌ Failed to schedule meeting with ${agent.name}. Please try again.`);
+    }
+    setConnectionLoading(false);
+  }, [currentUser, connectionLoading]);
 
   // Search handler
   const handleSearchChange = useCallback((e) => {
@@ -314,7 +408,9 @@ function BuyerRC() {
           selectedAgent={selectedAgent}
           onClose={handleCloseModal}
           onScheduleMeeting={handleScheduleMeeting}
+          onContactAgent={handleContactAgent}
           renderStars={renderStars}
+          connectionLoading={connectionLoading}
         />
       )}
     </div>

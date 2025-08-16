@@ -34,6 +34,7 @@ const AGENTS_COLLECTION = 'agents';
 const COMMISSIONS_COLLECTION = 'commissions';
 const CONTRACTS_COLLECTION = 'contracts';
 const STATS_COLLECTION = 'stats';
+const CONNECTIONS_COLLECTION = 'buyer_agent_connections';
 
 // Mock data for fallback when Firebase fails
 const mockAgents = [
@@ -278,6 +279,79 @@ export const agentService = {
       console.error('Error setting up verified agents subscription, using mock data:', error);
       callback(mockAgents.filter(agent => agent.verificationStatus === 'verified' || !agent.verificationStatus));
       return () => {}; // Return empty unsubscribe function
+    }
+  },
+
+  // Create buyer-agent connection
+  createConnection: async (connectionData) => {
+    try {
+      const docRef = await addDoc(collection(db, CONNECTIONS_COLLECTION), {
+        ...connectionData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      console.log('Connection created with ID:', docRef.id);
+      return docRef.id;
+    } catch (error) {
+      console.error('Error creating connection:', error);
+      throw error;
+    }
+  },
+
+  // Get connections for an agent
+  getAgentConnections: async (agentId) => {
+    try {
+      const q = query(
+        collection(db, CONNECTIONS_COLLECTION), 
+        where('agentId', '==', agentId),
+        orderBy('createdAt', 'desc')
+      );
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error fetching agent connections:', error);
+      return [];
+    }
+  },
+
+  // Get connections for a buyer
+  getBuyerConnections: async (buyerId) => {
+    try {
+      const q = query(
+        collection(db, CONNECTIONS_COLLECTION), 
+        where('buyerId', '==', buyerId),
+        orderBy('createdAt', 'desc')
+      );
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error fetching buyer connections:', error);
+      return [];
+    }
+  },
+
+  // Subscribe to agent connections
+  subscribeToAgentConnections: (agentId, callback) => {
+    try {
+      const q = query(
+        collection(db, CONNECTIONS_COLLECTION), 
+        where('agentId', '==', agentId),
+        orderBy('createdAt', 'desc')
+      );
+      return onSnapshot(q, 
+        (snapshot) => {
+          const connections = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          callback(connections);
+        },
+        (error) => {
+          console.error('Error in agent connections subscription:', error);
+          callback([]);
+        }
+      );
+    } catch (error) {
+      console.error('Error setting up agent connections subscription:', error);
+      callback([]);
+      return () => {};
     }
   }
 };

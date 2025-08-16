@@ -1,8 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaUpload, FaFileAlt, FaIdCard, FaBuilding, FaTimes } from 'react-icons/fa';
 import VerificationService from '../services/verificationService';
 
+// Try to import useAuth, but provide fallback if not available
+let useAuth;
+try {
+  useAuth = require('../contexts/AuthContext').useAuth;
+} catch (error) {
+  useAuth = () => ({ currentUser: null });
+}
+
+// Additional fallback - try to get user from Firebase directly
+import { auth, db } from '../config/Firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
 const VerificationModal = ({ isOpen, onClose, userType, userId, onVerificationSubmitted }) => {
+  const { currentUser } = useAuth(); // Get current user from auth context
+  
+  // Initialize with empty values first
   const [formData, setFormData] = useState({
     prcLicense: '',
     expirationDate: '',
@@ -12,6 +27,114 @@ const VerificationModal = ({ isOpen, onClose, userType, userId, onVerificationSu
     email: '',
     yearsExperience: ''
   });
+  
+  // Function to get user data from Firestore
+  const fetchUserDataFromFirestore = async (userId) => {
+    try {
+      // Try different collections based on userType or try all
+      const collections = userType === 'agent' ? ['agents'] : ['buyers', 'agents', 'developers'];
+      
+      for (const collectionName of collections) {
+        const userDocRef = doc(db, collectionName, userId);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          console.log(`Found user data in ${collectionName}:`, userData);
+          return {
+            fullName: userData.fullName || `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
+            email: userData.email || currentUser?.email || '',
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || ''
+          };
+        }
+      }
+      
+      console.log('User document not found in any collection');
+      return null;
+    } catch (error) {
+      console.error('Error fetching user data from Firestore:', error);
+      return null;
+    }
+  };
+  
+  // Auto-fill user data when modal opens or currentUser changes
+  useEffect(() => {
+    const populateUserData = async () => {
+      // Try multiple sources for user data
+      const user = currentUser || auth.currentUser;
+      
+      console.log('VerificationModal - Available user sources:');
+      console.log('- currentUser from context:', currentUser);
+      console.log('- auth.currentUser:', auth.currentUser);
+      console.log('- Selected user:', user);
+      
+      if (user) {
+        // First try to get data from Firestore
+        const firestoreData = await fetchUserDataFromFirestore(user.uid);
+        
+        if (firestoreData) {
+          console.log('Using Firestore data:', firestoreData);
+          setFormData(prev => ({
+            ...prev,
+            fullName: firestoreData.fullName,
+            email: firestoreData.email
+          }));
+        } else {
+          // Fallback to Firebase Auth data
+          const userName = user.displayName || user.email?.split('@')[0] || 'User';
+          const userEmail = user.email || '';
+          
+          console.log('Using Firebase Auth data - Name:', userName, 'Email:', userEmail);
+          
+          setFormData(prev => ({
+            ...prev,
+            fullName: userName,
+            email: userEmail
+          }));
+        }
+      } else {
+        console.log('No user data available');
+      }
+    };
+    
+    populateUserData();
+  }, [currentUser, isOpen, userType]);
+  
+  // Additional effect to handle cases where currentUser loads after component mount
+  useEffect(() => {
+    if (isOpen) {
+      // Small delay to ensure auth has loaded
+      const timer = setTimeout(async () => {
+        const user = currentUser || auth.currentUser;
+        if (user) {
+          const firestoreData = await fetchUserDataFromFirestore(user.uid);
+          
+          if (firestoreData) {
+            console.log('Modal opened (delayed) - Using Firestore data:', firestoreData);
+            setFormData(prev => ({
+              ...prev,
+              fullName: firestoreData.fullName,
+              email: firestoreData.email
+            }));
+          } else {
+            const userName = user.displayName || user.email?.split('@')[0] || 'User';
+            const userEmail = user.email || '';
+            
+            console.log('Modal opened (delayed) - Using Auth data:', { userName, userEmail });
+            
+            setFormData(prev => ({
+              ...prev,
+              fullName: userName,
+              email: userEmail
+            }));
+          }
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
   
   const [documents, setDocuments] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -114,25 +237,31 @@ const VerificationModal = ({ isOpen, onClose, userType, userId, onVerificationSu
               <h4 className="font-semibold mb-4">Personal Information</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Full Name</label>
+                  <label className="label">
+                    <span className="label-text">Full Name</span>
+                  </label>
                   <input
                     type="text"
                     name="fullName"
-                    className="input input-bordered w-full"
+                    className="input input-bordered w-full bg-base-300"
                     value={formData.fullName}
                     onChange={handleInputChange}
                     required
+                    readOnly
                   />
                 </div>
                 <div>
-                  <label className="label">Email Address</label>
+                  <label className="label">
+                    <span className="label-text">Email Address</span>
+                  </label>
                   <input
                     type="email"
                     name="email"
-                    className="input input-bordered w-full"
+                    className="input input-bordered w-full bg-base-300"
                     value={formData.email}
                     onChange={handleInputChange}
                     required
+                    readOnly
                   />
                 </div>
                 <div>

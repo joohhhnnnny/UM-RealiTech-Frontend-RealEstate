@@ -17,6 +17,7 @@ try {
 
 function AgentRC() {
   const [commissions, setCommissions] = useState([]);
+  const [connections, setConnections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -94,12 +95,18 @@ function AgentRC() {
     // Load verification status
     const loadVerificationStatus = async () => {
       try {
-        // First, check if agent profile exists
+        // ALWAYS START AS NOT_SUBMITTED - AGENT MUST SUBMIT DOCUMENTS FRESH
+        setVerificationStatus('not_submitted');
+        
+        // Check if agent profile exists and reset their verification status
         const agentProfile = await agentService.getAgentByUserId(userId);
         
         if (agentProfile) {
-          // If agent exists, set status from their profile
-          setVerificationStatus(agentProfile.verificationStatus || 'not_submitted');
+          // Reset agent verification status to not_submitted
+          await agentService.updateAgent(agentProfile.id, {
+            verificationStatus: 'not_submitted'
+          });
+          console.log('Agent verification status reset to not_submitted');
           
           // Subscribe to agent profile changes
           const unsubscribe = agentService.subscribeToAgents((agents) => {
@@ -124,12 +131,34 @@ function AgentRC() {
     const cleanupCommissions = loadCommissions();
     const cleanupVerification = loadVerificationStatus();
 
+    // Load buyer connections
+    const loadConnections = async () => {
+      try {
+        const userId = currentUser?.uid || 'demo-agent-user';
+        const unsubscribe = agentService.subscribeToAgentConnections(
+          userId,
+          (connectionsData) => {
+            setConnections(connectionsData);
+            console.log('Agent connections loaded:', connectionsData.length);
+          }
+        );
+        return () => unsubscribe();
+      } catch (err) {
+        console.error('Error loading connections:', err);
+        return () => {};
+      }
+    };
+
+    const cleanupConnections = loadConnections();
+
     return async () => {
       const unsubscribeCommissions = await cleanupCommissions;
       const unsubscribeVerification = await cleanupVerification;
+      const unsubscribeConnections = await cleanupConnections;
       
       if (unsubscribeCommissions) unsubscribeCommissions();
       if (unsubscribeVerification) unsubscribeVerification();
+      if (unsubscribeConnections) unsubscribeConnections();
     };
   }, [currentUser]);
 
@@ -196,6 +225,14 @@ function AgentRC() {
   const handleVerificationSubmitted = useCallback(async (verificationData, documents) => {
     console.log('Starting verification submission with documents:', documents);
     
+    // CHECK IF DOCUMENTS ARE ACTUALLY SUBMITTED
+    if (!documents || documents.length === 0) {
+      alert('Please submit required documents before verification!');
+      return;
+    }
+    
+    console.log('Documents provided, proceeding with verification...');
+    
     // Set to pending immediately and close modal
     setVerificationStatus('pending');
     setShowVerificationModal(false);
@@ -215,7 +252,14 @@ function AgentRC() {
         documents
       );
       
-      console.log('Verification submitted to Firebase:', verificationResult);
+      console.log('Verification submission result:', verificationResult);
+      
+      // CHECK IF VERIFICATION WAS SUCCESSFUL
+      if (!verificationResult.success) {
+        throw new Error(verificationResult.error || 'Failed to submit verification');
+      }
+      
+      console.log(`Documents successfully processed: ${verificationResult.documentsCount} files with ID: ${verificationResult.verificationId}`);
       
       // Create or update agent profile with basic info
       const agentProfileData = {
@@ -235,10 +279,10 @@ function AgentRC() {
       const agentId = await agentService.createOrUpdateAgentProfile(userId, agentProfileData);
       console.log('Agent profile created/updated with ID:', agentId);
       
-      // Auto-verify after 2 seconds for demo purposes
+      // Auto-verify after 3 seconds for demo purposes
       setTimeout(async () => {
         try {
-          console.log('Auto-verifying agent after 2 seconds...');
+          console.log('Auto-verifying agent after 3 seconds...');
           
           // Update agent profile with verified status
           const existingAgent = await agentService.getAgentByUserId(userId);
@@ -263,7 +307,7 @@ function AgentRC() {
           setShowProcessingModal(false);
           setVerificationStatus('not_submitted'); // Reset on error
         }
-      }, 2000); // 2 second delay to simulate processing
+      }, 3000); // 3 second delay to simulate processing
       
     } catch (error) {
       console.error('Error during verification submission:', error);
@@ -316,72 +360,100 @@ function AgentRC() {
         onStartVerification={handleStartVerification}
       />
 
-      {/* Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="stat bg-base-100 rounded-box shadow">
-          <div className="stat-figure text-primary">
-            <FaChartLine className="w-6 h-6" />
-          </div>
-          <div className="stat-title">Active Listings</div>
-          <div className="stat-value">{stats.activeListings}</div>
-          <div className="stat-desc text-success">In progress</div>
-        </div>
-        
-        <div className="stat bg-base-100 rounded-box shadow">
-          <div className="stat-figure text-warning">
-            <FaRegClock className="w-6 h-6" />
-          </div>
-          <div className="stat-title">Pending Commissions</div>
-          <div className="stat-value text-sm">{stats.pendingCommissions}</div>
-          <div className="stat-desc">Awaiting release</div>
-        </div>
-        
-        <div className="stat bg-base-100 rounded-box shadow">
-          <div className="stat-figure text-success">
-            <FaMoneyBillWave className="w-6 h-6" />
-          </div>
-          <div className="stat-title">Released This Month</div>
-          <div className="stat-value text-sm">{stats.releasedThisMonth}</div>
-          <div className="stat-desc text-success">Paid out</div>
-        </div>
-        
-        <div className="stat bg-base-100 rounded-box shadow">
-          <div className="stat-figure text-info">
-            <FaChartLine className="w-6 h-6" />
-          </div>
-          <div className="stat-title">Sales This Month</div>
-          <div className="stat-value">{stats.salesThisMonth}</div>
-          <div className="stat-desc">Transactions</div>
-        </div>
-      </div>
-
-      {/* Commission Tracker */}
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="card-title">Commission Tracker</h2>
-              <p className="text-sm opacity-70">Track your commission payments and releases</p>
+      {/* RESTRICTION: Show content only if agent is verified */}
+      {verificationStatus !== 'verified' ? (
+        <div className="card bg-base-100 shadow-xl">
+          <div className="card-body text-center py-12">
+            <div className="mb-6">
+              <div className="w-24 h-24 mx-auto bg-warning/20 rounded-full flex items-center justify-center">
+                <FaRegClock className="w-12 h-12 text-warning" />
+              </div>
             </div>
-            {verificationStatus === 'verified' ? (
-              <button 
-                className="btn btn-primary gap-2"
-                onClick={() => setShowAddModal(true)}
-              >
-                <FaPlus />
-                Add Commission
-              </button>
-            ) : (
-              <button 
-                className="btn btn-disabled gap-2"
-                disabled
-                title="Verification required to add commissions"
-              >
-                <FaPlus />
-                Add Commission
-              </button>
-            )}
+            <h2 className="card-title justify-center text-2xl mb-4">
+              Verification Required
+            </h2>
+            <p className="text-base-content/70 mb-6 max-w-md mx-auto">
+              Please submit your verification documents to access your agent dashboard and connect with buyers.
+            </p>
+            <div className="alert alert-warning mb-6">
+              <svg className="w-6 h-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+              </svg>
+              <span>Agent features are disabled until verification is complete</span>
+            </div>
+            <div className="space-y-3">
+              <p className="font-semibold">Required for verification:</p>
+              <ul className="text-sm text-base-content/70 space-y-1">
+                <li>• PRC License</li>
+                <li>• Valid Government ID</li>
+                <li>• Professional Photo</li>
+              </ul>
+            </div>
+            <button 
+              className="btn btn-primary mt-6"
+              onClick={handleStartVerification}
+            >
+              Start Verification Process
+            </button>
           </div>
+        </div>
+      ) : (
+        <>
+          {/* Stats Section - Only visible when verified */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="stat bg-base-100 rounded-box shadow">
+              <div className="stat-figure text-primary">
+                <FaChartLine className="w-6 h-6" />
+              </div>
+              <div className="stat-title">Active Listings</div>
+              <div className="stat-value">{stats.activeListings}</div>
+              <div className="stat-desc text-success">In progress</div>
+            </div>
+            
+            <div className="stat bg-base-100 rounded-box shadow">
+              <div className="stat-figure text-warning">
+                <FaRegClock className="w-6 h-6" />
+              </div>
+              <div className="stat-title">Pending Commissions</div>
+              <div className="stat-value text-sm">{stats.pendingCommissions}</div>
+              <div className="stat-desc">Awaiting release</div>
+            </div>
+            
+            <div className="stat bg-base-100 rounded-box shadow">
+              <div className="stat-figure text-success">
+                <FaMoneyBillWave className="w-6 h-6" />
+              </div>
+              <div className="stat-title">Released This Month</div>
+              <div className="stat-value text-sm">{stats.releasedThisMonth}</div>
+              <div className="stat-desc text-success">Paid out</div>
+            </div>
+            
+            <div className="stat bg-base-100 rounded-box shadow">
+              <div className="stat-figure text-info">
+                <FaChartLine className="w-6 h-6" />
+              </div>
+              <div className="stat-title">Sales This Month</div>
+              <div className="stat-value">{stats.salesThisMonth}</div>
+              <div className="stat-desc">Transactions</div>
+            </div>
+          </div>
+
+          {/* Commission Tracker - Only visible when verified */}
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="card-title">Commission Tracker</h2>
+                  <p className="text-sm opacity-70">Track your commission payments and releases</p>
+                </div>
+                <button 
+                  className="btn btn-primary gap-2"
+                  onClick={() => setShowAddModal(true)}
+                >
+                  <FaPlus />
+                  Add Commission
+                </button>
+              </div>
           
           {commissions.length === 0 ? (
             <div className="text-center py-8">
@@ -445,7 +517,78 @@ function AgentRC() {
             </div>
           )}
         </div>
+          </div>
+
+          {/* Buyer Connections Section - Only visible when verified */}
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <div className="flex justify-between items-center">
+                <h2 className="card-title">Buyer Connections</h2>
+                <div className="badge badge-info">{connections.length} total</div>
+              </div>          {connections.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-base-content/70">No buyer connections yet</p>
+              <p className="text-sm text-base-content/50">Buyers will appear here when they contact you</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="table table-zebra">
+                <thead>
+                  <tr>
+                    <th>Buyer</th>
+                    <th>Contact</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Message</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {connections.map((connection) => (
+                    <tr key={connection.id}>
+                      <td>
+                        <div className="font-medium">{connection.buyerName}</div>
+                      </td>
+                      <td>
+                        <div className="text-sm">
+                          <div>📧 {connection.buyerEmail}</div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`badge ${connection.connectionType === 'meeting' ? 'badge-primary' : 'badge-secondary'}`}>
+                          {connection.connectionType === 'meeting' ? '📅 Meeting' : '📧 Contact'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`badge ${connection.status === 'initiated' ? 'badge-warning' : 'badge-info'}`}>
+                          {connection.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="text-sm">
+                          {connection.createdAt?.toDate ? 
+                            connection.createdAt.toDate().toLocaleDateString() : 
+                            new Date(connection.createdAt).toLocaleDateString()
+                          }
+                        </div>
+                      </td>
+                      <td>
+                        <div className="text-sm max-w-xs truncate" title={connection.message}>
+                          {connection.message}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
+
+        {/* End of verified content */}
+        </>
+      )}
 
       {/* Add Commission Modal */}
       {showAddModal && (
@@ -462,6 +605,7 @@ function AgentRC() {
           onClose={() => setShowVerificationModal(false)}
           userType="agent"
           userId={currentUser?.uid || 'demo-agent-user'}
+          currentUser={currentUser}
           onVerificationSubmitted={handleVerificationSubmitted}
         />
       )}
