@@ -4,7 +4,6 @@ import { format } from 'date-fns';
 import ActivityLoggerService from '../../services/ActivityLoggerService';
 import DashboardNavbar from '../../components/Sidebar';
 import FirebaseIndexStatus from '../../components/FirebaseIndexStatus';
-import ManualActivityCreator from '../../components/ManualActivityCreator';
 import {
   RiBarChartBoxLine,
   RiShieldKeyholeLine,
@@ -348,12 +347,6 @@ const ActivityLog = () => {
               </button>
             </div>
           </div>
-
-          {/* Firebase Index Status - Temporary debugging component */}
-          <FirebaseIndexStatus />
-
-          {/* Manual Activity Creator - Development tool */}
-          <ManualActivityCreator />
 
           {/* Statistics Cards - Simplified */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
