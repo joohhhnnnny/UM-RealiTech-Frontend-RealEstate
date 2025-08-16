@@ -21,6 +21,7 @@ import Settings from './pages/quickactions/Settings';
 import ActivityLog from './pages/quickactions/ActivityLog';
 import DashboardLayout from './layouts/DashboardLayout';
 import AuthContainer from './pages/Authentication/AuthContainer.jsx';
+import SystemTourDemo from './components/SystemTourDemo.jsx';
 
 function App() {
     const [isLoaded, setIsLoaded] = useState(false); // Add this state declaration
@@ -54,6 +55,7 @@ function App() {
                     <Route path="/dashboard/messages" element={<Msg />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/dashboard/audit-log" element={<ActivityLog />} />
+                    <Route path="/tour-demo" element={<SystemTourDemo />} />
                 </Routes>
                 <ChatbotIcon />
             </div>

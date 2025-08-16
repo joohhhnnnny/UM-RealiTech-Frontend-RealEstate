@@ -868,6 +868,32 @@ const Settings = () => {
                           onChange={() => setIsDarkMode(!isDarkMode)}
                         />
                       </div>
+
+                      {/* System Tour Section */}
+                      <div className="p-4 bg-base-200 rounded-lg">
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <RiBookOpenLine className="w-5 h-5" />
+                          System Tour
+                        </h4>
+                        <p className="text-sm text-base-content/70 mb-4">
+                          Take the guided tour again to learn about all the features available to you.
+                        </p>
+                        <button
+                          className="btn btn-outline btn-primary btn-sm"
+                          onClick={() => {
+                            // Clear the tour completion flag
+                            if (currentUser) {
+                              const tourKey = `tour_completed_${currentUser.uid}`;
+                              localStorage.removeItem(tourKey);
+                              // Refresh the page to trigger the tour
+                              window.location.reload();
+                            }
+                          }}
+                        >
+                          <RiBookOpenLine className="w-4 h-4" />
+                          Restart System Tour
+                        </button>
+                      </div>
                     </div>
                   )}
 

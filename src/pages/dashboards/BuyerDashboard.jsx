@@ -580,7 +580,7 @@ const BuyerDashboard = () => {
           </div>
 
           {/* My Properties Section */}
-          <div className="mt-8">
+          <div className="mt-8" data-tour="saved-properties">
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h2 className="text-2xl font-bold">My Saved Properties</h2>
@@ -591,6 +591,7 @@ const BuyerDashboard = () => {
               <button 
                 className="btn btn-primary gap-2"
                 onClick={handleBrowseProperties}
+                data-tour="properties"
               >
                 <RiEyeLine className="w-4 h-4" />
                 Browse Properties

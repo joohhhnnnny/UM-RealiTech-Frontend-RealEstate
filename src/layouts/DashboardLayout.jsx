@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Sidebar from '../components/Sidebar.jsx';
+import SystemTour from '../components/SystemTour.jsx';
 
 function DashboardLayout({ children, userRole }) {
   // Single source of truth for sidebar state
@@ -22,6 +23,14 @@ function DashboardLayout({ children, userRole }) {
       >
         {children}
       </motion.main>
+      
+      {/* System Tour for first-time users */}
+      <SystemTour 
+        userRole={userRole}
+        onComplete={() => {
+          console.log('Tour completed for', userRole);
+        }}
+      />
     </div>
   );
 }

@@ -253,6 +253,22 @@ const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
 const NavigationLinks = React.memo(({ filteredSolutions, isOpen, userRole }) => {
   const location = useLocation();
 
+  // Function to get data-tour attribute based on title
+  const getTourAttribute = (title) => {
+    switch (title) {
+      case 'BuySmart PH':
+        return 'buysmartph';
+      case 'RealtyConnect':
+        return 'realtyconnect';
+      case 'PropGuard':
+        return 'propguard';
+      case 'BuildSafe':
+        return 'buildsafe';
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="px-4 space-y-2">
       {filteredSolutions.map(({ title, path, icon: Icon, tooltip, color }) => {
@@ -263,6 +279,8 @@ const NavigationLinks = React.memo(({ filteredSolutions, isOpen, userRole }) => 
             : 'hover:bg-base-200'
         } ${!isOpen ? 'tooltip tooltip-right font-semibold' : ''}`;
 
+        const tourAttribute = getTourAttribute(title);
+
         return (
           <Link
             key={title}
@@ -270,6 +288,7 @@ const NavigationLinks = React.memo(({ filteredSolutions, isOpen, userRole }) => 
             state={{ userRole }}
             className={classes}
             data-tip={!isOpen ? tooltip : ''}
+            data-tour={tourAttribute}
           >
             <Icon className={`w-6 h-6 ${isActive ? 'text-primary' : color}`} />
             {isOpen && <span className="text-sm font-medium">{title}</span>}
@@ -436,7 +455,10 @@ function Sidebar({ userRole: propUserRole = 'buyer', isOpen, setIsOpen }) {
   }, [currentUserRole]);
 
   return (
-    <motion.div className={`fixed left-0 top-0 h-screen bg-base-100 border-r border-base-200 shadow-lg z-50 ${isOpen ? 'w-64' : 'w-20'} transition-all duration-300`}>
+    <motion.div 
+      className={`fixed left-0 top-0 h-screen bg-base-100 border-r border-base-200 shadow-lg z-50 ${isOpen ? 'w-64' : 'w-20'} transition-all duration-300`}
+      data-tour="sidebar"
+    >
       <div className="flex flex-col h-full">
         {/* Top */}
         <div className="p-4 border-b border-base-200 space-y-4">
