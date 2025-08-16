@@ -164,7 +164,7 @@ function BuyerBSPH() {
             initial={{ scale: 0.95 }}
             animate={{ scale: 1 }}
             whileHover={{ scale: 1.02 }}
-            className={`card bg-gradient-to-br ${step.bgGradient} backdrop-blur-xl cursor-pointer transition-all duration-300 ${
+            className={`card bg-gradient-to-br ${step.bgGradient} backdrop-blur-xl cursor-pointer transition-all duration-300 h-60 ${
               activeStep === step.id ? 'ring-2 ring-primary' : ''
             } ${
               step.id === 5 && !profileComplete ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
@@ -178,32 +178,32 @@ function BuyerBSPH() {
               setActiveStep(step.id);
             }}
           >
-            <div className="card-body p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <step.icon className={`w-8 h-8 ${step.color} mb-4`} />
-                  <h3 className={`text-lg font-bold ${step.color} ${
-                    step.id === 5 && !profileComplete ? 'opacity-50' : ''
-                  }`}>
-                    {step.title}
-                    {step.id === 5 && !profileComplete && (
-                      <span className="text-xs text-warning block font-normal mt-1">
-                        Complete profile first
-                      </span>
-                    )}
-                  </h3>
-                  <p className={`text-base-content/70 text-sm mt-2 ${
-                    step.id === 5 && !profileComplete ? 'opacity-50' : ''
-                  }`}>
-                    {step.description}
-                  </p>
+            <div className="card-body p-6 flex flex-col justify-between h-full">
+              <div className="flex-1">
+                <div className="flex items-start justify-between mb-4">
+                  <step.icon className={`w-8 h-8 ${step.color} flex-shrink-0`} />
+                  {activeStep === step.id && (
+                    <div className="rounded-full bg-success/10 p-1 flex-shrink-0">
+                      <RiCheckboxCircleLine className="w-5 h-5 text-success" />
+                    </div>
+                  )}
                 </div>
-                {activeStep === step.id && (
-                  <div className="rounded-full bg-success/10 p-1">
-                    <RiCheckboxCircleLine className="w-5 h-5 text-success" />
-                  </div>
+                <h3 className={`text-lg font-bold ${step.color} mb-2 leading-tight ${
+                  step.id === 5 && !profileComplete ? 'opacity-50' : ''
+                }`}>
+                  {step.title}
+                </h3>
+                {step.id === 5 && !profileComplete && (
+                  <span className="text-xs text-warning block font-normal mb-2">
+                    Complete profile first
+                  </span>
                 )}
               </div>
+              <p className={`text-base-content/70 text-sm leading-relaxed ${
+                step.id === 5 && !profileComplete ? 'opacity-50' : ''
+              }`}>
+                {step.description}
+              </p>
             </div>
           </motion.div>
         ))}

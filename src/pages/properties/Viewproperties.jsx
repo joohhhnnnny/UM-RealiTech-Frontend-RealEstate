@@ -5,6 +5,7 @@ import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../../config/Firebase';
 import Navbar from "../../components/Navbar.jsx";
 import Footer from "../../components/Footer.jsx";
+import Toast from "../../components/Toast.jsx";
 import {
   ArrowLeftIcon,
   MapPinIcon,
@@ -17,8 +18,6 @@ import {
   TagIcon,
   PhoneIcon,
   EnvelopeIcon,
-  ShareIcon,
-  HeartIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   XMarkIcon,
@@ -26,7 +25,6 @@ import {
   ClockIcon,
   CurrencyDollarIcon as DollarIcon,
 } from "@heroicons/react/24/outline";
-import { HeartIcon as HeartIconSolid } from "@heroicons/react/24/solid";
 
 function ViewProperties() {
   const { id } = useParams();
@@ -34,9 +32,9 @@ function ViewProperties() {
   const [property, setProperty] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
-  const [isFavorited, setIsFavorited] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mapError, setMapError] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [propertyStats, setPropertyStats] = useState({
     viewsToday: 0,
     totalViews: 0,
@@ -120,6 +118,25 @@ function ViewProperties() {
     }
     return agentName;
   };
+
+  // Function to close toast
+  const handleCloseToast = () => {
+    setToast({ show: false, message: '', type: 'success' });
+  };
+
+  // Check for navigation state message (from login redirect)
+  useEffect(() => {
+    const state = window.history.state;
+    if (state?.usr?.message) {
+      setToast({
+        show: true,
+        message: state.usr.message,
+        type: 'info'
+      });
+      // Clear the state to prevent showing the message again
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -287,24 +304,6 @@ function ViewProperties() {
 
   const handleNextImage = () => {
     setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-  };
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: property.title,
-          text: `Check out this property: ${property.title}`,
-          url: window.location.href,
-        });
-      } catch (err) {
-        console.log("Error sharing:", err);
-      }
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(window.location.href);
-      // You could add a toast notification here
-    }
   };
 
   // Helper function to generate Google Maps URL for external links
@@ -752,37 +751,6 @@ function ViewProperties() {
                 transition={{ duration: 0.5, delay: 0.3 }}
                 className="sticky top-32 space-y-6"
               >
-                {/* Enhanced Quick Actions */}
-                <div className="bg-base-100/90 backdrop-blur-sm p-6 rounded-2xl border border-base-300/50 shadow-lg">
-                  <h3 className="text-lg font-bold text-base-content mb-4 flex items-center gap-2">
-                    <HeartIcon className="w-5 h-5 text-primary" />
-                    Quick Actions
-                  </h3>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setIsFavorited(!isFavorited)}
-                      className={`btn flex-1 gap-2 transition-all duration-300 ${
-                        isFavorited 
-                          ? "btn-error text-error-content shadow-lg" 
-                          : "btn-outline text-base-content border-base-content/20 hover:btn-primary hover:text-primary-content"
-                      }`}
-                    >
-                      {isFavorited ? (
-                        <HeartIconSolid className="w-5 h-5" />
-                      ) : (
-                        <HeartIcon className="w-5 h-5" />
-                      )}
-                      {isFavorited ? "Saved" : "Save"}
-                    </button>
-                    <button
-                      onClick={handleShare}
-                      className="btn btn-outline text-base-content border-base-content/20 hover:btn-primary hover:text-primary-content transition-all duration-300"
-                    >
-                      <ShareIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-
                 {/* Enhanced Contact Information */}
                 <div className="bg-base-100/90 backdrop-blur-sm p-6 rounded-2xl border border-base-300/50 shadow-lg">
                   <h3 className="text-lg font-bold text-base-content mb-4 flex items-center gap-2">
@@ -1032,6 +1000,16 @@ function ViewProperties() {
       </div>
 
       <Footer />
+
+      {/* Toast Notification */}
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={handleCloseToast}
+        position="top-right"
+        duration={4000}
+      />
     </>
   );
 }

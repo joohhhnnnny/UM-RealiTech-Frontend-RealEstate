@@ -2,11 +2,22 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { MagnifyingGlassIcon, MapPinIcon, CurrencyDollarIcon, HomeIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
-import listingsData from '../../json/listings.json';
+// Remove the JSON import and add Firebase imports
+import { db } from '../../config/Firebase';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 
 const formatPrice = (price) => {
   if (!price) return '';
-  return price.replace('/mo', '').trim();
+  // Handle both string and number prices
+  if (typeof price === 'number') {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price);
+  }
+  return price.toString().replace('/mo', '').trim();
 };
 
 const SearchResultItem = React.memo(({ listing, onClick }) => (
@@ -33,10 +44,10 @@ const SearchResultItem = React.memo(({ listing, onClick }) => (
             <CurrencyDollarIcon className="w-4 h-4" />
             <span>{formatPrice(listing.price)}</span>
           </div>
-          {listing.beds && (
+          {(listing.bedrooms || listing.beds) && (
             <div className="flex items-center gap-1 text-sm text-base-content/70">
               <HomeIcon className="w-4 h-4" />
-              <span>{listing.beds} {listing.beds === '1' ? 'Bed' : 'Beds'}</span>
+              <span>{listing.bedrooms || listing.beds} {(listing.bedrooms || listing.beds) === '1' ? 'Bed' : 'Beds'}</span>
             </div>
           )}
         </div>
@@ -89,6 +100,9 @@ function Homepage() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [searchPlaceholder, setSearchPlaceholder] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [listingsData, setListingsData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const searchRef = useRef(null);
 
   const phrases = useMemo(() => [
@@ -97,6 +111,50 @@ function Homepage() {
     'Discover condos in Manila...',
     'Explore houses in Davao...'
   ], []);
+
+  // Fetch listings from Firestore
+  useEffect(() => {
+    const fetchListings = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Create a query to get all listings, ordered by creation date (newest first)
+        const listingsQuery = query(
+          collection(db, 'listings'),
+          orderBy('createdAt', 'desc')
+        );
+        
+        const querySnapshot = await getDocs(listingsQuery);
+        const fetchedListings = [];
+        
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          fetchedListings.push({
+            id: doc.id,
+            ...data,
+            // Ensure consistent field naming for search
+            title: data.title || data.propertyName || 'Untitled Property',
+            location: data.location || data.address || data.city || '',
+            price: data.price || data.listingPrice || 0,
+            bedrooms: data.bedrooms || data.beds || 0,
+            bathrooms: data.bathrooms || data.baths || 0,
+          });
+        });
+        
+        setListingsData(fetchedListings);
+        console.log(`Fetched ${fetchedListings.length} listings from Firestore`);
+        
+      } catch (error) {
+        console.error('Error fetching listings from Firestore:', error);
+        setError('Failed to load properties. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchListings();
+  }, []);
 
   // Debounce search input
   useEffect(() => {
@@ -107,14 +165,20 @@ function Homepage() {
   }, [searchTerm]);
 
   const filteredResults = useMemo(() => {
-    if (!debouncedSearchTerm.trim()) return [];
+    if (!debouncedSearchTerm.trim() || loading) return [];
+    
     const searchValue = debouncedSearchTerm.toLowerCase();
-    return listingsData.filter(listing =>
-      (listing.title && listing.title.toLowerCase().includes(searchValue)) ||
-      (listing.location && listing.location.toLowerCase().includes(searchValue)) ||
-      (listing.price && listing.price.toLowerCase().includes(searchValue))
-    ).slice(0, 5);
-  }, [debouncedSearchTerm]);
+    return listingsData.filter(listing => {
+      // Search through multiple fields
+      const titleMatch = listing.title && listing.title.toLowerCase().includes(searchValue);
+      const locationMatch = listing.location && listing.location.toLowerCase().includes(searchValue);
+      const priceMatch = listing.price && listing.price.toString().toLowerCase().includes(searchValue);
+      const propertyTypeMatch = listing.propertyType && listing.propertyType.toLowerCase().includes(searchValue);
+      const descriptionMatch = listing.description && listing.description.toLowerCase().includes(searchValue);
+      
+      return titleMatch || locationMatch || priceMatch || propertyTypeMatch || descriptionMatch;
+    }).slice(0, 5); // Limit to 5 results for performance
+  }, [debouncedSearchTerm, listingsData, loading]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -182,8 +246,18 @@ function Homepage() {
   }, []);
 
   const handleResultClick = useCallback((listing) => {
-    navigate(`/properties#${listing.id}`);
+    // Clear search state
     setIsSearchFocused(false);
+    setSearchTerm('');
+    
+    // Navigate directly to the ViewProperties page with the property ID
+    // Using the correct route that matches App.jsx: /properties/:id
+    navigate(`/properties/${listing.id}`);
+    
+    // Optional: Add smooth scroll to top after navigation
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
   }, [navigate]);
 
   const scrollToSolutions = useCallback(() => {
@@ -241,6 +315,9 @@ function Homepage() {
                 searchPlaceholder={searchPlaceholder}
                 searchResults={filteredResults}
                 handleResultClick={handleResultClick}
+                loading={loading}
+                error={error}
+                listingsCount={listingsData.length}
               />
             </motion.div>
 
@@ -275,20 +352,20 @@ function Homepage() {
                     {/* Complete border frame that starts from corners and expands */}
                     <div className="absolute inset-0 rounded-2xl transition-all duration-500 ease-out
                                     border-3 border-transparent
-                                    group-hover:border-blue-400/80 dark:group-hover:border-white/80
+                                    group-hover:border-blue-500/80
                                     before:absolute before:inset-0 before:rounded-2xl
                                     before:border-4 before:border-transparent
-                                    before:bg-gradient-to-r before:from-transparent before:via-blue-400/30 dark:before:via-white/20 before:to-transparent
+                                    before:bg-gradient-to-r before:from-transparent before:via-blue-100/30 before:to-transparent
                                     before:opacity-0 before:transition-opacity before:duration-500
                                     group-hover:before:opacity-100"></div>
                     
                     {/* Corner accent elements for the expanding effect */}
-                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-400/80 dark:border-white/80 rounded-tr-2xl
+                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-blue-500/80 rounded-tr-2xl
                                     transition-all duration-500 ease-out
-                                    group-hover:w-full group-hover:h-full group-hover:border-blue-400/80 dark:group-hover:border-white/80"></div>
-                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-400/80 dark:border-white/80 rounded-bl-2xl
+                                    group-hover:w-full group-hover:h-full group-hover:border-blue-500/80"></div>
+                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-500/80 rounded-bl-2xl
                                     transition-all duration-500 ease-out
-                                    group-hover:w-full group-hover:h-full group-hover:border-blue-400/80 dark:group-hover:border-white/80"></div>
+                                    group-hover:w-full group_hover:h-full group-hover:border-blue-500/80"></div>
                   </div>
                 </motion.div>
 
@@ -310,7 +387,18 @@ function Homepage() {
   );
 }
 
-const SearchInput = React.memo(({ searchTerm, handleSearch, isSearchFocused, setIsSearchFocused, searchPlaceholder, searchResults, handleResultClick }) => (
+const SearchInput = React.memo(({ 
+  searchTerm, 
+  handleSearch, 
+  isSearchFocused, 
+  setIsSearchFocused, 
+  searchPlaceholder, 
+  searchResults, 
+  handleResultClick,
+  loading,
+  error,
+  listingsCount
+}) => (
   <div className="relative">
     <div className="relative">
       <input
@@ -318,14 +406,29 @@ const SearchInput = React.memo(({ searchTerm, handleSearch, isSearchFocused, set
         value={searchTerm}
         onChange={(e) => handleSearch(e.target.value)}
         onFocus={() => setIsSearchFocused(true)}
-        placeholder={isSearchFocused ? 'Type to search properties...' : searchPlaceholder}
+        placeholder={isSearchFocused ? `Search ${listingsCount} properties...` : searchPlaceholder}
         className="input input-lg w-full px-6 py-5 text-lg rounded-2xl transition-all duration-300 pl-16 bg-base-200/90 backdrop-blur-sm border-2 border-base-300 focus:border-primary focus:outline-none shadow-xl hover:shadow-2xl placeholder-base-content/50 text-base-content"
+        disabled={loading}
       />
       <MagnifyingGlassIcon className="absolute left-5 top-1/2 transform -translate-y-1/2 w-6 h-6 pointer-events-none text-base-content/60" />
+      
+      {/* Loading indicator */}
+      {loading && (
+        <div className="absolute right-5 top-1/2 transform -translate-y-1/2">
+          <div className="loading loading-spinner loading-sm text-primary"></div>
+        </div>
+      )}
     </div>
 
+    {/* Error message */}
+    {error && (
+      <div className="absolute z-50 w-full mt-3 p-4 bg-error/10 border border-error/20 rounded-2xl">
+        <p className="text-error text-sm">{error}</p>
+      </div>
+    )}
+
     <AnimatePresence>
-      {isSearchFocused && searchResults.length > 0 && (
+      {isSearchFocused && searchResults.length > 0 && !loading && (
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -336,6 +439,21 @@ const SearchInput = React.memo(({ searchTerm, handleSearch, isSearchFocused, set
           {searchResults.map((listing) => (
             <SearchResultItem key={listing.id} listing={listing} onClick={handleResultClick} />
           ))}
+        </motion.div>
+      )}
+      
+      {/* No results message */}
+      {isSearchFocused && searchTerm && searchResults.length === 0 && !loading && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+          className="absolute z-50 w-full mt-3 p-4 bg-base-100/95 backdrop-blur-md rounded-2xl shadow-2xl border border-base-300"
+        >
+          <p className="text-base-content/70 text-center">
+            No properties found for "{searchTerm}". Try searching with different keywords.
+          </p>
         </motion.div>
       )}
     </AnimatePresence>
