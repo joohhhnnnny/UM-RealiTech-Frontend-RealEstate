@@ -18,7 +18,7 @@ import lightLogo from '/src/assets/logo/logo-for-light.png';
 import darkLogo from '/src/assets/logo/logo-for-dark.png';
 import PropTypes from 'prop-types';
 
-const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
+const ProfileSection = React.memo(({ isOpen, currentUser, userRole, handleLogout, isLoggingOut }) => {
   const navigate = useNavigate();
   const auth = getAuth();
 
@@ -66,54 +66,6 @@ const ProfileSection = React.memo(({ isOpen, currentUser, userRole }) => {
     
     // Using UI Avatars - more reliable and professional looking
     return `https://ui-avatars.com/api/?name=${config.name}&background=${config.background}&color=${config.color}&size=${config.size}&font-size=0.6&rounded=true&bold=true`;
-  };
-
-  const handleLogout = async () => {
-    try {
-      // Log the logout event before signing out
-      await ActivityLoggerService.logAuthActivity(
-        currentUser.uid,
-        ActivityLoggerService.ACTIVITY_TYPES.LOGOUT,
-        {
-          email: currentUser.email,
-          userRole: userRole,
-          userNumber: currentUser.userNumber,
-          logoutMethod: 'user_initiated',
-          timestamp: new Date().toISOString(),
-          sessionDuration: currentUser.metadata?.lastSignInTime ? 
-            Date.now() - new Date(currentUser.metadata.lastSignInTime).getTime() : 0
-        }
-      );
-
-      await signOut(auth);
-      // Clear localStorage
-      localStorage.removeItem('userData');
-      localStorage.removeItem('currentSession');
-      sessionStorage.clear();
-      
-      // Navigate to home page
-      navigate('/');
-    } catch (error) {
-      console.error('Logout error:', error);
-      
-      // Log the failed logout attempt
-      try {
-        await ActivityLoggerService.logGeneralActivity(
-          currentUser?.uid || 'unknown',
-          'logout_failed',
-          ActivityLoggerService.CATEGORIES.AUTHENTICATION,
-          {
-            email: currentUser?.email || 'unknown',
-            userRole: userRole,
-            errorCode: error.code,
-            errorMessage: error.message,
-            timestamp: new Date().toISOString()
-          }
-        );
-      } catch (logError) {
-        console.error('Error logging failed logout:', logError);
-      }
-    }
   };
 
   const avatarSrc = currentUser.profilePicture || getPlaceholderAvatar(userRole);
@@ -369,6 +321,8 @@ function Sidebar({ userRole: propUserRole = 'buyer', isOpen, setIsOpen }) {
   const [isDark, setIsDark] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [currentUserRole, setCurrentUserRole] = useState(propUserRole);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const auth = getAuth();
 
   useEffect(() => {
     const userData = localStorage.getItem('userData');
@@ -395,7 +349,7 @@ function Sidebar({ userRole: propUserRole = 'buyer', isOpen, setIsOpen }) {
     const next = !isDark;
     setIsDark(next);
     const theme = next ? 'dark' : 'light';
-    localStorage.setItem('theme', theme);
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
     document.documentElement.setAttribute('data-theme', theme);
   };
 
@@ -414,6 +368,56 @@ function Sidebar({ userRole: propUserRole = 'buyer', isOpen, setIsOpen }) {
     const next = !isOpen;
     setIsOpen(next);
     localStorage.setItem('sidebarState', JSON.stringify(next));
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      // Log the logout event before signing out
+      await ActivityLoggerService.logAuthActivity(
+        currentUser.uid,
+        ActivityLoggerService.ACTIVITY_TYPES.LOGOUT,
+        {
+          email: currentUser.email,
+          userRole: currentUserRole, // <-- FIXED HERE
+          userNumber: currentUser.userNumber,
+          logoutMethod: 'user_initiated',
+          timestamp: new Date().toISOString(),
+          sessionDuration: currentUser.metadata?.lastSignInTime ? 
+            Date.now() - new Date(currentUser.metadata.lastSignInTime).getTime() : 0
+        }
+      );
+
+      await signOut(auth);
+      // Clear localStorage
+      localStorage.removeItem('userData');
+      localStorage.removeItem('currentSession');
+      sessionStorage.clear();
+      
+      // Navigate to home page
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      
+      // Log the failed logout attempt
+      try {
+        await ActivityLoggerService.logGeneralActivity(
+          currentUser?.uid || 'unknown',
+          'logout_failed',
+          ActivityLoggerService.CATEGORIES.AUTHENTICATION,
+          {
+            email: currentUser?.email || 'unknown',
+            userRole: currentUserRole, // <-- FIXED HERE
+            errorCode: error.code,
+            errorMessage: error.message,
+            timestamp: new Date().toISOString()
+          }
+        );
+      } catch (logError) {
+        console.error('Error logging failed logout:', logError);
+      }
+    }
+    setIsLoggingOut(false);
   };
 
   const filteredSolutions = useMemo(() => {
@@ -453,6 +457,16 @@ function Sidebar({ userRole: propUserRole = 'buyer', isOpen, setIsOpen }) {
     ];
     return solutionsList.filter(s => s.allowedRoles.includes(currentUserRole));
   }, [currentUserRole]);
+
+  if (isLoggingOut) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-base-100 z-[99999]">
+        <span className="loading loading-spinner loading-lg text-primary"></span>
+        <span className="ml-3 text-primary font-semibold">Signing out...</span>
+      </div>
+    );
+  }
+  if (!currentUser) return null;
 
   return (
     <motion.div 
@@ -521,7 +535,9 @@ function Sidebar({ userRole: propUserRole = 'buyer', isOpen, setIsOpen }) {
           <ProfileSection 
             isOpen={isOpen} 
             currentUser={currentUser} 
-            userRole={currentUserRole} 
+            userRole={currentUserRole}
+            handleLogout={handleLogout}
+            isLoggingOut={isLoggingOut}
           />
         </div>
       </div>

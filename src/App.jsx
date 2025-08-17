@@ -22,6 +22,7 @@ import ActivityLog from './pages/quickactions/ActivityLog';
 import DashboardLayout from './layouts/DashboardLayout';
 import AuthContainer from './pages/Authentication/AuthContainer.jsx';
 import SystemTourDemo from './components/SystemTourDemo.jsx';
+import ProtectedRoute from './components/ProtectedRoute'; // Import your ProtectedRoute
 
 function App() {
     const [isLoaded, setIsLoaded] = useState(false); // Add this state declaration
@@ -43,9 +44,30 @@ function App() {
                     <Route path='/about' element={<AboutUs />} />
                     <Route path="/error" element={<Error />} />
                     <Route path="*" element={<Error />} />
-                    <Route path="/dashboard/buyer" element={<BuyerDashboard />} />
-                    <Route path="/dashboard/agent" element={<AgentDashboard />} />
-                    <Route path="/dashboard/developer" element={<DeveloperDashboard />} />
+                    <Route
+                      path="/dashboard/buyer"
+                      element={
+                        <ProtectedRoute>
+                          <BuyerDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/dashboard/agent"
+                      element={
+                        <ProtectedRoute>
+                          <AgentDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/dashboard/developer"
+                      element={
+                        <ProtectedRoute>
+                          <DeveloperDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
                     <Route path="/dashboard/buysmartph" element={<BuySmartPH />} />
                     <Route path="/dashboard/realtyconnect" element={<RealtyConnect />} />
                     <Route path="/dashboard/propguard" element={<PropGuard />} />
