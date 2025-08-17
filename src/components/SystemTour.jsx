@@ -162,10 +162,12 @@ const SystemTour = ({ userRole = 'buyer', onComplete }) => {
   // Check if user has completed tour
   useEffect(() => {
     if (!currentUser) return;
+    // Only show tour for buyers
+    if (userRole !== 'buyer') return;
 
     const tourKey = `tour_completed_${currentUser.uid}`;
     const hasCompletedTour = localStorage.getItem(tourKey);
-    
+
     if (!hasCompletedTour) {
       // Wait for DOM to be fully loaded and components to render
       const checkDOMReady = (attempts = 0) => {
@@ -194,7 +196,7 @@ const SystemTour = ({ userRole = 'buyer', onComplete }) => {
       // Start checking after initial delay
       setTimeout(() => checkDOMReady(), 1500);
     }
-  }, [currentUser]);
+  }, [currentUser, userRole]);
 
   // Handle window resize to reposition tooltip
   useEffect(() => {
@@ -274,6 +276,18 @@ const SystemTour = ({ userRole = 'buyer', onComplete }) => {
       return position;
     }
 
+    // Special case: Saved Properties modal should be above the highlight
+    if (step.target === "[data-tour='saved-properties']") {
+      return {
+        position: 'fixed',
+        left: margin,
+        bottom: 0,
+        maxWidth: `${tooltipWidth}px`,
+        opacity: 1,
+        transition: 'all 0.3s ease'
+      };
+    }
+
     // Determine best position based on available space for other elements
     let bestPosition = step?.position || 'right';
     
@@ -350,43 +364,44 @@ const SystemTour = ({ userRole = 'buyer', onComplete }) => {
     return position;
   };
   const startTour = () => {
-    console.log('SystemTour: Starting tour, checking elements...');
-    console.log('Current userRole:', userRole);
-    console.log('Tour steps:', tourSteps);
-    console.log('Sidebar element:', document.querySelector("[data-tour='sidebar']"));
-    console.log('Properties element:', document.querySelector("[data-tour='properties']"));
-    console.log('All data-tour elements:', Array.from(document.querySelectorAll("[data-tour]")).map(el => ({
-      element: el,
-      dataTour: el.getAttribute('data-tour'),
-      rect: el.getBoundingClientRect()
-    })));
-    
     setTourStarted(true);
-    
-    // Use setTimeout to ensure state updates properly
-    setTimeout(() => {
-      console.log('SystemTour: Setting current step to 1 (Navigation Menu)');
-      setCurrentStep(1); // Skip welcome step and go to first actual step
-      console.log('Starting at step:', 1, 'which should be:', tourSteps[1]);
-    }, 100);
+    // Go directly to Navigation Menu (step 1)
+    goToStep(1);
+  };
+
+  const goToStep = (stepIndex) => {
+    const stepData = tourSteps[stepIndex];
+    let element = null;
+    if (stepData && stepData.target) {
+      element = document.querySelector(stepData.target);
+      if (element) {
+        const rect = element.getBoundingClientRect();
+        const isInView = rect.top >= 0 && rect.left >= 0 && rect.bottom <= window.innerHeight && rect.right <= window.innerWidth;
+        if (!isInView) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+          // Wait for scroll to finish before calculating position
+          setTimeout(() => {
+            const newRect = element.getBoundingClientRect();
+            const position = calculateTooltipPosition(element, stepData);
+            setHighlightElement(element);
+            setCurrentPosition(position);
+            setCurrentStep(stepIndex);
+          }, 300); // 300ms is usually enough for smooth scroll
+          return;
+        }
+      }
+    }
+    // If already in view or no element, update immediately
+    const position = element ? calculateTooltipPosition(element, stepData) : null;
+    setHighlightElement(element);
+    setCurrentPosition(position);
+    setCurrentStep(stepIndex);
   };
 
   // Navigate steps
   const nextStep = () => {
     if (currentStep < tourSteps.length - 1) {
-      const nextStepData = tourSteps[currentStep + 1];
-      
-      // Pre-calculate position for next step to avoid repositioning
-      if (nextStepData && nextStepData.target) {
-        const nextElement = document.querySelector(nextStepData.target);
-        if (nextElement) {
-          const newPosition = calculateTooltipPosition(nextElement, nextStepData);
-          setCurrentPosition(newPosition);
-          setHighlightElement(nextElement);
-        }
-      }
-      
-      setCurrentStep(currentStep + 1);
+      goToStep(currentStep + 1);
     } else {
       completeTour();
     }
@@ -394,19 +409,7 @@ const SystemTour = ({ userRole = 'buyer', onComplete }) => {
 
   const previousStep = () => {
     if (currentStep > 0) {
-      const prevStepData = tourSteps[currentStep - 1];
-      
-      // Pre-calculate position for previous step to avoid repositioning
-      if (prevStepData && prevStepData.target) {
-        const prevElement = document.querySelector(prevStepData.target);
-        if (prevElement) {
-          const newPosition = calculateTooltipPosition(prevElement, prevStepData);
-          setCurrentPosition(newPosition);
-          setHighlightElement(prevElement);
-        }
-      }
-      
-      setCurrentStep(currentStep - 1);
+      goToStep(currentStep - 1);
     }
   };
 
@@ -475,19 +478,6 @@ const SystemTour = ({ userRole = 'buyer', onComplete }) => {
     }, 100);
   }, [currentStep, tourSteps]);
 
-  // Handle current step changes - highlight element when step changes
-  useEffect(() => {
-    if (tourStarted && currentStep > 0) {
-      console.log(`SystemTour: Step changed to ${currentStep}, highlighting element`);
-      // Add a small delay to ensure state is updated before highlighting
-      const timer = setTimeout(() => {
-        highlightCurrentStep();
-      }, 50);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [currentStep, tourStarted, highlightCurrentStep]);
-
   // Get tooltip position with smart positioning
   const getTooltipPosition = () => {
     // For welcome screen (step 0) only, return empty object as CSS handles centering
@@ -531,40 +521,104 @@ const SystemTour = ({ userRole = 'buyer', onComplete }) => {
         className="fixed inset-0 z-[9999]"
       >
         {/* Overlay - Transparent background */}
-        <div className="absolute inset-0 bg-transparent" />
+        <div
+          className="absolute inset-0 bg-black"
+          style={{ opacity: 0.2 }}
+        />
         
         {/* Highlight spotlight */}
-        {highlightElement && tourStarted && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ 
-              scale: 1,
-              boxShadow: [
-                `0 0 0 4px rgba(59, 130, 246, 0.6)`,
-                `0 0 0 6px rgba(59, 130, 246, 0.8)`,
-                `0 0 0 4px rgba(59, 130, 246, 0.6)`
-              ]
-            }}
-            transition={{
-              scale: { duration: 0.3 },
-              boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" }
-            }}
-            className="absolute pointer-events-none z-[9998]"
-            style={{
-              top: highlightElement.getBoundingClientRect().top - 12,
-              left: highlightElement.getBoundingClientRect().left - 12,
-              width: highlightElement.getBoundingClientRect().width + 24,
-              height: highlightElement.getBoundingClientRect().height + 24,
-              background: 'rgba(59, 130, 246, 0.1)',
-              border: '3px solid #3B82F6',
-              borderRadius: '12px'
-            }}
+        {highlightElement && tourStarted ? (() => {
+          const rect = highlightElement.getBoundingClientRect();
+          const padding = 12;
+          const top = Math.max(rect.top - padding, 0);
+          const left = Math.max(rect.left - padding, 0);
+          const width = Math.min(rect.width + padding * 2, window.innerWidth - left);
+          const height = Math.min(rect.height + padding * 2, window.innerHeight - top);
+
+          return (
+            <>
+              {/* Top overlay */}
+              <div
+                style={{
+                  position: 'fixed',
+                  left: 0,
+                  top: 0,
+                  width: '100vw',
+                  height: top,
+                  background: 'rgba(0,0,0,0.8)',
+                  zIndex: 9998,
+                  pointerEvents: 'none'
+                }}
+              />
+              {/* Left overlay */}
+              <div
+                style={{
+                  position: 'fixed',
+                  left: 0,
+                  top: top,
+                  width: left,
+                  height: height,
+                  background: 'rgba(0,0,0,0.8)',
+                  zIndex: 9998,
+                  pointerEvents: 'none'
+                }}
+              />
+              {/* Right overlay */}
+              <div
+                style={{
+                  position: 'fixed',
+                  left: left + width,
+                  top: top,
+                  width: Math.max(0, window.innerWidth - (left + width)),
+                  height: height,
+                  background: 'rgba(0,0,0,0.8)',
+                  zIndex: 9998,
+                  pointerEvents: 'none'
+                }}
+              />
+              {/* Bottom overlay */}
+              <div
+                style={{
+                  position: 'fixed',
+                  left: 0,
+                  top: top + height,
+                  width: '100vw',
+                  height: Math.max(0, window.innerHeight - (top + height)),
+                  background: 'rgba(0,0,0,0.8)',
+                  zIndex: 9998,
+                  pointerEvents: 'none'
+                }}
+              />
+              {/* Highlight border */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ scale: { duration: 0.3 } }}
+                style={{
+                  position: 'fixed',
+                  top,
+                  left,
+                  width,
+                  height,
+                  border: '3px solid #3B82F6',
+                  borderRadius: '12px',
+                  zIndex: 9999,
+                  pointerEvents: 'none'
+                }}
+              />
+            </>
+          );
+        })() : (
+          // Fallback: full overlay for welcome modal
+          <div
+            className="absolute inset-0 bg-black"
+            style={{ opacity: 0.3, zIndex: 9998, pointerEvents: 'none' }}
           />
         )}
 
         {/* Tour tooltip */}
         <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
+          initial={{ scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           className={`bg-white rounded-xl shadow-2xl p-6 w-80 max-w-[90vw] max-h-[90vh] overflow-y-auto border border-gray-200 ${
             !tourStarted || currentStep === 0 

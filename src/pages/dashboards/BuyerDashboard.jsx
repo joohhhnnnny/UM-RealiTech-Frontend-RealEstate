@@ -584,9 +584,6 @@ const BuyerDashboard = () => {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h2 className="text-2xl font-bold">My Saved Properties</h2>
-                <p className="text-sm text-base-content/70 mt-1">
-                  Properties you've saved for consideration
-                </p>
               </div>
               <button 
                 className="btn btn-primary gap-2"
