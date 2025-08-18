@@ -10,18 +10,34 @@ const formatCurrency = (value) =>
   });
 
 // Reusable InputField component
-function InputField({ label, value, onChange, placeholder, step = 1, min = 0 }) {
+function InputField({ label, value, onChange, placeholder, step = 1, min = 0, format }) {
+  const [isEditing, setIsEditing] = useState(false);
+
+  const handleBlur = () => setIsEditing(false);
+  const handleFocus = () => setIsEditing(true);
+
+  // Show formatted value when not editing
+  const displayValue = !isEditing && format && value !== ""
+    ? format(parseFloat(value) || 0)
+    : value;
+
   return (
     <div className="form-control">
       <label className="label">
         <span className="label-text">{label}</span>
       </label>
       <input
-        type="number"
+        type="text"
         className="input input-bordered w-full"
         placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={displayValue}
+        onChange={e => {
+          // Remove commas and extra formatting for editing
+          const raw = e.target.value.replace(/,/g, "");
+          onChange(raw);
+        }}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         step={step}
         min={min}
       />
@@ -82,6 +98,7 @@ function LoanCalculator() {
             value={loanAmount}
             onChange={setLoanAmount}
             placeholder="Enter loan amount"
+            format={formatCurrency}
           />
           <InputField
             label="Interest Rate (%)"
@@ -89,12 +106,14 @@ function LoanCalculator() {
             onChange={setInterestRate}
             placeholder="Enter interest rate"
             step="0.1"
+            format={v => v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           />
           <InputField
             label="Loan Term (years)"
             value={loanTerm}
             onChange={setLoanTerm}
             placeholder="Enter loan term"
+            format={v => v}
           />
 
           <div className="mt-4 p-4 bg-base-200 rounded-lg">

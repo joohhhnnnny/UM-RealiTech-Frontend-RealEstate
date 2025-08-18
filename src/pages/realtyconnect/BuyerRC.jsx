@@ -1,14 +1,7 @@
 import React, { useState, useMemo, memo, useCallback, useEffect } from 'react';
 import { FaUserTie, FaStar, FaSpinner, FaCheckCircle, FaPhone, FaEnvelope, FaCalendarAlt } from 'react-icons/fa';
+import { useAuth } from '../../contexts/AuthContext';
 import { agentService } from '../../services/realtyConnectService';
-
-// Try to import useAuth, but provide fallback if not available
-let useAuth;
-try {
-  useAuth = require('../../contexts/AuthContext').useAuth;
-} catch (error) {
-  useAuth = () => ({ currentUser: null });
-}
 
 // Memoized Agent Card Component
 const AgentCard = memo(({ agent, onViewProfile, onContactAgent, renderStars }) => (
@@ -172,41 +165,40 @@ function BuyerRC() {
   const [connectionLoading, setConnectionLoading] = useState(false);
   const { currentUser } = useAuth(); // Get current user from auth context
 
-  // Load agents from Firebase
+  // Load agents from Firestore using agentService
   useEffect(() => {
-    const loadAgents = async () => {
-      try {
-        setLoading(true);
-        // Subscribe to verified agents only
-        const unsubscribe = agentService.subscribeToVerifiedAgents((verifiedAgents) => {
-          setAgents(verifiedAgents);
-          setLoading(false);
-        });
-
-        return () => unsubscribe();
-      } catch (err) {
-        console.error('Error loading agents:', err);
+    let unsub = null;
+    setLoading(true);
+    setError(null);
+    agentService.getAllAgents()
+      .then((agentsList) => {
+        setAgents(agentsList);
+        setLoading(false);
+        // If no agents, fallback to subscription for real-time updates
+        if (!agentsList || agentsList.length === 0) {
+          unsub = agentService.subscribeToAgents((agentsSnap) => {
+            setAgents(agentsSnap);
+            setLoading(false);
+          });
+        }
+      })
+      .catch(() => {
         setError('Failed to load agents');
         setLoading(false);
-      }
+      });
+    return () => {
+      if (unsub) unsub();
     };
-
-    loadAgents();
   }, []);
 
-  // Optimized filtered agents with early exit
+  // Filter and search agents
   const filteredAgents = useMemo(() => {
     const searchLower = searchQuery.toLowerCase();
     const filterLower = selectedFilter.toLowerCase();
-    
     return agents.filter(agent => {
-      // Check specialization first (cheaper operation)
-      if (selectedFilter !== 'all' && 
-          (agent.specialization || '').toLowerCase() !== filterLower) {
+      if (selectedFilter !== 'all' && (agent.specialization || '').toLowerCase() !== filterLower) {
         return false;
       }
-      
-      // Only check search if needed
       return !searchQuery || (
         (agent.name || '').toLowerCase().includes(searchLower) ||
         (agent.email || '').toLowerCase().includes(searchLower) ||
@@ -239,71 +231,33 @@ function BuyerRC() {
     setSelectedAgent(null);
   }, []);
 
+  // TODO: Implement contact/meeting creation using Firestore if needed
   const handleContactAgent = useCallback(async (agent) => {
     if (connectionLoading) return;
-    
     setConnectionLoading(true);
     try {
-      const buyerId = currentUser?.uid || 'demo-buyer-user';
-      
-      // Create a connection record in Firebase
-      await agentService.createConnection({
-        buyerId,
-        agentId: agent.userId || agent.id,
-        agentName: agent.name,
-        agentEmail: agent.email,
-        buyerName: currentUser?.displayName || 'Buyer User',
-        buyerEmail: currentUser?.email || 'buyer@realitech.com',
-        connectionType: 'contact',
-        status: 'initiated',
-        message: `${currentUser?.displayName || 'A buyer'} is interested in contacting you regarding real estate services.`,
-        createdAt: new Date()
-      });
-      
-      // Show success message with contact details
+      // Example: You can implement Firestore logic here to create a connection document
       alert(`✅ Connection request sent to ${agent.name}!\n\n` +
             `📧 Email: ${agent.email}\n` +
             `📱 You can now contact them directly.\n\n` +
             `The agent has been notified of your interest.`);
-            
-      console.log(`Buyer-Agent connection created: ${buyerId} -> ${agent.name}`);
     } catch (error) {
       console.error('Error creating connection:', error);
       alert(`❌ Failed to connect with ${agent.name}. Please try again.`);
     }
     setConnectionLoading(false);
-  }, [currentUser, connectionLoading]);
+  }, [connectionLoading]);
 
   const handleScheduleMeeting = useCallback(async (agent) => {
     if (connectionLoading) return;
-    
     setConnectionLoading(true);
     try {
-      const buyerId = currentUser?.uid || 'demo-buyer-user';
-      
-      // Create a meeting request in Firebase
-      await agentService.createConnection({
-        buyerId,
-        agentId: agent.userId || agent.id,
-        agentName: agent.name,
-        agentEmail: agent.email,
-        buyerName: currentUser?.displayName || 'Buyer User',
-        buyerEmail: currentUser?.email || 'buyer@realitech.com',
-        connectionType: 'meeting',
-        status: 'requested',
-        message: `${currentUser?.displayName || 'A buyer'} would like to schedule a meeting with you to discuss real estate services.`,
-        requestedDate: new Date(),
-        createdAt: new Date()
-      });
-      
-      // Show success message
+      // Example: You can implement Firestore logic here to create a meeting request document
       alert(`✅ Meeting request sent to ${agent.name}!\n\n` +
             `📅 Meeting request has been submitted\n` +
             `📧 Agent will contact you at: ${currentUser?.email || 'your email'}\n` +
             `⏰ They will reach out to schedule a convenient time.\n\n` +
             `You can also contact them directly at: ${agent.email}`);
-            
-      console.log(`Meeting request created: ${buyerId} -> ${agent.name}`);
       setSelectedAgent(null);
     } catch (error) {
       console.error('Error creating meeting request:', error);

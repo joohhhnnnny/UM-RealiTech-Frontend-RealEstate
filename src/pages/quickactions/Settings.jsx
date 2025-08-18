@@ -1007,6 +1007,29 @@ const Settings = () => {
                             </div>
                           </div>
 
+                          {/* Quick Navigation - moved to top for better access */}
+                          <div className="card bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20">
+                            <div className="card-body">
+                              <h4 className="card-title text-primary">Quick Navigation</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
+                                {manualContent.map((section) => (
+                                  <button 
+                                    key={section.id}
+                                    className="btn btn-sm btn-outline btn-primary"
+                                    onClick={() => {
+                                      const element = document.getElementById(section.id);
+                                      if (element) {
+                                        element.scrollIntoView({ behavior: 'smooth' });
+                                      }
+                                    }}
+                                  >
+                                    {section.title}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
                           {manualContent.map((section) => (
                             <div key={section.id} id={section.id} className="card bg-base-100 border border-base-200 shadow-sm">
                               <div className="card-body">
@@ -1058,29 +1081,6 @@ const Settings = () => {
                               </div>
                             </div>
                           ))}
-
-                          {/* Quick Navigation */}
-                          <div className="card bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20">
-                            <div className="card-body">
-                              <h4 className="card-title text-primary">Quick Navigation</h4>
-                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
-                                {manualContent.map((section) => (
-                                  <button 
-                                    key={section.id}
-                                    className="btn btn-sm btn-outline btn-primary"
-                                    onClick={() => {
-                                      const element = document.getElementById(section.id);
-                                      if (element) {
-                                        element.scrollIntoView({ behavior: 'smooth' });
-                                      }
-                                    }}
-                                  >
-                                    {section.title}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
                         </div>
                       )}
                     </div>
