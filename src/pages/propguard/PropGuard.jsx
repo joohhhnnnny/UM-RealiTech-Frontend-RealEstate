@@ -24,7 +24,6 @@ import {
   RiLoader4Line
 } from 'react-icons/ri';
 import { useLocation } from 'react-router-dom';
-import listingsData from '../../json/listings.json';
 
 // Memoized PropertyCard component
 const PropertyCard = memo(({ property }) => {

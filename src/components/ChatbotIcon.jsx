@@ -11,7 +11,8 @@ import {
 } from '@heroicons/react/24/solid';
 import { FaRobot } from 'react-icons/fa';
 import { useLocation } from 'react-router-dom';
-import listingsData from '../json/listings.json';
+import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
+import { db } from '../config/Firebase';
 
 function ChatbotIcon() {
   const location = useLocation();
@@ -33,6 +34,12 @@ function ChatbotIcon() {
     width: typeof window !== 'undefined' ? window.innerWidth : 1200,
     height: typeof window !== 'undefined' ? window.innerHeight : 800
   });
+  
+  // Cache for listings to avoid repeated fetches
+  const [listingsCache, setListingsCache] = useState([]);
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const [lastFoundProperties, setLastFoundProperties] = useState([]); // Remember last search results
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
 
   // Handle window resize for responsive behavior
   useEffect(() => {
@@ -47,6 +54,149 @@ function ChatbotIcon() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Fetch listings from Firebase Firestore
+  const fetchListingsFromFirebase = useCallback(async () => {
+    try {
+      // Check cache first
+      const now = Date.now();
+      if (listingsCache.length > 0 && (now - lastFetchTime) < CACHE_DURATION) {
+        return listingsCache;
+      }
+
+      const listingsRef = collection(db, 'listings');
+      
+      // First try to get documents with ordering, fallback to simple query if it fails
+      let querySnapshot;
+      try {
+        const orderedQuery = query(
+          listingsRef,
+          orderBy('createdAt', 'desc'),
+          limit(50)
+        );
+        querySnapshot = await getDocs(orderedQuery);
+        console.log('Successfully fetched with ordering by createdAt');
+      } catch (orderError) {
+        console.warn('createdAt field may not exist or index missing, trying simple query:', orderError);
+        const simpleQuery = query(listingsRef, limit(50));
+        querySnapshot = await getDocs(simpleQuery);
+        console.log('Successfully fetched with simple query');
+      }
+      const listings = [];
+      
+      console.log(`Firebase query returned ${querySnapshot.size} documents`); // Debug log
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        console.log(`Processing document ${doc.id}:`, data); // Debug log
+        
+        // Ensure required fields exist
+        if (data.title && data.location && data.price) {
+          listings.push({
+            id: doc.id,
+            ...data,
+            // Normalize price format for consistency
+            price: data.price?.startsWith('₱') ? data.price : `₱ ${data.price}`,
+            // Ensure numeric fields are properly handled
+            beds: data.beds?.toString() || '0',
+            baths: data.baths?.toString() || '0',
+            lot_area_sqm: parseInt(data.lot_area_sqm) || 0,
+            floor_area_sqm: parseInt(data.floor_area_sqm) || 0,
+            // Ensure images array exists
+            images: Array.isArray(data.images) ? data.images : [data.image || "https://via.placeholder.com/400x300?text=No+Image"]
+          });
+        }
+      });
+      
+      // Update cache
+      setListingsCache(listings);
+      setLastFetchTime(now);
+      
+      return listings;
+    } catch (error) {
+      console.error('Error fetching listings from Firebase:', error);
+      
+      // Return empty array on error, or cached data if available
+      return listingsCache.length > 0 ? listingsCache : [];
+    }
+  }, [listingsCache, lastFetchTime, CACHE_DURATION]);
+
+  // Filter listings based on search criteria
+  const filterListings = async (criteria) => {
+    try {
+      // Fetch fresh listings from Firebase
+      const allListings = await fetchListingsFromFirebase();
+      
+      console.log(`Fetched ${allListings.length} listings from Firebase`); // Debug log
+      
+      // If no criteria or empty criteria, return first 5 listings
+      if (!criteria || !Object.values(criteria).some(v => v)) {
+        console.log('No criteria found, returning first 5 listings'); // Debug log
+        return allListings.slice(0, 5);
+      }
+
+      const filtered = allListings.filter(listing => {
+        if (!listing.title || !listing.location || (!listing.price && listing.price !== 0)) {
+          console.log('❌ Filtered out due to missing required fields:', listing.title);
+          return false;
+        }
+
+        const priceNum = parseInt(listing.price.replace(/[^0-9]/g, ''));
+        console.log(`🏠 Checking property: "${listing.title}" - Price: ${listing.price} (${priceNum})`);
+        
+        // Price range filtering
+        if (criteria.minPrice && priceNum < criteria.minPrice) {
+          console.log(`❌ Filtered out "${listing.title}": Price ${priceNum} < minPrice ${criteria.minPrice}`);
+          return false;
+        }
+        if (criteria.maxPrice && priceNum > criteria.maxPrice) {
+          console.log(`❌ Filtered out "${listing.title}": Price ${priceNum} > maxPrice ${criteria.maxPrice}`);
+          return false;
+        }
+        
+        // Location filtering (fuzzy match)
+        if (criteria.location) {
+          const locationTerms = criteria.location.toLowerCase().split(/\s+/);
+          const listingLocation = listing.location.toLowerCase();
+          if (!locationTerms.some(term => listingLocation.includes(term))) {
+            return false;
+          }
+        }
+        
+        // Bedroom filtering
+        if (criteria.beds) {
+          const listingBeds = parseInt(listing.beds) || 0;
+          const criteriaBeds = parseInt(criteria.beds);
+          if (listingBeds !== criteriaBeds) return false;
+        }
+        
+        // Property type filtering
+        if (criteria.propertyType) {
+          const propertyTypes = ['house', 'condo', 'apartment', 'lot'];
+          const requestedType = criteria.propertyType.toLowerCase();
+          if (propertyTypes.some(type => requestedType.includes(type))) {
+            const listingType = listing.type?.toLowerCase() || listing.title.toLowerCase();
+            if (!propertyTypes.some(type => 
+              (requestedType.includes(type) && listingType.includes(type))
+            )) {
+              return false;
+            }
+          }
+        }
+        
+        console.log(`✅ Property "${listing.title}" passed all filters`);
+        return true;
+      });
+
+      console.log(`🎯 Filtering result: ${filtered.length}/${allListings.length} properties passed filters`);
+      console.log('Filtered properties:', filtered.map(p => `${p.title} - ${p.price}`));
+      
+      return filtered.slice(0, 10); // Limit results to prevent overwhelming UI
+    } catch (error) {
+      console.error('Error filtering listings:', error);
+      return [];
+    }
+  };
+
   // Calculate chat window position based on screen size and device type
   const getChatWindowPosition = () => {
     const windowWidth = windowSize.width;
@@ -54,33 +204,25 @@ function ChatbotIcon() {
     const isMobile = windowWidth < 768; // Mobile breakpoint
     
     if (isMobile) {
-      // On mobile, always center the chat window using CSS classes
       return {
         position: 'centered'
       };
     } else {
-      // Desktop behavior - position relative to button or default bottom-right
-      const chatWidth = 384; // 96 * 4 (w-96)
+      const chatWidth = 384;
       const chatHeight = 500;
       
-      // Default position (bottom-right)
       let bottom = 100;
       let right = 32;
       
-      // If button has been dragged, calculate relative position
       if (buttonPosition.x !== 0 || buttonPosition.y !== 0) {
-        // Position chat window near the button but ensure it stays on screen
         const buttonCenterX = buttonPosition.x;
         const buttonCenterY = buttonPosition.y;
         
-        // Try to position chat to the left of button first
         right = Math.max(16, windowWidth - buttonCenterX + 40);
         if (right + chatWidth > windowWidth) {
-          // If not enough space on the right, try left
           right = Math.max(16, windowWidth - (buttonCenterX - chatWidth - 40));
         }
         
-        // Position vertically
         bottom = Math.max(16, windowHeight - buttonCenterY - chatHeight / 2);
         if (bottom + chatHeight > windowHeight) {
           bottom = Math.max(16, windowHeight - chatHeight - 16);
@@ -101,24 +243,12 @@ function ChatbotIcon() {
   const getSystemContext = () => {
     if (chatMode === 'agent') {
       if (userRole === 'developer') {
-        return `You are PropGuard Developer Assistant, an AI assistant for real estate developers. You help with project management, sales analytics, property inventory, buyer applications, and partner management. You have access to:
-        - Active Projects: 3 projects with 245 total units, 78% sales progress, 54 available units
-        - Monthly Sales: ₱45M with 85% target achievement
-        - Unit inventory: Studio (15), 1BR (22), 2BR (12), 3BR (5 units available)
-        - Price range: ₱2.5M - ₱8.2M
-        Respond professionally and provide specific data when relevant.`;
+        return `You are PropGuard Developer Assistant, an AI assistant for real estate developers. You help with project management, sales analytics, property inventory, buyer applications, and partner management. You have access to real-time property data from the Firebase database. Respond professionally and provide specific data when relevant.`;
       } else {
-        return `You are PropGuard Agent Assistant, an AI assistant for real estate agents. You help with client management, market analytics, property verification, application processing, and lead generation. You have access to:
-        - Active Clients: 15 clients
-        - Properties Listed: 8 properties
-        - Pending Transactions: 3 transactions
-        - New Inquiries: 5 inquiries
-        - Market data: 8.5% YoY price increase, hot areas include BGC, Makati, Ortigas
-        - Most demanded: 2-3BR Condos, Price range: ₱4M - ₱12M
-        Respond professionally and provide market insights when relevant.`;
+        return `You are PropGuard Agent Assistant, an AI assistant for real estate agents. You help with client management, market analytics, property verification, application processing, and lead generation. You have access to real-time property listings from the database. Respond professionally and provide market insights when relevant.`;
       }
     } else {
-      return `You are PropGuard Assistant, an AI-powered real estate assistant helping clients with property inquiries, fraud detection, and real estate guidance. You help with:
+      return `You are PropGuard Assistant, an AI-powered real estate assistant helping clients with property inquiries, fraud detection, and real estate guidance. You have access to real-time property listings from our database. You help with:
       - Property buying guidance and recommendations
       - Property selling assistance and valuation
       - Market exploration and investment tips
@@ -135,8 +265,8 @@ function ChatbotIcon() {
       id: `welcome-${Date.now()}`,
       sender: 'bot',
       message: chatMode === 'client' 
-        ? "Hi! I'm PropGuard Assistant. I'm here to help you with property inquiries, fraud detection, and real estate guidance. How can I assist you today?"
-        : `Welcome to PropGuard Agent Dashboard! I can help you manage client inquiries, process applications, and provide market insights. Hello ${userRole === 'developer' ? 'Developer' : 'Agent'}! What would you like to work on?`,
+        ? "Hi! I'm PropGuard Assistant. I'm here to help you with property inquiries, fraud detection, and real estate guidance. I have access to real-time property listings from our database. How can I assist you today?"
+        : `Welcome to PropGuard Agent Dashboard! I can help you manage client inquiries, process applications, and provide market insights with real-time property data. Hello ${userRole === 'developer' ? 'Developer' : 'Agent'}! What would you like to work on?`,
       timestamp: new Date()
     };
     
@@ -152,6 +282,15 @@ function ChatbotIcon() {
       initializeChat();
     }
   }, [isOpen, messages.length, initializeChat]);
+
+  // Pre-load listings when chat opens
+  useEffect(() => {
+    if (isOpen && listingsCache.length === 0) {
+      fetchListingsFromFirebase().catch(error => {
+        console.error('Error pre-loading listings:', error);
+      });
+    }
+  }, [isOpen, listingsCache.length, fetchListingsFromFirebase]);
 
   const getPresetMessages = () => {
     if (chatMode === 'agent') {
@@ -224,57 +363,6 @@ function ChatbotIcon() {
     handleSendMessage(presetText);
   };
 
-  const filterListings = (criteria) => {
-    // Default return all listings if no criteria
-    if (!Object.values(criteria).some(v => v)) {
-      return listingsData.slice(0, 5); // Return first 5 listings by default
-    }
-
-    return listingsData.filter(listing => {
-      if (!listing.title || !listing.location || (!listing.price && listing.price !== 0)) {
-        return false;
-      }
-
-      const priceNum = parseInt(listing.price.replace(/[^0-9]/g, ''));
-      
-      // More lenient price matching
-      if (criteria.minPrice && priceNum < criteria.minPrice) return false;
-      if (criteria.maxPrice && priceNum > criteria.maxPrice) return false;
-      
-      // Fuzzy location matching
-      if (criteria.location) {
-        const locationTerms = criteria.location.toLowerCase().split(/\s+/);
-        const listingLocation = listing.location.toLowerCase();
-        if (!locationTerms.some(term => listingLocation.includes(term))) {
-          return false;
-        }
-      }
-      
-      // Flexible bed matching - convert to numbers for comparison
-      if (criteria.beds) {
-        const listingBeds = parseInt(listing.beds) || 0;
-        const criteriBeds = parseInt(criteria.beds);
-        if (listingBeds !== criteriBeds) return false;
-      }
-      
-      // Flexible property type matching
-      if (criteria.propertyType) {
-        const propertyTypes = ['house', 'condo', 'apartment', 'lot'];
-        const requestedType = criteria.propertyType.toLowerCase();
-        if (propertyTypes.some(type => requestedType.includes(type))) {
-          const listingType = listing.type?.toLowerCase() || listing.title.toLowerCase();
-          if (!propertyTypes.some(type => 
-            (requestedType.includes(type) && listingType.includes(type))
-          )) {
-            return false;
-          }
-        }
-      }
-      
-      return true;
-    });
-  };
-
   const formatPropertyCard = (listing) => {
     return {
       type: 'property',
@@ -323,8 +411,8 @@ function ChatbotIcon() {
 
       // Extract potential property search criteria from user message
       const criteria = {
-        minPrice: userMessage.match(/(?:under|less than|maximum|max|below|within|budget) (?:₱|P)?(\d+(?:[,.]\d+)?[MmKk]?)/i)?.[1],
-        maxPrice: userMessage.match(/(?:over|more than|minimum|min|above|at least|starting|from) (?:₱|P)?(\d+(?:[,.]\d+)?[MmKk]?)/i)?.[1],
+        maxPrice: userMessage.match(/(?:under|less than|maximum|max|below|within|budget) (?:₱|P)?(\d+(?:[,.]\d+)?[MmKk]?)/i)?.[1],
+        minPrice: userMessage.match(/(?:over|more than|minimum|min|above|at least|starting|from) (?:₱|P)?(\d+(?:[,.]\d+)?[MmKk]?)/i)?.[1],
         location: userMessage.match(/(?:in|at|near|around|within|close to) ([^,.]+?)(?:,|\.|$)/i)?.[1] || 
                  userMessage.match(/(?:show|find|looking|searching).*(?:in|at) ([^,.]+?)(?:,|\.|$)/i)?.[1],
         beds: userMessage.match(/(\d+)(?:\s*(?:bedroom|bed|br|bhk))/i)?.[1],
@@ -333,21 +421,71 @@ function ChatbotIcon() {
       };
 
       // Convert price strings to numbers
-      if (criteria.minPrice) {
-        criteria.minPrice = parseInt(criteria.minPrice.replace(/[^0-9]/g, '')) * 
-          (criteria.minPrice.toLowerCase().includes('m') ? 1000000 : 
-           criteria.minPrice.toLowerCase().includes('k') ? 1000 : 1);
-      }
       if (criteria.maxPrice) {
         criteria.maxPrice = parseInt(criteria.maxPrice.replace(/[^0-9]/g, '')) * 
           (criteria.maxPrice.toLowerCase().includes('m') ? 1000000 : 
            criteria.maxPrice.toLowerCase().includes('k') ? 1000 : 1);
       }
+      if (criteria.minPrice) {
+        criteria.minPrice = parseInt(criteria.minPrice.replace(/[^0-9]/g, '')) * 
+          (criteria.minPrice.toLowerCase().includes('m') ? 1000000 : 
+           criteria.minPrice.toLowerCase().includes('k') ? 1000 : 1);
+      }
 
-      // Search for matching properties if criteria found
+      // Search for matching properties if criteria found OR if user asks for all properties
       let matchingProperties = [];
-      if (Object.values(criteria).some(v => v)) {
-        matchingProperties = filterListings(criteria).slice(0, 3);
+      const showAllPropertiesPattern = /(?:show|find|display|list|view|see|browse|explore)\s+(?:all|available|every|some|any)?\s*(?:properties|listings|homes|houses|condos|apartments|real estate)/i;
+      const generalPropertyQuery = /(?:property|properties|house|houses|condo|condos|apartment|apartments|home|homes|real estate|listing|listings)/i;
+      
+      const isShowAllRequest = showAllPropertiesPattern.test(userMessage) || 
+                              userMessage.toLowerCase().includes('all properties') ||
+                              userMessage.toLowerCase().includes('available properties') ||
+                              userMessage.toLowerCase().includes('what properties') ||
+                              userMessage.toLowerCase().includes('show properties');
+      
+      const isGeneralPropertyQuery = generalPropertyQuery.test(userMessage) && 
+                                   (userMessage.toLowerCase().includes('show') || 
+                                    userMessage.toLowerCase().includes('find') || 
+                                    userMessage.toLowerCase().includes('looking') ||
+                                    userMessage.toLowerCase().includes('want') ||
+                                    userMessage.toLowerCase().includes('need'));
+      
+      // Check for follow-up requests to show previously found properties
+      const isFollowUpShowRequest = userMessage.toLowerCase().match(/(?:see them|show them|view them|display them|let me see|i would like to see|yes please|sure|okay)/);
+      
+      console.log('Property query detection:', {
+        userMessage,
+        extractedCriteria: criteria,
+        processedCriteria: {
+          maxPrice: criteria.maxPrice,
+          minPrice: criteria.minPrice,
+          location: criteria.location,
+          beds: criteria.beds,
+          propertyType: criteria.propertyType
+        },
+        hasSpecificCriteria: Object.values(criteria).some(v => v),
+        isShowAllRequest,
+        isGeneralPropertyQuery,
+        isFollowUpShowRequest: !!isFollowUpShowRequest,
+        lastFoundPropertiesCount: lastFoundProperties.length
+      });
+      
+      // Debug: Check if database has any properties at all
+      if (listingsCache.length === 0) {
+        console.log('⚠️ No properties in cache, attempting to fetch...');
+        const testFetch = await fetchListingsFromFirebase();
+        console.log(`📊 Database contains ${testFetch.length} total properties`);
+      }
+      
+      if (Object.values(criteria).some(v => v) || isShowAllRequest || isGeneralPropertyQuery) {
+        console.log('Searching for properties with criteria:', isShowAllRequest || isGeneralPropertyQuery ? 'SHOW ALL' : criteria);
+        matchingProperties = await filterListings(isShowAllRequest || isGeneralPropertyQuery ? {} : criteria);
+        matchingProperties = matchingProperties.slice(0, 3);
+        setLastFoundProperties(matchingProperties); // Remember these properties
+        console.log(`Found ${matchingProperties.length} matching properties`);
+      } else if (isFollowUpShowRequest && lastFoundProperties.length > 0) {
+        console.log('Using last found properties for follow-up request');
+        matchingProperties = lastFoundProperties;
       }
 
       const prompt = `${systemContext}
@@ -355,11 +493,11 @@ function ChatbotIcon() {
 Previous conversation:
 ${conversationHistory}
 
-Available Properties: ${matchingProperties.length} properties match the search criteria.
+Available Properties: ${matchingProperties.length} properties match the search criteria from our real-time database.
 
 User: ${userMessage}
 
-Please provide a helpful response based on your role as ${chatMode === 'agent' ? (userRole === 'developer' ? 'Developer Assistant' : 'Agent Assistant') : 'PropGuard Assistant'}. If the user is asking about properties, suggest relevant ones from the matching properties. Keep responses concise but informative.`;
+Please provide a helpful response based on your role as ${chatMode === 'agent' ? (userRole === 'developer' ? 'Developer Assistant' : 'Agent Assistant') : 'PropGuard Assistant'}. If the user is asking about properties, I will show relevant ones from the matching properties after your response. Keep responses concise but informative.`;
 
       const response = await fetch(import.meta.env.VITE_API_URL, {
         method: 'POST',
@@ -391,9 +529,23 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
       };
       setMessages(prev => [...prev, botMessage]);
 
-      // If there are matching properties and the message suggests property interest, send them as separate messages
-      const isPropertyQuery = userMessage.toLowerCase().match(/(?:property|house|condo|apartment|looking|buy|price|bedroom|location)/);
-      if (matchingProperties.length > 0 && isPropertyQuery) {
+      // If there are matching properties, show them for property-related queries or follow-up requests
+      const shouldShowProperties = matchingProperties.length > 0 && (
+        userMessage.toLowerCase().match(/(?:property|properties|house|houses|condo|condos|apartment|apartments|looking|buy|show|see|view|find|available|listing|listings|home|homes|them)/) ||
+        isFollowUpShowRequest ||
+        userMessage.toLowerCase().includes('show') ||
+        userMessage.toLowerCase().includes('see') ||
+        userMessage.toLowerCase().includes('view')
+      );
+      
+      console.log('Property display check:', {
+        matchingPropertiesCount: matchingProperties.length,
+        shouldShowProperties,
+        userMessage: userMessage.toLowerCase()
+      });
+      
+      if (shouldShowProperties) {
+        console.log('Displaying properties...');
         // Add a small delay before showing properties
         await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -413,6 +565,8 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
             await new Promise(resolve => setTimeout(resolve, 300));
           }
         }
+      } else if (matchingProperties.length > 0) {
+        console.log('Properties found but not displaying due to query type:', userMessage);
       }
 
       setShowPresets(true);
@@ -440,22 +594,15 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
   };
 
   const handleFallbackResponse = (userMessage) => {
-    let fallbackMessage = "I apologize, but I'm not able to assist with that. Can you please provide more details or ask something else?";
+    let fallbackMessage = "I apologize, but I'm having trouble accessing the property database right now. Please try again in a moment, or let me know if you'd like general real estate guidance.";
 
     // Customize fallback responses based on user message
     if (userMessage.toLowerCase().includes('property')) {
-      fallbackMessage = "I can help you with property inquiries, such as buying, selling, or checking property details. What do you need assistance with?";
+      fallbackMessage = "I can help you with property inquiries once I reconnect to our database. In the meantime, I can provide general guidance about buying, selling, or property verification. What specific aspect interests you?";
     } else if (userMessage.toLowerCase().includes('fraud')) {
-      fallbackMessage = "For fraud-related concerns, I can assist with property verification and fraud detection. Please provide the property details you want to check.";
-    } else if (userMessage.toLowerCase().includes('document')) {
-      fallbackMessage = "I can help you with document verification and provide information on required documents for property transactions. Which document do you need help with?";
-    } else if (userMessage.toLowerCase().includes('budget')) {
-      fallbackMessage = "To assist you with budget planning, I need to know your preferred price range and the type of property you are interested in. Can you provide more details?";
-    } else if (userMessage.toLowerCase().includes('help') || userMessage.toLowerCase().includes('assist')) {
-      fallbackMessage = "I'm here to help! You can ask me about property details, fraud detection, document verification, and more. What do you need assistance with?";
+      fallbackMessage = "For fraud-related concerns, I can assist with property verification strategies and fraud detection tips. Please provide the property details you want to check, and I'll guide you through the verification process.";
     }
 
-    // Send fallback response as a bot message
     const fallbackBotMessage = {
       id: `fallback-${Date.now()}-${messageSequenceRef.current++}`,
       sender: 'bot',

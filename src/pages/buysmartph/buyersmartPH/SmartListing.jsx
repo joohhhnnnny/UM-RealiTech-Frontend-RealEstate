@@ -26,7 +26,6 @@ import PropertyEmptyState from '../../../components/PropertyEmptyState';
 import PropertySuccessBanner from '../../../components/PropertySuccessBanner';
 import DocumentSubmissionModal from '../../../components/DocumentSubmissionModal';
 import CostBreakdownComponent from '../../../components/CostBreakdownComponent';
-import agentsData from '../../../json/agents.json';
 
 function SmartListing({ profileData }) {
   const [user, authLoading] = useAuthState(auth);
