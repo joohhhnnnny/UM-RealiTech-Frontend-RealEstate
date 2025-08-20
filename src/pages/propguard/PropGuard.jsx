@@ -11,10 +11,7 @@ import {
   RiRobot2Fill,
   RiUser3Fill,
   RiShieldCheckLine,
-  RiAlertLine,
-  RiFingerprint2Line,
   RiHomeSmile2Line,
-  RiBuilding4Line,
   RiMapPinLine,
   RiAddLine,
   RiUpload2Line,
@@ -24,6 +21,8 @@ import {
   RiLoader4Line
 } from 'react-icons/ri';
 import { useLocation } from 'react-router-dom';
+import { db } from '../../config/Firebase';
+import { collection, query, orderBy, getDocs, limit } from 'firebase/firestore';
 
 // Memoized PropertyCard component
 const PropertyCard = memo(({ property }) => {
@@ -106,7 +105,7 @@ const formatBotMessage = (content) => {
           {lines.map((line, lineIndex) => {
             const trimmedLine = line.trim();
             if (trimmedLine.startsWith('•') || trimmedLine.startsWith('-')) {
-              const lineText = trimmedLine.replace(/^[•\-]\s*/, '');
+              const lineText = trimmedLine.replace(/^[•-]\s*/, '');
               return (
                 <div key={lineIndex} className="flex items-start gap-2 mb-1">
                   <span className="text-primary mt-1">•</span>
@@ -390,6 +389,8 @@ function PropGuard() {
   const [currentFlow, setCurrentFlow] = useState('greeting');
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [listingsData, setListingsData] = useState([]);
+  const [listingsLoading, setListingsLoading] = useState(true);
 
   // Memoized actions configuration
   const actions = useMemo(() => [
@@ -429,6 +430,55 @@ function PropGuard() {
       color: "success"
     }
   ], []);
+
+  // Fetch listings from Firebase
+  useEffect(() => {
+    const fetchListings = async () => {
+      try {
+        setListingsLoading(true);
+        
+        // Create a query to get listings, ordered by creation date with limit for performance
+        const listingsQuery = query(
+          collection(db, 'listings'),
+          orderBy('createdAt', 'desc'),
+          limit(50) // Limit to 50 most recent listings for better performance
+        );
+        
+        const querySnapshot = await getDocs(listingsQuery);
+        const fetchedListings = [];
+        
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          fetchedListings.push({
+            id: doc.id,
+            ...data,
+            // Ensure consistent field naming
+            title: data.title || data.propertyName || 'Untitled Property',
+            location: data.location || data.address || data.city || '',
+            price: data.price || data.listingPrice || '0',
+            beds: data.bedrooms || data.beds || 0,
+            baths: data.bathrooms || data.baths || 0,
+            type: data.propertyType || data.type || 'Property',
+            floor_area_sqm: data.floor_area_sqm || data.floorArea || 0,
+            lot_area_sqm: data.lot_area_sqm || data.lotArea || 0,
+            images: data.images || data.image ? [data.image] : []
+          });
+        });
+        
+        setListingsData(fetchedListings);
+        console.log(`Fetched ${fetchedListings.length} listings from Firebase`);
+        
+      } catch (error) {
+        console.error('Error fetching listings from Firebase:', error);
+        // Fallback to empty array if Firebase fails
+        setListingsData([]);
+      } finally {
+        setListingsLoading(false);
+      }
+    };
+
+    fetchListings();
+  }, []);
 
   // Memoized system context function
   const getSystemContext = useCallback(() => {
@@ -555,8 +605,25 @@ function PropGuard() {
     }
   }, []);
 
-  // Memoized API functions
+  const handleFallbackResponse = useCallback((userMessage) => {
+    let fallbackMessage = "I apologize, but I'm not able to assist with that. Can you please provide more details or ask something else?";
+    
+    if (userMessage.toLowerCase().includes('property')) {
+      fallbackMessage = "I can help you search for properties, verify listings, or provide market insights. What specific information are you looking for?";
+    } else if (userMessage.toLowerCase().includes('document')) {
+      fallbackMessage = "I can assist with document verification, submissions, and legal requirements. What type of documents do you need help with?";
+    } else if (userMessage.toLowerCase().includes('finance') || userMessage.toLowerCase().includes('payment')) {
+      fallbackMessage = "I can guide you through financing options, payment processes, and budget planning. What would you like to know more about?";
+    }
+    
+    return fallbackMessage;
+  }, []);
+
+  // Optimized API functions with improved error handling and timeouts
   const getGeminiResponse = useCallback(async (userMessage) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
     try {
       const systemContext = getSystemContext();
       const response = await fetch(import.meta.env.VITE_API_URL, {
@@ -564,6 +631,7 @@ function PropGuard() {
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
         body: JSON.stringify({
           contents: [{
             parts: [{
@@ -571,10 +639,10 @@ function PropGuard() {
             }]
           }],
           generationConfig: {
-            temperature: 0.9,
-            topK: 40,
+            temperature: 0.7,
+            topK: 20,
             topP: 0.8,
-            maxOutputTokens: 1000,
+            maxOutputTokens: 500, // Reduced for faster response
           },
           safetySettings: [
             {
@@ -597,34 +665,29 @@ function PropGuard() {
         })
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      return data.candidates[0].content.parts[0].text;
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || handleFallbackResponse(userMessage);
     } catch (error) {
-      console.error('Error:', error);
+      clearTimeout(timeoutId);
+      console.error('Gemini API Error:', error);
       return handleFallbackResponse(userMessage);
     }
-  }, [getSystemContext]);
-
-  const handleFallbackResponse = useCallback((userMessage) => {
-    let fallbackMessage = "I apologize, but I'm not able to assist with that. Can you please provide more details or ask something else?";
-    
-    if (userMessage.toLowerCase().includes('property')) {
-      fallbackMessage = "I can help you search for properties, verify listings, or provide market insights. What specific information are you looking for?";
-    } else if (userMessage.toLowerCase().includes('document')) {
-      fallbackMessage = "I can assist with document verification, submissions, and legal requirements. What type of documents do you need help with?";
-    } else if (userMessage.toLowerCase().includes('finance') || userMessage.toLowerCase().includes('payment')) {
-      fallbackMessage = "I can guide you through financing options, payment processes, and budget planning. What would you like to know more about?";
-    }
-    
-    return fallbackMessage;
-  }, []);
+  }, [getSystemContext, handleFallbackResponse]);
 
   // Memoized filter function
   const filterListings = useCallback((criteria) => {
+    // Return empty array if still loading or no data
+    if (listingsLoading || !listingsData.length) {
+      return [];
+    }
+
+    // If no criteria, return first 5 listings
     if (!Object.values(criteria).some(v => v)) {
       return listingsData.slice(0, 5);
     }
@@ -634,7 +697,7 @@ function PropGuard() {
         return false;
       }
 
-      const priceNum = parseInt(listing.price.replace(/[^0-9]/g, ''));
+      const priceNum = parseInt(listing.price.toString().replace(/[^0-9]/g, ''));
       
       if (criteria.minPrice && priceNum < criteria.minPrice) return false;
       if (criteria.maxPrice && priceNum > criteria.maxPrice) return false;
@@ -668,7 +731,7 @@ function PropGuard() {
       
       return true;
     });
-  }, []);
+  }, [listingsData, listingsLoading]);
 
   const formatPropertyCard = useCallback((listing) => {
     return {
@@ -721,7 +784,14 @@ function PropGuard() {
   }, [getGeminiResponse, currentFlow]);
 
   const handleSuggestionClick = useCallback((text) => {
-    handleSendMessage(text);
+    // Use the current message state and simulate clicking send
+    setNewMessage(text);
+    setTimeout(() => {
+      const form = document.querySelector('form');
+      if (form) {
+        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      }
+    }, 0);
   }, []);
 
   const initializeChat = useCallback(() => {
