@@ -60,16 +60,41 @@ function DeveloperRC() {
     // Load verification status
     const loadVerificationStatus = async () => {
       try {
+        // FORCE RESET TO NOT_SUBMITTED - Developer must verify fresh each time
+        setVerificationStatus('not_submitted');
+        
+        // Clear any existing verification status in Firebase and wait for completion
+        await VerificationService.clearUserVerification(userId, 'developer');
+        console.log('🔄 Developer verification cleared - must submit documents fresh');
+        
+        // Small delay to ensure Firebase clear operation is complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Now subscribe to verification status changes (but ignore any existing verified status)
         const statusUnsubscribe = VerificationService.subscribeToVerificationStatus(
           userId,
           'developer',
           (status) => {
-            setVerificationStatus(status.status);
+            // ONLY allow progression during active verification process
+            // Ignore any pre-existing verified status
+            if (status.status === 'pending') {
+              setVerificationStatus('pending');
+              console.log('📋 Developer verification status updated to: pending (document submitted)');
+            } else if (status.status === 'verified' && status.submittedAt && 
+                      (Date.now() - new Date(status.submittedAt).getTime()) < 10000) {
+              // Only accept verified status if it was submitted in the last 10 seconds
+              setVerificationStatus('verified');
+              console.log('📋 Developer verification status updated to: verified (fresh verification)');
+            } else {
+              console.log('🚫 Ignoring old verification status:', status.status);
+            }
           }
         );
         return statusUnsubscribe;
       } catch (err) {
         console.error('Error loading verification status:', err);
+        setVerificationStatus('not_submitted');
+        return () => {};
       }
     };
 
@@ -131,7 +156,17 @@ function DeveloperRC() {
     setShowVerificationModal(true);
   }, []);
 
-  const handleVerificationSubmitted = useCallback(() => {
+  const handleVerificationSubmitted = useCallback(async (verificationData, documents) => {
+    console.log('Starting developer verification submission with documents:', documents);
+    
+    // CHECK IF DOCUMENTS ARE ACTUALLY SUBMITTED
+    if (!documents || documents.length === 0) {
+      alert('Please submit required documents before verification!');
+      return;
+    }
+    
+    console.log('Documents provided, proceeding with verification...');
+    
     // Set to pending immediately and close modal
     setVerificationStatus('pending');
     setShowVerificationModal(false);
@@ -139,21 +174,70 @@ function DeveloperRC() {
     // Show processing modal
     setShowProcessingModal(true);
     
-    // Auto-verify after 2 seconds for demo purposes
-    setTimeout(async () => {
-      try {
-        const userId = currentUser?.uid || 'demo-developer-user';
-        console.log('Auto-verifying developer after 2 seconds...');
-        setVerificationStatus('verified');
-        
-        // Close processing modal and show success modal
-        setShowProcessingModal(false);
-        setShowSuccessModal(true);
-      } catch (error) {
-        console.error('Error during auto-verification:', error);
-        setShowProcessingModal(false);
+    try {
+      const userId = currentUser?.uid || 'demo-developer-user';
+      console.log('Creating developer profile for user:', userId);
+      
+      // Submit verification with actual documents to VerificationService
+      const verificationResult = await VerificationService.submitVerification(
+        userId,
+        'developer',
+        {
+          ...verificationData,
+          submittedAt: new Date().toISOString() // Add timestamp for fresh submission tracking
+        },
+        documents
+      );
+      
+      console.log('Developer verification submission result:', verificationResult);
+      
+      // CHECK IF VERIFICATION WAS SUCCESSFUL
+      if (!verificationResult.success) {
+        throw new Error(verificationResult.error || 'Failed to submit verification');
       }
-    }, 2000); // 2 second delay to simulate processing
+      
+      console.log(`Documents successfully processed: ${verificationResult.documentsCount} files with ID: ${verificationResult.verificationId}`);
+      
+      // Auto-verify after 3 seconds for demo purposes
+      setTimeout(async () => {
+        try {
+          console.log('Auto-verifying developer after 3 seconds...');
+          
+          // Update verification document status in Firebase to "verified"
+          await VerificationService.updateVerificationStatus(
+            verificationResult.verificationId, 
+            'verified', 
+            'system', 
+            'Auto-verified after 3 seconds - Demo mode'
+          );
+          
+          // SET isVerified: true PERMANENTLY in Firebase
+          await VerificationService.setUserVerified(userId, 'developer', true);
+          console.log('✅ Developer isVerified set to TRUE permanently in Firebase');
+          
+          // Update local state
+          setVerificationStatus('verified');
+          console.log('Local verification status updated to verified');
+          
+          // Close processing modal and show success modal
+          setShowProcessingModal(false);
+          setShowSuccessModal(true);
+          
+          console.log('🎉 Developer verification completed successfully!');
+          console.log('📄 Documents stored in Firebase with ID:', verificationResult.verificationId);
+          console.log('✅ Developer is now PERMANENTLY verified (isVerified: true)');
+        } catch (error) {
+          console.error('Error during auto-verification update:', error);
+          setShowProcessingModal(false);
+          setVerificationStatus('not_submitted'); // Reset on error
+        }
+      }, 3000); // 3 second delay to simulate processing
+      
+    } catch (error) {
+      console.error('Error during developer verification submission:', error);
+      setShowProcessingModal(false);
+      setVerificationStatus('not_submitted'); // Reset on error
+    }
   }, [currentUser]);
 
   if (loading) {
@@ -187,91 +271,140 @@ function DeveloperRC() {
         onStartVerification={handleStartVerification}
       />
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="stat bg-base-100 rounded-box shadow">
-          <div className="stat-figure text-primary">
-            <FaBuilding className="w-6 h-6" />
-          </div>
-          <div className="stat-title">Active Projects</div>
-          <div className="stat-value">{stats.activeProjects}</div>
-          <div className="stat-desc">In development</div>
-        </div>
-
-        <div className="stat bg-base-100 rounded-box shadow">
-          <div className="stat-figure text-primary">
-            <FaMoneyBillWave className="w-6 h-6" />
-          </div>
-          <div className="stat-title">Contract Value</div>
-          <div className="stat-value">{stats.contractValue}</div>
-          <div className="stat-desc">Total portfolio</div>
-        </div>
-
-        <div className="stat bg-base-100 rounded-box shadow">
-          <div className="stat-figure text-primary">
-            <FaUsers className="w-6 h-6" />
-          </div>
-          <div className="stat-title">Active Buyers</div>
-          <div className="stat-value">{stats.activeClients}</div>
-          <div className="stat-desc">Current clients</div>
-        </div>
-
-        <div className="stat bg-base-100 rounded-box shadow">
-          <div className="stat-figure text-primary">
-            <FaChartLine className="w-6 h-6" />
-          </div>
-          <div className="stat-title">On-Time Delivery</div>
-          <div className="stat-value">{stats.deliveryRate}</div>
-          <div className="stat-desc">Success rate</div>
-        </div>
-      </div>
-
-      {/* Smart Contract Manager */}
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="card-title">Smart Contract Manager</h2>
-              <p className="text-sm opacity-70">Automated payment releases based on construction milestones</p>
+      {/* Check if developer is verified before showing features */}
+      {verificationStatus === 'verified' ? (
+        <>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="stat bg-base-100 rounded-box shadow">
+              <div className="stat-figure text-primary">
+                <FaBuilding className="w-6 h-6" />
+              </div>
+              <div className="stat-title">Active Projects</div>
+              <div className="stat-value">{stats.activeProjects}</div>
+              <div className="stat-desc">In development</div>
             </div>
-            {verificationStatus === 'verified' ? (
+
+            <div className="stat bg-base-100 rounded-box shadow">
+              <div className="stat-figure text-primary">
+                <FaMoneyBillWave className="w-6 h-6" />
+              </div>
+              <div className="stat-title">Contract Value</div>
+              <div className="stat-value">{stats.contractValue}</div>
+              <div className="stat-desc">Total portfolio</div>
+            </div>
+
+            <div className="stat bg-base-100 rounded-box shadow">
+              <div className="stat-figure text-primary">
+                <FaUsers className="w-6 h-6" />
+              </div>
+              <div className="stat-title">Active Buyers</div>
+              <div className="stat-value">{stats.activeClients}</div>
+              <div className="stat-desc">Current clients</div>
+            </div>
+
+            <div className="stat bg-base-100 rounded-box shadow">
+              <div className="stat-figure text-primary">
+                <FaChartLine className="w-6 h-6" />
+              </div>
+              <div className="stat-title">On-Time Delivery</div>
+              <div className="stat-value">{stats.deliveryRate}</div>
+              <div className="stat-desc">Success rate</div>
+            </div>
+          </div>
+
+          {/* Smart Contract Manager */}
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="card-title">Smart Contract Manager</h2>
+                  <p className="text-sm opacity-70">Automated payment releases based on construction milestones</p>
+                </div>
+                <button 
+                  className="btn btn-primary gap-2"
+                  onClick={() => setShowAddModal(true)}
+                >
+                  <FaPlus />
+                  Add Contract
+                </button>
+              </div>
+
+              {contracts.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-lg opacity-70">No contracts found</p>
+                  <p className="text-sm opacity-50">Add your first contract to get started</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {contracts.map((contract) => (
+                    <ContractCard 
+                      key={contract.id} 
+                      contract={contract}
+                      onProgressUpdate={handleProgressUpdate}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        /* Restriction Message for Unverified Developers */
+        <div className="card bg-base-200 border-2 border-dashed border-primary/30">
+          <div className="card-body text-center py-16">
+            <div className="mb-6">
+              <FaBuilding className="w-16 h-16 mx-auto text-primary/50 mb-4" />
+              <h3 className="text-2xl font-bold text-base-content mb-2">
+                Verification Required
+              </h3>
+              <p className="text-base-content/70 max-w-md mx-auto">
+                Submit your business documents to unlock the Smart Contract Manager and start managing your development projects.
+              </p>
+            </div>
+            
+            <div className="bg-base-100 rounded-lg p-6 mb-6 max-w-lg mx-auto">
+              <h4 className="font-semibold text-base-content mb-3">🔓 Unlock These Features:</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-base-content/80">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-primary rounded-full"></span>
+                  Smart Contract Manager
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-primary rounded-full"></span>
+                  Project Portfolio Tracking
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-primary rounded-full"></span>
+                  Automated Payment Releases
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-primary rounded-full"></span>
+                  Buyer Client Management
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-primary rounded-full"></span>
+                  Progress Milestone Tracking
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-primary rounded-full"></span>
+                  Analytics Dashboard
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-center">
               <button 
-                className="btn btn-primary gap-2"
-                onClick={() => setShowAddModal(true)}
+                className="btn btn-primary btn-lg gap-2"
+                onClick={handleStartVerification}
               >
-                <FaPlus />
-                Add Contract
+                <FaBuilding className="w-5 h-5" />
+                Start Verification
               </button>
-            ) : (
-              <button 
-                className="btn btn-disabled gap-2"
-                disabled
-                title="Verification required to add contracts"
-              >
-                <FaPlus />
-                Add Contract
-              </button>
-            )}
+            </div>
           </div>
-
-          {contracts.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-lg opacity-70">No contracts found</p>
-              <p className="text-sm opacity-50">Add your first contract to get started</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {contracts.map((contract) => (
-                <ContractCard 
-                  key={contract.id} 
-                  contract={contract}
-                  onProgressUpdate={handleProgressUpdate}
-                />
-              ))}
-            </div>
-          )}
         </div>
-      </div>
+      )}
 
       {/* Add Contract Modal */}
       {showAddModal && (

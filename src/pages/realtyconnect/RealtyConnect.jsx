@@ -13,7 +13,7 @@ function RealtyConnect() {
   const userRole = location.state?.userRole || 'buyer';
 
   const handleInitializeSampleData = async () => {
-    try {
+    try {W
       await initializeSampleData();
       alert('Sample data initialized successfully!');
     } catch (error) {

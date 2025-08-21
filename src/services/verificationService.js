@@ -4,6 +4,7 @@ import {
   doc, 
   addDoc, 
   updateDoc, 
+  setDoc,
   onSnapshot, 
   query, 
   where, 
@@ -20,25 +21,30 @@ export class VerificationService {
     try {
       const documentUrls = [];
       
+      console.log(`📄 Processing ${documents.length} documents for ${userType} verification...`);
+      
       // WORKAROUND FOR CORS ISSUE: Simulate document upload without Firebase Storage
       // In production, you would upload to Firebase Storage
       for (const document of documents) {
         // Create mock document URLs for development
-        const mockUrl = `https://firebasestorage.googleapis.com/verification/${userType}/${userId}/${document.name}_${Date.now()}`;
+        const documentId = `${userId}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+        const mockUrl = `https://firebasestorage.googleapis.com/verification/${userType}/${userId}/${documentId}_${document.name}`;
         
         documentUrls.push({
+          id: documentId,
           name: document.name,
           url: mockUrl,
           type: document.type,
           size: document.size,
           uploadedAt: new Date().toISOString(),
-          status: 'uploaded' // Mock status for development
+          status: 'uploaded', // Mock status for development
+          verified: false // Will be set to true when verification is approved
         });
         
-        console.log(`Document simulated: ${document.name} (${document.type})`);
+        console.log(`✅ Document processed: ${document.name} (${document.type}) - ID: ${documentId}`);
       }
 
-      console.log('Documents processed (simulated):', documentUrls.length);
+      console.log(`📄 Documents processed (simulated): ${documentUrls.length} files`);
 
       // Save verification request to Firestore (this should work without CORS issues)
       const verificationRef = collection(db, 'verifications');
@@ -58,13 +64,50 @@ export class VerificationService {
         notes: ''
       });
 
-      // Update user profile with verification status
+      // Update user profile with verification status (create if doesn't exist)
       const userRef = doc(db, `${userType}s`, userId);
-      await updateDoc(userRef, {
-        verificationStatus: 'pending',
-        verificationId: docRef.id,
-        updatedAt: serverTimestamp()
-      });
+      
+      // Check if user document exists
+      const userDoc = await getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        // Update existing document
+        await updateDoc(userRef, {
+          verificationStatus: 'pending',
+          verificationId: docRef.id,
+          updatedAt: serverTimestamp()
+        });
+        console.log(`✅ Updated existing ${userType} profile with verification status`);
+      } else {
+        // Create new document with basic profile
+        const baseProfile = {
+          verificationStatus: 'pending',
+          verificationId: docRef.id,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          // Add basic fields based on user type
+          ...(userType === 'agent' ? {
+            name: verificationData.fullName || 'Agent User',
+            email: verificationData.email || 'agent@example.com',
+            specialization: 'Residential',
+            rating: 0,
+            deals: 0,
+            agency: 'RealiTech Realty',
+            bio: 'Professional real estate agent.',
+            userId: userId
+          } : {}),
+          ...(userType === 'developer' ? {
+            name: verificationData.fullName || 'Developer User',
+            email: verificationData.email || 'developer@example.com',
+            company: 'Development Company',
+            projects: 0,
+            userId: userId
+          } : {})
+        };
+        
+        await setDoc(userRef, baseProfile);
+        console.log(`✅ Created new ${userType} profile with verification status`);
+      }
 
       console.log('Verification request saved to Firestore with ID:', docRef.id);
 
@@ -165,9 +208,32 @@ export class VerificationService {
   // Update verification status (for admin or auto-verification)
   static async updateVerificationStatus(verificationId, status, reviewedBy = 'system', notes = '') {
     try {
+      console.log(`🔄 Updating verification ${verificationId} to status: ${status}`);
+      
       const verificationRef = doc(db, 'verifications', verificationId);
+      
+      // Get current verification data to update documents
+      const verificationDoc = await getDoc(verificationRef);
+      if (!verificationDoc.exists()) {
+        throw new Error('Verification document not found');
+      }
+      
+      const verificationData = verificationDoc.data();
+      
+      // Update document status when verification is approved
+      let updatedDocuments = verificationData.documents;
+      if (status === 'verified') {
+        updatedDocuments = verificationData.documents.map(doc => ({
+          ...doc,
+          verified: true,
+          verifiedAt: new Date().toISOString()
+        }));
+        console.log(`📄 Marked ${updatedDocuments.length} documents as verified`);
+      }
+      
       const updateData = {
         status,
+        documents: updatedDocuments,
         reviewedAt: serverTimestamp(),
         reviewedBy,
         notes
@@ -178,18 +244,47 @@ export class VerificationService {
       }
 
       await updateDoc(verificationRef, updateData);
+      console.log(`✅ Verification document updated in Firebase`);
 
-      // Get verification details to update user profile
-      const verificationDoc = await getDoc(verificationRef);
-      if (verificationDoc.exists()) {
-        const verificationData = verificationDoc.data();
-        const userRef = doc(db, `${verificationData.userType}s`, verificationData.userId);
-        
+      // Update user profile
+      const userRef = doc(db, `${verificationData.userType}s`, verificationData.userId);
+      
+      // Also create/update verification status document for real-time subscriptions
+      const statusDocRef = doc(db, 'verification_status', `${verificationData.userId}_${verificationData.userType}`);
+      
+      // Check if user document exists
+      const userDocCheck = await getDoc(userRef);
+      
+      if (userDocCheck.exists()) {
         await updateDoc(userRef, {
           verificationStatus: status,
           updatedAt: serverTimestamp()
         });
+        console.log(`✅ User profile updated with verification status: ${status}`);
+      } else {
+        // Create basic profile if it doesn't exist
+        await setDoc(userRef, {
+          verificationStatus: status,
+          verificationId: verificationId,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          userId: verificationData.userId
+        });
+        console.log(`✅ Created user profile with verification status: ${status}`);
       }
+
+      // Update or create status document with timestamp
+      await setDoc(statusDocRef, {
+        userId: verificationData.userId,
+        userType: verificationData.userType,
+        status: status,
+        verificationId: verificationId,
+        submittedAt: verificationData.submittedAt || new Date().toISOString(), // Include submission timestamp
+        updatedAt: serverTimestamp(),
+        reviewedAt: status === 'verified' ? serverTimestamp() : null,
+        reviewedBy: reviewedBy
+      }, { merge: true });
+      console.log(`✅ Verification status document updated with timestamp`);
 
       return { success: true };
     } catch (error) {
@@ -222,6 +317,78 @@ export class VerificationService {
   static async canPerformRestrictedActions(userId, userType) {
     const status = await this.getVerificationStatus(userId, userType);
     return status.status === 'verified';
+  }
+
+  // Reset verification status to force fresh submission
+  static async resetVerificationStatus(userId, userType) {
+    try {
+      const statusDocRef = doc(db, 'verification_status', `${userId}_${userType}`);
+      
+      // Reset to not_submitted status
+      await setDoc(statusDocRef, {
+        userId,
+        userType,
+        status: 'not_submitted',
+        updatedAt: serverTimestamp(),
+        resetAt: serverTimestamp(),
+        reason: 'Fresh session - requires new document submission'
+      }, { merge: true });
+      
+      console.log(`✅ Verification status reset to not_submitted for ${userType} ${userId}`);
+      return true;
+    } catch (error) {
+      console.error('Error resetting verification status:', error);
+      throw error;
+    }
+  }
+
+  // Set user as permanently verified with isVerified boolean
+  static async setUserVerified(userId, userType, isVerified = true) {
+    try {
+      const statusDocRef = doc(db, 'verification_status', `${userId}_${userType}`);
+      
+      // Set isVerified boolean permanently
+      await setDoc(statusDocRef, {
+        userId,
+        userType,
+        status: isVerified ? 'verified' : 'not_submitted',
+        isVerified: isVerified, // PERMANENT BOOLEAN FLAG
+        verifiedAt: isVerified ? serverTimestamp() : null,
+        updatedAt: serverTimestamp(),
+        permanent: true // This verification persists across sessions
+      }, { merge: true });
+      
+      console.log(`✅ ${userType} ${userId} isVerified set to: ${isVerified} PERMANENTLY`);
+      return true;
+    } catch (error) {
+      console.error('Error setting user verified status:', error);
+      throw error;
+    }
+  }
+
+  // Clear user verification to force fresh submission
+  static async clearUserVerification(userId, userType) {
+    try {
+      const statusDocRef = doc(db, 'verification_status', `${userId}_${userType}`);
+      
+      // Clear verification status completely
+      await setDoc(statusDocRef, {
+        userId,
+        userType,
+        status: 'not_submitted',
+        isVerified: false,
+        verifiedAt: null,
+        updatedAt: serverTimestamp(),
+        cleared: true,
+        reason: 'Forced fresh verification required'
+      }, { merge: false }); // Replace entire document
+      
+      console.log(`🗑️ ${userType} ${userId} verification status CLEARED - must submit fresh`);
+      return true;
+    } catch (error) {
+      console.error('Error clearing user verification:', error);
+      throw error;
+    }
   }
 }
 

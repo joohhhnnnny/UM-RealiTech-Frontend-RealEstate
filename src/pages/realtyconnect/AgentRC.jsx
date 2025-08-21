@@ -95,32 +95,37 @@ function AgentRC() {
     // Load verification status
     const loadVerificationStatus = async () => {
       try {
-        // ALWAYS START AS NOT_SUBMITTED - AGENT MUST SUBMIT DOCUMENTS FRESH
+        // FORCE RESET TO NOT_SUBMITTED - Agent must verify fresh each time
         setVerificationStatus('not_submitted');
         
-        // Check if agent profile exists and reset their verification status
-        const agentProfile = await agentService.getAgentByUserId(userId);
+        // Clear any existing verification status in Firebase and wait for completion
+        await VerificationService.clearUserVerification(userId, 'agent');
+        console.log('🔄 Agent verification cleared - must submit documents fresh');
         
-        if (agentProfile) {
-          // Reset agent verification status to not_submitted
-          await agentService.updateAgent(agentProfile.id, {
-            verificationStatus: 'not_submitted'
-          });
-          console.log('Agent verification status reset to not_submitted');
-          
-          // Subscribe to agent profile changes
-          const unsubscribe = agentService.subscribeToAgents((agents) => {
-            const currentAgent = agents.find(agent => agent.userId === userId);
-            if (currentAgent) {
-              setVerificationStatus(currentAgent.verificationStatus || 'not_submitted');
+        // Small delay to ensure Firebase clear operation is complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Now subscribe to verification status changes (but ignore any existing verified status)
+        const statusUnsubscribe = VerificationService.subscribeToVerificationStatus(
+          userId,
+          'agent',
+          (status) => {
+            // ONLY allow progression during active verification process
+            // Ignore any pre-existing verified status
+            if (status.status === 'pending') {
+              setVerificationStatus('pending');
+              console.log('📋 Agent verification status updated to: pending (document submitted)');
+            } else if (status.status === 'verified' && status.submittedAt && 
+                      (Date.now() - new Date(status.submittedAt).getTime()) < 10000) {
+              // Only accept verified status if it was submitted in the last 10 seconds
+              setVerificationStatus('verified');
+              console.log('📋 Agent verification status updated to: verified (fresh verification)');
+            } else {
+              console.log('🚫 Ignoring old verification status:', status.status);
             }
-          });
-          return unsubscribe;
-        } else {
-          // If no agent profile exists, status is not_submitted
-          setVerificationStatus('not_submitted');
-          return () => {};
-        }
+          }
+        );
+        return statusUnsubscribe;
       } catch (err) {
         console.error('Error loading verification status:', err);
         setVerificationStatus('not_submitted');
@@ -248,7 +253,10 @@ function AgentRC() {
       const verificationResult = await VerificationService.submitVerification(
         userId,
         'agent',
-        verificationData,
+        {
+          ...verificationData,
+          submittedAt: new Date().toISOString() // Add timestamp for fresh submission tracking
+        },
         documents
       );
       
@@ -261,47 +269,34 @@ function AgentRC() {
       
       console.log(`Documents successfully processed: ${verificationResult.documentsCount} files with ID: ${verificationResult.verificationId}`);
       
-      // Create or update agent profile with basic info
-      const agentProfileData = {
-        name: verificationData.fullName || currentUser?.displayName || 'Agent User',
-        email: verificationData.email || currentUser?.email || 'agent@realitech.com',
-        specialization: 'Residential', // Default, can be updated later
-        rating: 4.5,
-        deals: 0, // Starting with 0 deals
-        agency: 'RealiTech Realty',
-        image: currentUser?.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Agent&backgroundColor=b6e3f4',
-        bio: 'Professional real estate agent committed to providing excellent service.',
-        verificationStatus: 'pending', // Set to pending initially
-        verificationId: verificationResult.verificationId
-      };
-
-      // Create or update agent profile
-      const agentId = await agentService.createOrUpdateAgentProfile(userId, agentProfileData);
-      console.log('Agent profile created/updated with ID:', agentId);
-      
       // Auto-verify after 3 seconds for demo purposes
       setTimeout(async () => {
         try {
           console.log('Auto-verifying agent after 3 seconds...');
           
-          // Update agent profile with verified status
-          const existingAgent = await agentService.getAgentByUserId(userId);
-          if (existingAgent) {
-            await agentService.updateAgent(existingAgent.id, {
-              verificationStatus: 'verified'
-            });
-            console.log('Agent verification status updated to verified in Firebase');
-            
-            // Update local state
-            setVerificationStatus('verified');
-            console.log('Local verification status updated to verified');
-          } else {
-            console.error('Could not find agent profile to update');
-          }
+          // Update verification document status in Firebase to "verified"
+          await VerificationService.updateVerificationStatus(
+            verificationResult.verificationId, 
+            'verified', 
+            'system', 
+            'Auto-verified after 3 seconds - Demo mode'
+          );
+          
+          // SET isVerified: true PERMANENTLY in Firebase
+          await VerificationService.setUserVerified(userId, 'agent', true);
+          console.log('✅ Agent isVerified set to TRUE permanently in Firebase');
+          
+          // Update local state
+          setVerificationStatus('verified');
+          console.log('Local verification status updated to verified');
           
           // Close processing modal and show success modal
           setShowProcessingModal(false);
           setShowSuccessModal(true);
+          
+          console.log('🎉 Agent verification completed successfully!');
+          console.log('📄 Documents stored in Firebase with ID:', verificationResult.verificationId);
+          console.log('✅ Agent is now PERMANENTLY verified (isVerified: true)');
         } catch (error) {
           console.error('Error during auto-verification update:', error);
           setShowProcessingModal(false);

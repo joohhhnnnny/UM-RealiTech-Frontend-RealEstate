@@ -333,19 +333,49 @@ export const agentService = {
   // Subscribe to agent connections
   subscribeToAgentConnections: (agentId, callback) => {
     try {
-      const q = query(
+      // First try with orderBy, if it fails due to index, fall back to simple query
+      const qWithOrder = query(
         collection(db, CONNECTIONS_COLLECTION), 
         where('agentId', '==', agentId),
         orderBy('createdAt', 'desc')
       );
-      return onSnapshot(q, 
+      
+      return onSnapshot(qWithOrder, 
         (snapshot) => {
           const connections = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          // Sort in memory as fallback
+          connections.sort((a, b) => {
+            const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt) || new Date();
+            const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt) || new Date();
+            return bTime - aTime;
+          });
           callback(connections);
         },
         (error) => {
-          console.error('Error in agent connections subscription:', error);
-          callback([]);
+          console.warn('Error with ordered query, falling back to simple query:', error);
+          
+          // Fallback to simple query without orderBy
+          const qSimple = query(
+            collection(db, CONNECTIONS_COLLECTION), 
+            where('agentId', '==', agentId)
+          );
+          
+          return onSnapshot(qSimple, 
+            (snapshot) => {
+              const connections = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              // Sort in memory
+              connections.sort((a, b) => {
+                const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt) || new Date();
+                const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt) || new Date();
+                return bTime - aTime;
+              });
+              callback(connections);
+            },
+            (fallbackError) => {
+              console.error('Error in fallback agent connections subscription:', fallbackError);
+              callback([]);
+            }
+          );
         }
       );
     } catch (error) {
