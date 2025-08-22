@@ -41,6 +41,45 @@ function ChatbotIcon() {
   const [lastFoundProperties, setLastFoundProperties] = useState([]); // Remember last search results
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
 
+  // Helper function to format text with bold styling (hiding asterisks)
+  const formatTextWithBold = (text) => {
+    if (!text) return text;
+    
+    // Handle multi-line text by splitting on line breaks first
+    const lines = text.split('\n');
+    
+    return lines.map((line, lineIndex) => {
+      if (!line.trim()) return <br key={`br-${lineIndex}`} />;
+      
+      // Split line by asterisks and process each part
+      const parts = line.split(/(\*[^*]+\*)/g);
+      
+      const processedParts = parts.map((part, index) => {
+        // Check if this part is enclosed in asterisks (bold text)
+        if (part.match(/^\*[^*]+\*$/)) {
+          // Remove asterisks and make bold
+          const boldText = part.slice(1, -1);
+          return <strong key={`${lineIndex}-${index}`} className="font-bold text-base-content">{boldText}</strong>;
+        }
+        // Return regular text, but skip empty strings and standalone asterisks
+        if (!part || part === '*' || part === '**') {
+          return null;
+        }
+        return part;
+      }).filter(part => part !== null && part !== ''); // Remove empty and null parts
+      
+      // Only return span if there are processed parts
+      if (processedParts.length === 0) return null;
+      
+      return (
+        <span key={lineIndex}>
+          {processedParts}
+          {lineIndex < lines.length - 1 && <br />}
+        </span>
+      );
+    }).filter(part => part !== null); // Remove null lines
+  };
+
   // Handle window resize for responsive behavior
   useEffect(() => {
     const handleResize = () => {
@@ -746,7 +785,7 @@ Please provide a helpful response based on your role as ${chatMode === 'agent' ?
                             </div>
                           </div>
                         ) : (
-                          <div className="whitespace-pre-line">{msg.message}</div>
+                          <div>{formatTextWithBold(msg.message)}</div>
                         )}
                       </div>
                       <div className="chat-footer opacity-50 text-xs">

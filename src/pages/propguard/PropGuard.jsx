@@ -68,23 +68,29 @@ const PropertyCard = memo(({ property }) => {
 
 PropertyCard.displayName = 'PropertyCard';
 
-// Helper function to format text with bold styling
+// Helper function to format text with bold styling (hiding asterisks)
 const formatTextWithBold = (text) => {
   if (!text) return text;
   
+  // First, let's clean up any standalone asterisks that aren't part of pairs
+  let cleanText = text;
+  
   // Split text by asterisks and process each part
-  const parts = text.split(/(\*[^*]+\*)/g);
+  const parts = cleanText.split(/(\*[^*]+\*)/g);
   
   return parts.map((part, index) => {
-    // Check if this part is enclosed in asterisks
-    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
-      // Remove asterisks and make bold with black color
+    // Check if this part is enclosed in asterisks (bold text)
+    if (part.match(/^\*[^*]+\*$/)) {
+      // Remove asterisks and make bold
       const boldText = part.slice(1, -1);
-      return <strong key={index} className="font-bold text-content">{boldText}</strong>;
+      return <strong key={index} className="font-bold text-base-content">{boldText}</strong>;
     }
-    // Return regular text, filter out standalone asterisks
-    return part === '*' ? '' : part;
-  }).filter(part => part !== ''); // Remove empty parts
+    // Return regular text, but skip empty strings and standalone asterisks
+    if (!part || part === '*' || part === '**') {
+      return null;
+    }
+    return part;
+  }).filter(part => part !== null && part !== ''); // Remove empty and null parts
 };
 
 // Helper function to format bot messages
