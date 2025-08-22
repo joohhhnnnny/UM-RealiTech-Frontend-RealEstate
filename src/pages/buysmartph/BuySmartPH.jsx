@@ -27,7 +27,7 @@ function BuySmartPH() {
         <div className="container mx-auto max-w-[1400px] px-4 py-8">
 
           {/* Hero Section */}
-          <div className="card bg-gradient-to-r from-teal-500/90 to-teal-600 shadow-lg overflow-hidden backdrop-blur-xl mb-8">
+          <div className="card bg-gradient-to-r from-teal-800 to-teal-600/90 shadow-lg overflow-hidden backdrop-blur-xl mb-8">
             <div className="card-body p-8">
               <div className="flex items-center gap-4">
                 <RiRobot2Line className="w-8 h-8 text-primary-content" />

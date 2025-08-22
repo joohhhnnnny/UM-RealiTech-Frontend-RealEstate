@@ -349,7 +349,7 @@ function Sidebar({ userRole: propUserRole = 'buyer', isOpen, setIsOpen }) {
     const next = !isDark;
     setIsDark(next);
     const theme = next ? 'dark' : 'light';
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    localStorage.setItem('theme', theme); // Fixed: use 'theme' instead of 'isDark ? dark : light'
     document.documentElement.setAttribute('data-theme', theme);
   };
 
@@ -373,49 +373,50 @@ function Sidebar({ userRole: propUserRole = 'buyer', isOpen, setIsOpen }) {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      // Log the logout event before signing out
-      await ActivityLoggerService.logAuthActivity(
-        currentUser.uid,
-        ActivityLoggerService.ACTIVITY_TYPES.LOGOUT,
-        {
-          email: currentUser.email,
-          userRole: currentUserRole, // <-- FIXED HERE
-          userNumber: currentUser.userNumber,
-          logoutMethod: 'user_initiated',
-          timestamp: new Date().toISOString(),
-          sessionDuration: currentUser.metadata?.lastSignInTime ? 
-            Date.now() - new Date(currentUser.metadata.lastSignInTime).getTime() : 0
+      // Try to log the logout event (won't block logout if it fails)
+      try {
+        if (currentUser?.uid && ActivityLoggerService?.logAuthActivity) {
+          await ActivityLoggerService.logAuthActivity(
+            currentUser.uid,
+            'logout', // Use string instead of constant to avoid import issues
+            {
+              email: currentUser.email,
+              userRole: currentUserRole,
+              userNumber: currentUser.userNumber,
+              logoutMethod: 'user_initiated',
+              timestamp: new Date().toISOString(),
+              sessionDuration: currentUser.metadata?.lastSignInTime ? 
+                Date.now() - new Date(currentUser.metadata.lastSignInTime).getTime() : 0
+            }
+          );
         }
-      );
+      } catch (logError) {
+        console.warn('Activity logging failed (non-critical):', logError.message);
+        // Continue with logout even if logging fails
+      }
 
+      // Perform the actual logout
       await signOut(auth);
+      
       // Clear localStorage
       localStorage.removeItem('userData');
+      localStorage.removeItem('userRole');
       localStorage.removeItem('currentSession');
       sessionStorage.clear();
       
-      // Navigate to home page
-      navigate('/');
+      console.log('User logged out successfully');
+      
     } catch (error) {
       console.error('Logout error:', error);
       
-      // Log the failed logout attempt
-      try {
-        await ActivityLoggerService.logGeneralActivity(
-          currentUser?.uid || 'unknown',
-          'logout_failed',
-          ActivityLoggerService.CATEGORIES.AUTHENTICATION,
-          {
-            email: currentUser?.email || 'unknown',
-            userRole: currentUserRole, // <-- FIXED HERE
-            errorCode: error.code,
-            errorMessage: error.message,
-            timestamp: new Date().toISOString()
-          }
-        );
-      } catch (logError) {
-        console.error('Error logging failed logout:', logError);
-      }
+      // Force logout even if signOut fails
+      localStorage.removeItem('userData');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('currentSession');
+      sessionStorage.clear();
+      
+      // Navigate manually if auth state listener doesn't trigger
+      window.location.href = '/login';
     }
     setIsLoggingOut(false);
   };

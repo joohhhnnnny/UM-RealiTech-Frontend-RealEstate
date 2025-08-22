@@ -105,7 +105,7 @@ function BuyerBSPH() {
     },
     {
       id: 4,
-      title: "Document Submission",
+      title: "Document Verification",
       description: "Streamlined document upload and verification process",
       icon: RiFileList3Line,
       color: "text-amber-500",

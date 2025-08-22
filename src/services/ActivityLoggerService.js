@@ -1,12 +1,12 @@
 import { 
   collection, 
   addDoc, 
-  serverTimestamp, 
-  query, 
-  where, 
-  orderBy, 
+  serverTimestamp,
+  query,
+  where,
+  orderBy,
   limit as firestoreLimit,
-  getDocs 
+  getDocs
 } from 'firebase/firestore';
 import { db } from '../config/Firebase';
 
@@ -48,24 +48,22 @@ class ActivityLoggerService {
   static async logAuthActivity(userId, activityType, details = {}) {
     try {
       const activityData = {
-        userId,
-        activityType,
-        category: this.CATEGORIES.AUTHENTICATION,
-        timestamp: serverTimestamp(),
-        ipAddress: await this.getClientIP(),
-        userAgent: navigator.userAgent,
+        userId: userId,
+        activityType: activityType,
         details: {
           ...details,
-          sessionId: this.generateSessionId()
-        }
+          userAgent: navigator.userAgent,
+          timestamp: new Date().toISOString(),
+          sessionId: sessionStorage.getItem('sessionId') || 'unknown'
+        },
+        createdAt: serverTimestamp(),
+        timestamp: serverTimestamp()
       };
 
-      const docRef = await addDoc(
-        collection(db, this.COLLECTIONS.LOGIN_LOGOUT), 
-        activityData
-      );
-
-      console.log(`Auth activity logged: ${activityType}`, docRef.id);
+      // Use addDoc to let Firestore generate the document ID
+      const docRef = await addDoc(collection(db, 'authActivityLogs'), activityData);
+      
+      console.log('Auth activity logged successfully:', docRef.id);
       return docRef.id;
     } catch (error) {
       console.error('Error logging auth activity:', error);
@@ -168,6 +166,36 @@ class ActivityLoggerService {
       return docRef.id;
     } catch (error) {
       console.error('Error logging delete activity:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Log general activities (navigation, searches, etc.)
+   */
+  static async logGeneralActivity(userId, activityType, category, details = {}) {
+    try {
+      const activityData = {
+        userId,
+        activityType,
+        category,
+        timestamp: serverTimestamp(),
+        details: {
+          ...details,
+          userAgent: navigator.userAgent,
+          sessionId: sessionStorage.getItem('sessionId') || 'unknown'
+        }
+      };
+
+      const docRef = await addDoc(
+        collection(db, this.COLLECTIONS.BUSINESS_ACTIVITIES), 
+        activityData
+      );
+
+      console.log(`General activity logged: ${activityType}`, docRef.id);
+      return docRef.id;
+    } catch (error) {
+      console.error('Error logging general activity:', error);
       throw error;
     }
   }

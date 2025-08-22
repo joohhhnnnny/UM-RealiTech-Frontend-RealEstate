@@ -26,7 +26,7 @@ function BuildSafe() {
       <div className="min-h-screen bg-base-100 text-base-content">
         <div className="container mx-auto max-w-[1400px] px-4 py-8">
           {/* Hero Section */}
-          <div className="card bg-gradient-to-r from-blue-500/90 to-blue-600 shadow-lg overflow-hidden backdrop-blur-xl mb-8">
+          <div className="card bg-gradient-to-r from-blue-800 to-blue-600/90 shadow-lg overflow-hidden backdrop-blur-xl mb-8">
             <div className="card-body p-8">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">

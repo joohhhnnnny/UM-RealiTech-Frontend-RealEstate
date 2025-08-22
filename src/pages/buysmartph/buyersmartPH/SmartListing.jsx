@@ -138,74 +138,6 @@ function SmartListing({ profileData }) {
     };
   }, []);
 
-  // Enhanced MCDA + Content-Based Filtering Algorithm
-  const calculateMatchScore = useCallback((listing, profile) => {
-    if (!profile || !listing) {
-      return 30; // Default score for incomplete data
-    }
-
-    try {
-      // Use the professional recommendation engine
-      const scoredProperty = propertyRecommendationEngine.calculateRecommendationScore(listing, profile);
-      
-      console.log('Professional MCDA Score Result:', {
-        property: listing.title,
-        finalScore: scoredProperty.matchScore,
-        detailedScores: scoredProperty.detailedScores,
-        matchFactors: scoredProperty.matchFactors,
-        explanation: scoredProperty.explanation
-      });
-
-      return scoredProperty.matchScore;
-    } catch (error) {
-      console.error('Error in recommendation scoring:', error);
-      return 30; // Fallback score
-    }
-  }, []);
-
-  // Helper function to get affordability styling and display
-  const getAffordabilityDisplay = useCallback((level) => {
-    const affordabilityMap = {
-      excellent: {
-        bgClass: 'bg-success',
-        textClass: 'text-success',
-        label: '💰 Excellent',
-        badgeLabel: '💰 Excellent'
-      },
-      good: {
-        bgClass: 'bg-info',
-        textClass: 'text-info',
-        label: '💸 Good',
-        badgeLabel: '💸 Good'
-      },
-      fair: {
-        bgClass: 'bg-warning',
-        textClass: 'text-warning',
-        label: '⚖️ Fair',
-        badgeLabel: '⚖️ Fair'
-      },
-      tight: {
-        bgClass: 'bg-warning',
-        textClass: 'text-warning',
-        label: '⚠️ Tight Budget',
-        badgeLabel: '⚠️ Tight'
-      },
-      stretch: {
-        bgClass: 'bg-error',
-        textClass: 'text-error',
-        label: '❌ Financial Stretch',
-        badgeLabel: '❌ Stretch'
-      }
-    };
-
-    return affordabilityMap[level] || {
-      bgClass: 'bg-base-300',
-      textClass: 'text-base-content',
-      label: 'Unknown',
-      badgeLabel: 'Unknown'
-    };
-  }, []);
-
   // Function to calculate monthly payment for display
   const calculateMonthlyPayment = useCallback((priceString) => {
     const propertyPrice = parseInt(priceString.replace(/[₱,\s]/g, '')) || 0;
@@ -219,7 +151,7 @@ function SmartListing({ profileData }) {
     return Math.round(monthlyPayment);
   }, []);
 
-  // Function to get affordability level for display (uses calculateMonthlyPayment to avoid duplication)
+  // Function to get affordability level for display (MOVED BEFORE calculateMatchScore)
   const getAffordabilityLevel = useCallback((listing, profile) => {
     if (!profile.monthlyIncome || !listing.price) return 'unknown';
     
@@ -240,6 +172,113 @@ function SmartListing({ profileData }) {
     if (housingRatio <= 0.40 && totalDebtRatio <= 0.50) return 'tight';
     return 'stretch';
   }, [calculateMonthlyPayment]);
+
+  // Enhanced MCDA + Content-Based Filtering Algorithm (NOW AFTER getAffordabilityLevel)
+  const calculateMatchScore = useCallback((listing, profile) => {
+    if (!profile || !listing) {
+      return 50; // Increased default score for incomplete data
+    }
+
+    try {
+      // Use the professional recommendation engine
+      const scoredProperty = propertyRecommendationEngine.calculateRecommendationScore(listing, profile);
+      
+      // Enhanced scoring logic for perfect matches
+      let finalScore = scoredProperty.matchScore;
+      
+      // Check for perfect location match
+      const isLocationPerfectMatch = isLocationMatch(listing.location, profile.preferredLocation);
+      
+      // Check for perfect budget match
+      const propertyPrice = parseInt(listing.price?.replace(/[₱,\s]/g, '')) || 0;
+      const budgetRanges = {
+        '1M-3M': { min: 1000000, max: 3000000 },
+        '3M-5M': { min: 3000000, max: 5000000 },
+        '5M-10M': { min: 5000000, max: 10000000 },
+        '10M+': { min: 10000000, max: Infinity }
+      };
+      const budgetRange = budgetRanges[profile.budgetRange];
+      const isPerfectBudgetMatch = budgetRange && propertyPrice >= budgetRange.min && propertyPrice <= budgetRange.max;
+      
+      // Check affordability level
+      const affordabilityLevel = getAffordabilityLevel(listing, profile);
+      const isAffordable = ['excellent', 'good'].includes(affordabilityLevel);
+      
+      // Bonus points for perfect matches
+      let bonusPoints = 0;
+      if (isLocationPerfectMatch) bonusPoints += 10;
+      if (isPerfectBudgetMatch) bonusPoints += 10;
+      if (isAffordable) bonusPoints += 5;
+      
+      // Apply bonus and ensure we can reach 100%
+      finalScore = Math.min(100, finalScore + bonusPoints);
+      
+      // If all criteria are perfect, ensure we get close to 100%
+      if (isLocationPerfectMatch && isPerfectBudgetMatch && isAffordable) {
+        finalScore = Math.max(95, finalScore); // Guarantee at least 95% for perfect matches
+      }
+
+      console.log('Enhanced MCDA Score Result:', {
+        property: listing.title,
+        baseScore: scoredProperty.matchScore,
+        finalScore: finalScore,
+        bonusPoints: bonusPoints,
+        locationMatch: isLocationPerfectMatch,
+        budgetMatch: isPerfectBudgetMatch,
+        affordable: isAffordable,
+        detailedScores: scoredProperty.detailedScores,
+        explanation: scoredProperty.explanation
+      });
+
+      return Math.round(finalScore);
+    } catch (error) {
+      console.error('Error in recommendation scoring:', error);
+      return 50; // Increased fallback score
+    }
+  }, [isLocationMatch, getAffordabilityLevel]); // Make sure getAffordabilityLevel is in dependencies
+
+  // Helper function to get affordability styling and display
+  const getAffordabilityDisplay = useCallback((level) => {
+    const affordabilityMap = {
+      excellent: {
+        bgClass: 'bg-success',
+        textClass: 'text-success',
+        label: 'Excellent',
+        badgeLabel: 'Excellent'
+      },
+      good: {
+        bgClass: 'bg-info',
+        textClass: 'text-info',
+        label: 'Good',
+        badgeLabel: 'Good'
+      },
+      fair: {
+        bgClass: 'bg-warning',
+        textClass: 'text-warning',
+        label: 'Fair',
+        badgeLabel: 'Fair'
+      },
+      tight: {
+        bgClass: 'bg-warning',
+        textClass: 'text-warning',
+        label: 'Tight Budget',
+        badgeLabel: 'Tight'
+      },
+      stretch: {
+        bgClass: 'bg-error',
+        textClass: 'text-error',
+        label: 'Financial Stretch',
+        badgeLabel: 'Stretch'
+      }
+    };
+
+    return affordabilityMap[level] || {
+      bgClass: 'bg-base-300',
+      textClass: 'text-base-content',
+      label: 'Unknown',
+      badgeLabel: 'Unknown'
+    };
+  }, []);
 
   // Function to fetch user's saved properties
   const fetchSavedProperties = useCallback(async () => {
@@ -482,7 +521,7 @@ function SmartListing({ profileData }) {
           // No profile data, just set the listings with default match scores
           const listingsWithDefaultScores = fetchedListings.map(listing => ({
             ...listing,
-            matchScore: 50 // Default score when no profile data
+            matchScore: 30 // Default score when no profile data
           }));
           
           console.log('SmartListing: Setting listings without profile:', listingsWithDefaultScores.length);
@@ -596,7 +635,7 @@ function SmartListing({ profileData }) {
               listing.matchScore >= 40 ? 'badge-info bg-blue-600/90' :
               'badge-error bg-gray-600/90'
             }`}>
-              AI Match: {listing.matchScore}%
+              Profile Match: {listing.matchScore}%
             </div>
             {profileData && profileData.monthlyIncome && (
               (() => {
@@ -616,9 +655,9 @@ function SmartListing({ profileData }) {
                 listing.matchScore >= 40 ? 'bg-blue-500/90' :
                 'bg-gray-500/90'
               }`}>
-                {listing.matchScore >= 80 ? '🎯 Perfect' :
-                 listing.matchScore >= 60 ? '⭐ Good' :
-                 listing.matchScore >= 40 ? '👍 Fair' :
+                {listing.matchScore >= 80 ? 'Perfect' :
+                 listing.matchScore >= 60 ? 'Good' :
+                 listing.matchScore >= 40 ? 'Fair' :
                  '📍 Basic'}
               </div>
             )}

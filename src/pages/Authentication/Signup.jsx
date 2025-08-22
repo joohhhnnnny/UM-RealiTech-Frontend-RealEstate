@@ -310,12 +310,53 @@ const Signup = ({ onToggle }) => {
     }
   };
 
+  // Helper function to convert text to proper case
+  const toProperCase = (str) => {
+    if (!str) return str;
+    return str
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   const handleSignupChange = (e) => {
     setSignupData({
       ...signupData,
       [e.target.name]: e.target.value
     });
     setError(''); // Clear error when user types
+  };
+
+  // Handle proper casing when input loses focus
+  const handleNameBlur = (e) => {
+    const fieldName = e.target.name;
+    const currentValue = e.target.value.trim();
+    
+    if ((fieldName === 'firstName' || fieldName === 'lastName') && currentValue) {
+      const properCaseValue = toProperCase(currentValue);
+      if (properCaseValue !== currentValue) {
+        setSignupData(prev => ({
+          ...prev,
+          [fieldName]: properCaseValue
+        }));
+      }
+    }
+  };
+
+  // Handle email lowercase conversion when input loses focus
+  const handleEmailBlur = (e) => {
+    const currentValue = e.target.value.trim();
+    
+    if (currentValue) {
+      const lowercaseValue = currentValue.toLowerCase();
+      if (lowercaseValue !== currentValue) {
+        setSignupData(prev => ({
+          ...prev,
+          email: lowercaseValue
+        }));
+      }
+    }
   };
 
   const handleSuccessClose = () => {
@@ -581,6 +622,7 @@ const Signup = ({ onToggle }) => {
                     name="firstName"
                     value={signupData.firstName}
                     onChange={handleSignupChange}
+                    onBlur={handleNameBlur}
                     placeholder="First name"
                     className="input input-bordered w-full pl-10 focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50"
                     required
@@ -599,6 +641,7 @@ const Signup = ({ onToggle }) => {
                     name="lastName"
                     value={signupData.lastName}
                     onChange={handleSignupChange}
+                    onBlur={handleNameBlur}
                     placeholder="Last name"
                     className="input input-bordered w-full pl-10 focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50"
                     required
@@ -620,6 +663,7 @@ const Signup = ({ onToggle }) => {
                   name="email"
                   value={signupData.email}
                   onChange={handleSignupChange}
+                  onBlur={handleEmailBlur}
                   placeholder="Enter your email"
                   className="input input-bordered w-full pl-12 focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50"
                   required

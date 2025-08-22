@@ -67,7 +67,69 @@ const BuyerTypeOptions = ({ buyerType, setFormData }) => {
 };
 
 // Memoized input field component to isolate re-renders
-const InputField = ({ label, name, value, onChange, type = 'text', placeholder, icon: Icon }) => {
+const InputField = ({ label, name, value, onChange, type = 'text', placeholder, icon: Icon, isFormatted = false }) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const [rawValue, setRawValue] = useState(value || '');
+
+  // Format number with commas and decimal places
+  const formatNumber = (num) => {
+    if (!num || isNaN(num)) return '';
+    return Number(num).toLocaleString('en-US', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
+  };
+
+  // Remove formatting to get raw number
+  const unformatNumber = (formattedNum) => {
+    return formattedNum.replace(/,/g, '');
+  };
+
+  const handleFocus = () => {
+    if (isFormatted) {
+      setIsFocused(true);
+      setRawValue(unformatNumber(value || ''));
+    }
+  };
+
+  const handleBlur = (e) => {
+    if (isFormatted) {
+      setIsFocused(false);
+      const numericValue = unformatNumber(e.target.value);
+      setRawValue(numericValue);
+      // Trigger onChange with the raw numeric value
+      onChange({
+        target: {
+          name: name,
+          value: numericValue,
+          type: type
+        }
+      });
+    }
+  };
+
+  const handleChange = (e) => {
+    if (isFormatted && isFocused) {
+      // Only allow numbers and decimal point while typing
+      const inputValue = e.target.value.replace(/[^0-9.]/g, '');
+      setRawValue(inputValue);
+      onChange({
+        target: {
+          name: name,
+          value: inputValue,
+          type: type
+        }
+      });
+    } else {
+      onChange(e);
+    }
+  };
+
+  // Determine display value
+  const displayValue = isFormatted 
+    ? (isFocused ? rawValue : formatNumber(value))
+    : value;
+
   return (
     <div className="form-control">
       <label className="label">
@@ -75,10 +137,13 @@ const InputField = ({ label, name, value, onChange, type = 'text', placeholder, 
       </label>
       <div className="relative">
         <input
-          type={type}
+          type={type === 'number' && isFormatted ? 'text' : type}
           name={name}
-          value={value}
-          onChange={onChange}
+          value={type === 'checkbox' ? undefined : displayValue}
+          checked={type === 'checkbox' ? value : undefined}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           placeholder={placeholder}
           className={`${type === 'checkbox' ? 'checkbox checkbox-primary' : 'input input-bordered w-full'} ${Icon ? 'pl-10' : ''}`}
         />
@@ -259,6 +324,7 @@ function AIGuide({ profileData, setProfileData, onComplete, isEditMode = false }
         onChange={handleInputChange}
         placeholder="Enter your monthly income"
         type="number"
+        isFormatted={true}
       />
       <InputField
         label="Monthly Debts/Obligations (₱)"
@@ -267,6 +333,7 @@ function AIGuide({ profileData, setProfileData, onComplete, isEditMode = false }
         onChange={handleInputChange}
         placeholder="Enter your monthly debts"
         type="number"
+        isFormatted={true}
       />
       <InputField
         label="I have a spouse with income"

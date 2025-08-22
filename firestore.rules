@@ -40,16 +40,16 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
     
-    // Listings collection - TEMPORARY: allow all authenticated users full access for testing
+    // Listings collection - Allow public read access for property browsing
     match /listings/{listingId} {
-      // Allow read access to all authenticated users (for browsing properties)
-      allow read: if request.auth != null;
+      // Allow public read access (for Homepage property search and browsing)
+      allow read: if true;
       
-      // TEMPORARY: Allow create/update/delete for all authenticated users for testing
+      // Allow create/update/delete only for authenticated users
       allow create, update, delete: if request.auth != null;
     }
     
-    // Properties collection - public properties display
+    // Properties collection - public properties display  
     match /properties/{propertyId} {
       // Allow read access to all users (public property browsing)
       allow read: if true;
@@ -146,6 +146,57 @@ service cloud.firestore {
     // BuildSafe Subscriptions
     match /buildsafe_subscriptions/{subscriptionId} {
       allow read, write: if true; // TEMPORARY: Open access for testing
+    }
+
+    // Activity Logging Collections - Allow authenticated users to create and read their own activity logs
+    match /authActivityLogs/{document} {
+      // Allow creating auth activity logs for authenticated users
+      allow create: if request.auth != null;
+      
+      // Allow reading own auth activity logs
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.userId || 
+         exists(/databases/$(database)/documents/agents/$(request.auth.uid)));
+    }
+    
+    match /user_auth_activities/{document} {
+      // Allow creating user auth activities for authenticated users
+      allow create: if request.auth != null;
+      
+      // Allow reading own user auth activities
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.userId || 
+         exists(/databases/$(database)/documents/agents/$(request.auth.uid)));
+    }
+    
+    match /business_activities/{document} {
+      // Allow creating business activities for authenticated users
+      allow create: if request.auth != null;
+      
+      // Allow reading own business activities
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.userId || 
+         exists(/databases/$(database)/documents/agents/$(request.auth.uid)));
+    }
+    
+    match /generalActivityLogs/{document} {
+      // Allow creating general activity logs for authenticated users
+      allow create: if request.auth != null;
+      
+      // Allow reading own general activity logs
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.userId || 
+         exists(/databases/$(database)/documents/agents/$(request.auth.uid)));
+    }
+    
+    match /userActionLogs/{document} {
+      // Allow creating user action logs for authenticated users
+      allow create: if request.auth != null;
+      
+      // Allow reading own user action logs
+      allow read: if request.auth != null && 
+        (request.auth.uid == resource.data.userId || 
+         exists(/databases/$(database)/documents/agents/$(request.auth.uid)));
     }
   }
 }

@@ -10,12 +10,11 @@ function Navbar() {
   const [isDark, setIsDark] = useState(false);
 
   const toggleTheme = () => {
-    setIsDark(prev => {
-      const newTheme = !prev ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', newTheme);
-      localStorage.setItem('theme', newTheme);
-      return !prev;
-    });
+    const next = !isDark;
+    setIsDark(next);
+    const theme = next ? 'dark' : 'light';
+    localStorage.setItem('theme', theme); // Fixed: use 'theme' instead of 'isDark ? dark : light'
+    document.documentElement.setAttribute('data-theme', theme);
   };
 
   useEffect(() => {

@@ -333,6 +333,22 @@ const Login = ({ onToggle }) => {
     }
   };
 
+  // Theme toggle state
+  const [isDark, setIsDark] = useState(() => {
+    // Check initial theme from localStorage
+    const theme = localStorage.getItem('theme');
+    return theme === 'dark';
+  });
+
+  // Toggle theme between dark and light
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    const theme = next ? 'dark' : 'light';
+    localStorage.setItem('theme', theme); // Fixed: use 'theme' instead of 'isDark ? dark : light'
+    document.documentElement.setAttribute('data-theme', theme);
+  };
+
   useEffect(() => {
     // Apply theme from localStorage on mount
     const theme = localStorage.getItem('theme');

@@ -68,36 +68,47 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
     // Personal Identification
     governmentId: null,
     governmentIdPath: '',
+    governmentIdOriginalName: '',
     tinNumber: '',
     
     // Civil Status
     civilStatus: '', // 'single' or 'married'
     birthCertificate: null,
     birthCertificatePath: '',
+    birthCertificateOriginalName: '',
     marriageCertificate: null,
     marriageCertificatePath: '',
+    marriageCertificateOriginalName: '',
     
     // Proof of Income
     employmentType: '', // 'employed', 'self-employed', 'ofw'
     // Employed documents
     payslips: [], // max 3
     payslipsPaths: [],
+    payslipsOriginalNames: [],
     employmentCertificate: null,
     employmentCertificatePath: '',
+    employmentCertificateOriginalName: '',
     itr: null,
     itrPath: '',
+    itrOriginalName: '',
     // Self-employed documents
     businessRegistration: null, // DTI/SEC
     businessRegistrationPath: '',
+    businessRegistrationOriginalName: '',
     auditedFinancialStatement: null,
     auditedFinancialStatementPath: '',
+    auditedFinancialStatementOriginalName: '',
     bankStatements: [], // max 6
     bankStatementsPaths: [],
+    bankStatementsOriginalNames: [],
     // OFW documents
     employmentContract: null,
     employmentContractPath: '',
+    employmentContractOriginalName: '',
     remittanceProof: [], // max 6
     remittanceProofPaths: [],
+    remittanceProofOriginalNames: [],
     
     // Metadata
     propertyId: selectedProperty?.id || null,
@@ -132,8 +143,11 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
       // Upload using the service
       const filePath = await DocumentUploadService.uploadFile(file, user.uid, documentType);
       
-      console.log(`File uploaded successfully: ${filePath}`);
-      return filePath;
+      // Normalize path to use forward slashes for consistency
+      const normalizedFilePath = filePath.replace(/\\/g, '/');
+      
+      console.log(`File uploaded successfully: ${normalizedFilePath}`);
+      return normalizedFilePath;
       
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -154,11 +168,11 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
         const data = docSnap.data();
         
         // Create file metadata objects from saved paths for UI display
-        const createFileMetadata = (path) => {
+        const createFileMetadata = (path, originalName) => {
           if (!path) return null;
           
-          // Extract filename from path
-          const filename = path.split('/').pop() || 'uploaded_file';
+          // Use original filename if available, otherwise extract from path as fallback
+          const filename = originalName || path.split('/').pop() || 'uploaded_file';
           const extension = filename.split('.').pop()?.toLowerCase();
           
           // Create a mock file object for display purposes
@@ -171,26 +185,29 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
           };
         };
         
-        const createMultipleFileMetadata = (paths) => {
+        const createMultipleFileMetadata = (paths, originalNames) => {
           if (!paths || !Array.isArray(paths)) return [];
-          return paths.map(path => createFileMetadata(path)).filter(Boolean);
+          return paths.map((path, index) => {
+            const originalName = originalNames && originalNames[index] ? originalNames[index] : null;
+            return createFileMetadata(path, originalName);
+          }).filter(Boolean);
         };
         
         setFormData(prevData => ({
           ...prevData,
           ...data,
-          // Create file metadata objects from stored paths
-          governmentId: createFileMetadata(data.governmentIdPath, 'governmentId'),
-          birthCertificate: createFileMetadata(data.birthCertificatePath, 'birthCertificate'),
-          marriageCertificate: createFileMetadata(data.marriageCertificatePath, 'marriageCertificate'),
-          payslips: createMultipleFileMetadata(data.payslipsPaths),
-          employmentCertificate: createFileMetadata(data.employmentCertificatePath, 'employmentCertificate'),
-          itr: createFileMetadata(data.itrPath, 'itr'),
-          businessRegistration: createFileMetadata(data.businessRegistrationPath, 'businessRegistration'),
-          auditedFinancialStatement: createFileMetadata(data.auditedFinancialStatementPath, 'auditedFinancialStatement'),
-          bankStatements: createMultipleFileMetadata(data.bankStatementsPaths),
-          employmentContract: createFileMetadata(data.employmentContractPath, 'employmentContract'),
-          remittanceProof: createMultipleFileMetadata(data.remittanceProofPaths)
+          // Create file metadata objects from stored paths using original names
+          governmentId: createFileMetadata(data.governmentIdPath, data.governmentIdOriginalName),
+          birthCertificate: createFileMetadata(data.birthCertificatePath, data.birthCertificateOriginalName),
+          marriageCertificate: createFileMetadata(data.marriageCertificatePath, data.marriageCertificateOriginalName),
+          payslips: createMultipleFileMetadata(data.payslipsPaths, data.payslipsOriginalNames),
+          employmentCertificate: createFileMetadata(data.employmentCertificatePath, data.employmentCertificateOriginalName),
+          itr: createFileMetadata(data.itrPath, data.itrOriginalName),
+          businessRegistration: createFileMetadata(data.businessRegistrationPath, data.businessRegistrationOriginalName),
+          auditedFinancialStatement: createFileMetadata(data.auditedFinancialStatementPath, data.auditedFinancialStatementOriginalName),
+          bankStatements: createMultipleFileMetadata(data.bankStatementsPaths, data.bankStatementsOriginalNames),
+          employmentContract: createFileMetadata(data.employmentContractPath, data.employmentContractOriginalName),
+          remittanceProof: createMultipleFileMetadata(data.remittanceProofPaths, data.remittanceProofOriginalNames)
         }));
         setDocumentId(docSnap.id);
         
@@ -239,7 +256,7 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
       
       const saveData = {
         ...formData,
-        // Remove file objects before saving
+        // Remove file objects before saving (they're not serializable)
         governmentId: null,
         birthCertificate: null,
         marriageCertificate: null,
@@ -251,6 +268,32 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
         bankStatements: [],
         employmentContract: null,
         remittanceProof: [],
+        
+        // Ensure path fields are properly saved (including empty strings when files are removed)
+        governmentIdPath: formData.governmentIdPath || '',
+        birthCertificatePath: formData.birthCertificatePath || '',
+        marriageCertificatePath: formData.marriageCertificatePath || '',
+        payslipsPaths: formData.payslipsPaths || [],
+        employmentCertificatePath: formData.employmentCertificatePath || '',
+        itrPath: formData.itrPath || '',
+        businessRegistrationPath: formData.businessRegistrationPath || '',
+        auditedFinancialStatementPath: formData.auditedFinancialStatementPath || '',
+        bankStatementsPaths: formData.bankStatementsPaths || [],
+        employmentContractPath: formData.employmentContractPath || '',
+        remittanceProofPaths: formData.remittanceProofPaths || [],
+        
+        // Store original filenames for proper display when restored
+        governmentIdOriginalName: formData.governmentIdOriginalName || '',
+        birthCertificateOriginalName: formData.birthCertificateOriginalName || '',
+        marriageCertificateOriginalName: formData.marriageCertificateOriginalName || '',
+        payslipsOriginalNames: formData.payslipsOriginalNames || [],
+        employmentCertificateOriginalName: formData.employmentCertificateOriginalName || '',
+        itrOriginalName: formData.itrOriginalName || '',
+        businessRegistrationOriginalName: formData.businessRegistrationOriginalName || '',
+        auditedFinancialStatementOriginalName: formData.auditedFinancialStatementOriginalName || '',
+        bankStatementsOriginalNames: formData.bankStatementsOriginalNames || [],
+        employmentContractOriginalName: formData.employmentContractOriginalName || '',
+        remittanceProofOriginalNames: formData.remittanceProofOriginalNames || [],
         
         // Metadata
         userId: user.uid,
@@ -311,10 +354,13 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
     return () => clearTimeout(autoSaveTimer);
   }, [formData, user, selectedProperty, saveProgress]);
 
-  // Load saved data when modal opens
+  // Load saved data when modal opens and clear toast when modal closes
   useEffect(() => {
     if (isOpen && user && selectedProperty) {
       loadSavedDocument();
+    } else if (!isOpen) {
+      // Clear toast when modal closes to prevent stale toasts from appearing when reopened
+      setToast({ show: false, message: '', type: 'success' });
     }
   }, [isOpen, user, selectedProperty, loadSavedDocument]);
 
@@ -367,7 +413,8 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
         setFormData(prev => ({
           ...prev,
           [fieldName]: [...(prev[fieldName] || []), ...results.map(r => r.file)],
-          [`${fieldName}Paths`]: [...(prev[`${fieldName}Paths`] || []), ...results.map(r => r.path)]
+          [`${fieldName}Paths`]: [...(prev[`${fieldName}Paths`] || []), ...results.map(r => r.path)],
+          [`${fieldName}OriginalNames`]: [...(prev[`${fieldName}OriginalNames`] || []), ...results.map(r => r.file.name)]
         }));
       } else {
         const file = files[0];
@@ -376,7 +423,8 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
         setFormData(prev => ({
           ...prev,
           [fieldName]: file,
-          [`${fieldName}Path`]: path
+          [`${fieldName}Path`]: path,
+          [`${fieldName}OriginalName`]: file.name
         }));
       }
       
@@ -424,8 +472,10 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
         // Delete old file from server
         if (oldPath && user) {
           try {
-            await DocumentUploadService.deleteFile(oldPath, user.uid);
-            console.log(`Old file deleted successfully: ${oldPath}`);
+            // Normalize path to use forward slashes for API compatibility
+            const normalizedPath = oldPath.replace(/\\/g, '/');
+            await DocumentUploadService.deleteFile(normalizedPath, user.uid);
+            console.log(`Old file deleted successfully: ${normalizedPath}`);
           } catch (deleteError) {
             console.warn('Error deleting old file:', deleteError);
           }
@@ -437,13 +487,19 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
         // Update arrays at the specific index
         const updatedFiles = [...currentFiles];
         const updatedPaths = [...currentPaths];
+        const originalNamesFieldName = `${fieldName}OriginalNames`;
+        const currentOriginalNames = formData[originalNamesFieldName] || [];
+        const updatedOriginalNames = [...currentOriginalNames];
+        
         updatedFiles[index] = newFile;
         updatedPaths[index] = newPath;
+        updatedOriginalNames[index] = newFile.name;
 
         setFormData(prev => ({
           ...prev,
           [fieldName]: updatedFiles,
-          [pathsFieldName]: updatedPaths
+          [pathsFieldName]: updatedPaths,
+          [originalNamesFieldName]: updatedOriginalNames
         }));
 
       } else {
@@ -453,8 +509,10 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
         // Delete old file from server
         if (oldPath && user) {
           try {
-            await DocumentUploadService.deleteFile(oldPath, user.uid);
-            console.log(`Old file deleted successfully: ${oldPath}`);
+            // Normalize path to use forward slashes for API compatibility
+            const normalizedPath = oldPath.replace(/\\/g, '/');
+            await DocumentUploadService.deleteFile(normalizedPath, user.uid);
+            console.log(`Old file deleted successfully: ${normalizedPath}`);
           } catch (deleteError) {
             console.warn('Error deleting old file:', deleteError);
           }
@@ -466,7 +524,8 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
         setFormData(prev => ({
           ...prev,
           [fieldName]: newFile,
-          [pathFieldName]: newPath
+          [pathFieldName]: newPath,
+          [`${fieldName}OriginalName`]: newFile.name
         }));
       }
 
@@ -498,42 +557,97 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
         // Delete using the service
         if (pathToDelete && user) {
           try {
-            await DocumentUploadService.deleteFile(pathToDelete, user.uid);
-            console.log(`File deleted successfully: ${pathToDelete}`);
+            // Normalize path to use forward slashes for API compatibility
+            const normalizedPath = pathToDelete.replace(/\\/g, '/');
+            await DocumentUploadService.deleteFile(normalizedPath, user.uid);
+            console.log(`File deleted successfully: ${normalizedPath}`);
+            
+            // Show success toast
+            showToast('File deleted successfully', 'success');
+            
           } catch (deleteError) {
             console.warn('Error deleting file:', deleteError);
+            
+            // If file not found, it might have been already deleted or never existed
+            // Continue with clearing the form data anyway
+            if (deleteError.message !== 'File not found') {
+              // Only show toast for actual server errors, not missing files
+              showToast(`Failed to delete file: ${deleteError.message}`, 'error');
+            } else {
+              // File was already gone, show success message anyway since the intent was to remove it
+              showToast('File removed successfully', 'success');
+            }
           }
         }
-        
-        setFormData(prev => ({
-          ...prev,
-          [fieldName]: prev[fieldName].filter((_, i) => i !== index),
-          [pathsFieldName]: prev[pathsFieldName].filter((_, i) => i !== index)
-        }));
+
+        // Always clear the form data, regardless of whether file deletion succeeded
+        setFormData(prev => {
+          const originalNamesFieldName = `${fieldName}OriginalNames`;
+          return {
+            ...prev,
+            [fieldName]: prev[fieldName].filter((_, i) => i !== index),
+            [pathsFieldName]: prev[pathsFieldName].filter((_, i) => i !== index),
+            [originalNamesFieldName]: prev[originalNamesFieldName] ? prev[originalNamesFieldName].filter((_, i) => i !== index) : []
+          };
+        });
       } else {
         const pathFieldName = `${fieldName}Path`;
         const pathToDelete = formData[pathFieldName];
         
+        console.log('Attempting to delete file:', { 
+          fieldName, 
+          pathFieldName, 
+          pathToDelete, 
+          user: user?.uid,
+          fileObject: formData[fieldName],
+          isRestoredFile: formData[fieldName]?.isRestored
+        });
+        
         // Delete using the service
         if (pathToDelete && user) {
           try {
-            await DocumentUploadService.deleteFile(pathToDelete, user.uid);
-            console.log(`File deleted successfully: ${pathToDelete}`);
+            // Normalize path to use forward slashes for API compatibility
+            const normalizedPath = pathToDelete.replace(/\\/g, '/');
+            console.log('Normalized path for deletion:', normalizedPath);
+            await DocumentUploadService.deleteFile(normalizedPath, user.uid);
+            console.log(`File deleted successfully: ${normalizedPath}`);
+            
+            // Show success toast
+            showToast('File deleted successfully', 'success');
+            
           } catch (deleteError) {
+            const normalizedPath = pathToDelete.replace(/\\/g, '/');
             console.warn('Error deleting file:', deleteError);
+            console.log('Delete error details:', { 
+              originalPath: pathToDelete, 
+              normalizedPath: normalizedPath,
+              error: deleteError.message 
+            });
+            
+            // If file not found, it might have been already deleted or never existed
+            // Continue with clearing the form data anyway
+            if (deleteError.message !== 'File not found') {
+              // Only show toast for actual server errors, not missing files
+              showToast(`Failed to delete file: ${deleteError.message}`, 'error');
+            } else {
+              // File was already gone, show success message anyway since the intent was to remove it
+              showToast('File removed successfully', 'success');
+            }
           }
         }
-        
+
+        // Always clear the form data, regardless of whether file deletion succeeded
         setFormData(prev => ({
           ...prev,
           [fieldName]: null,
-          [pathFieldName]: ''
+          [pathFieldName]: '',
+          [`${fieldName}OriginalName`]: ''
         }));
       }
     } catch (error) {
       console.error('Error removing file:', error);
     }
-  }, [formData, user]);
+  }, [formData, user, showToast]);
 
   // Handle input changes
   const handleInputChange = useCallback((fieldName, value) => {
@@ -719,29 +833,40 @@ const DocumentSubmissionModal = ({ isOpen, onClose, selectedProperty }) => {
     setFormData({
       governmentId: null,
       governmentIdPath: '',
+      governmentIdOriginalName: '',
       tinNumber: '',
       civilStatus: '',
       birthCertificate: null,
       birthCertificatePath: '',
+      birthCertificateOriginalName: '',
       marriageCertificate: null,
       marriageCertificatePath: '',
+      marriageCertificateOriginalName: '',
       employmentType: '',
       payslips: [],
       payslipsPaths: [],
+      payslipsOriginalNames: [],
       employmentCertificate: null,
       employmentCertificatePath: '',
+      employmentCertificateOriginalName: '',
       itr: null,
       itrPath: '',
+      itrOriginalName: '',
       businessRegistration: null,
       businessRegistrationPath: '',
+      businessRegistrationOriginalName: '',
       auditedFinancialStatement: null,
       auditedFinancialStatementPath: '',
+      auditedFinancialStatementOriginalName: '',
       bankStatements: [],
       bankStatementsPaths: [],
+      bankStatementsOriginalNames: [],
       employmentContract: null,
       employmentContractPath: '',
+      employmentContractOriginalName: '',
       remittanceProof: [],
       remittanceProofPaths: [],
+      remittanceProofOriginalNames: [],
       propertyId: null,
       propertyTitle: '',
       status: 'draft',
