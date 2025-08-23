@@ -331,7 +331,7 @@ function BuyerBuildSafe() {
       default:
         return {
           label: progress > 0 ? 'In Progress' : 'Draft',
-          class: progress > 50 ? 'badge-warning' : 'badge-ghost',
+          class: progress > 0 ? 'badge-warning' : 'badge-ghost', // Always orange for In Progress
           icon: RiFileTextLine,
           description: 'Application in progress'
         };
@@ -1548,7 +1548,7 @@ function BuyerBuildSafe() {
       <div>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">My Property Applications</h2>
-          <div className="stats shadow bg-gradient-to-r from-primary to-secondary text-primary-content">
+          <div className="stats shadow bg-gradient-to-r from-blue-900 to-blue-800/90 text-primary-content">
             <div className="stat">
               <div className="stat-title text-primary-content/80">Total Applications</div>
               <div className="stat-value">{myProperties.length}</div>

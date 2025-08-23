@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   RiLayoutGridLine,
   RiRobot2Line,
@@ -7,7 +7,6 @@ import {
   RiMapPinLine,
   RiPriceTag3Line,
   RiPhoneLine,
-  RiCalculatorLine,
   RiFileTextLine,
   RiHome3Line,
   RiHotelBedLine,
@@ -21,11 +20,18 @@ import {
 import { collection, getDocs, query, where, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
 import { db, auth } from '../../../config/Firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { propertyRecommendationEngine } from '../../../services/PropertyRecommendationEngine';
 import PropertyEmptyState from '../../../components/PropertyEmptyState';
 import PropertySuccessBanner from '../../../components/PropertySuccessBanner';
 import DocumentSubmissionModal from '../../../components/DocumentSubmissionModal';
 import CostBreakdownComponent from '../../../components/CostBreakdownComponent';
+
+// Sample agents data for properties without assigned agents
+const agentsData = [
+  { name: 'Maria Santos', email: 'maria.santos@realty.com', phone: '+63 917 123 4567', agency: 'Premium Realty' },
+  { name: 'John Cruz', email: 'john.cruz@realty.com', phone: '+63 918 234 5678', agency: 'Elite Properties' },
+  { name: 'Anna Garcia', email: 'anna.garcia@realty.com', phone: '+63 919 345 6789', agency: 'Metro Homes' },
+  { name: 'Robert Kim', email: 'robert.kim@realty.com', phone: '+63 920 456 7890', agency: 'Skyline Realty' }
+];
 
 function SmartListing({ profileData }) {
   const [user, authLoading] = useAuthState(auth);
@@ -40,8 +46,12 @@ function SmartListing({ profileData }) {
   const [savingProperty, setSavingProperty] = useState(null);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [documentModalProperty, setDocumentModalProperty] = useState(null);
-  const [showCostBreakdown, setShowCostBreakdown] = useState(false);
   const itemsPerPage = 9;
+
+  // Utility function to parse price strings
+  const parsePrice = useCallback((priceString) => {
+    return parseInt(priceString?.replace(/[₱,\s]/g, '')) || 0;
+  }, []);
 
   // Smart location matching function
   const isLocationMatch = useCallback((listingLocation, preferredLocation) => {
@@ -140,7 +150,7 @@ function SmartListing({ profileData }) {
 
   // Function to calculate monthly payment for display
   const calculateMonthlyPayment = useCallback((priceString) => {
-    const propertyPrice = parseInt(priceString.replace(/[₱,\s]/g, '')) || 0;
+    const propertyPrice = parsePrice(priceString);
     const loanAmount = propertyPrice * 0.8; // 80% loan
     const monthlyInterestRate = 0.065 / 12; // 6.5% annual interest
     const numberOfPayments = 15 * 12; // 15 years
@@ -149,7 +159,7 @@ function SmartListing({ profileData }) {
                          (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1);
     
     return Math.round(monthlyPayment);
-  }, []);
+  }, [parsePrice]);
 
   // Function to get affordability level for display (MOVED BEFORE calculateMatchScore)
   const getAffordabilityLevel = useCallback((listing, profile) => {
@@ -173,69 +183,323 @@ function SmartListing({ profileData }) {
     return 'stretch';
   }, [calculateMonthlyPayment]);
 
-  // Enhanced MCDA + Content-Based Filtering Algorithm (NOW AFTER getAffordabilityLevel)
+  // Professional MCDA (Multi-Criteria Decision Analysis) Algorithm - BALANCED STRICT SCORING
   const calculateMatchScore = useCallback((listing, profile) => {
     if (!profile || !listing) {
-      return 50; // Increased default score for incomplete data
+      return 30; // Lower default score for incomplete data
     }
 
     try {
-      // Use the professional recommendation engine
-      const scoredProperty = propertyRecommendationEngine.calculateRecommendationScore(listing, profile);
-      
-      // Enhanced scoring logic for perfect matches
-      let finalScore = scoredProperty.matchScore;
-      
-      // Check for perfect location match
-      const isLocationPerfectMatch = isLocationMatch(listing.location, profile.preferredLocation);
-      
-      // Check for perfect budget match
-      const propertyPrice = parseInt(listing.price?.replace(/[₱,\s]/g, '')) || 0;
-      const budgetRanges = {
-        '1M-3M': { min: 1000000, max: 3000000 },
-        '3M-5M': { min: 3000000, max: 5000000 },
-        '5M-10M': { min: 5000000, max: 10000000 },
-        '10M+': { min: 10000000, max: Infinity }
+      // MCDA Criteria and Weights (Total: 1.0) - Rebalanced for fairer scoring
+      const criteria = {
+        location: { weight: 0.25, score: 0 },        // 25% - Location preference match
+        affordability: { weight: 0.20, score: 0 },   // 20% - Financial affordability
+        budget: { weight: 0.18, score: 0 },          // 18% - Budget range match (increased)
+        propertyType: { weight: 0.12, score: 0 },    // 12% - Property type preference (increased)
+        size: { weight: 0.10, score: 0 },            // 10% - Size requirements
+        financing: { weight: 0.08, score: 0 },       // 8% - Financing feasibility
+        amenities: { weight: 0.05, score: 0 },       // 5% - Amenities match
+        marketTrends: { weight: 0.02, score: 0 }     // 2% - Market conditions
       };
-      const budgetRange = budgetRanges[profile.budgetRange];
-      const isPerfectBudgetMatch = budgetRange && propertyPrice >= budgetRange.min && propertyPrice <= budgetRange.max;
+
+      // 1. LOCATION SCORING (25%) - STRICT BUT FAIR
+      const locationScore = (() => {
+        if (!profile.preferredLocation || !listing.location) return 50; // Neutral default
+        
+        const isExactMatch = isLocationMatch(listing.location, profile.preferredLocation);
+        if (isExactMatch) return 100;
+        
+        // Proximity scoring based on location similarity
+        const listingLoc = listing.location.toLowerCase();
+        const preferredLoc = profile.preferredLocation.toLowerCase();
+        
+        // Check for partial matches or nearby areas - BALANCED STRICT
+        if (listingLoc.includes(preferredLoc) || preferredLoc.includes(listingLoc)) return 75; // More reasonable
+        
+        // Metro Manila adjacency bonus - BALANCED
+        const metroAreas = {
+          'makati': ['taguig', 'pasig', 'mandaluyong'],
+          'taguig': ['makati', 'pasig', 'muntinlupa'],
+          'quezon city': ['marikina', 'san juan', 'pasig'],
+          'ortigas': ['pasig', 'mandaluyong', 'cainta']
+        };
+        
+        const adjacentAreas = metroAreas[preferredLoc.trim()] || [];
+        if (adjacentAreas.some(area => listingLoc.includes(area))) return 50; // More balanced
+        
+        return 15; // Penalty for completely different locations
+      })();
+      criteria.location.score = locationScore;
+
+      // 2. AFFORDABILITY SCORING (20%) - BALANCED STRICT
+      const affordabilityScore = (() => {
+        if (!profile.monthlyIncome) return 50; // Neutral score
+        
+        const affordabilityLevel = getAffordabilityLevel(listing, profile);
+        const affordabilityMap = {
+          excellent: 100,
+          good: 85,      // Good affordability should get good score
+          fair: 65,      // Fair is still acceptable
+          tight: 40,     // Tight is challenging but possible
+          stretch: 15    // Stretch is risky
+        };
+        return affordabilityMap[affordabilityLevel] || 20;
+      })();
+      criteria.affordability.score = affordabilityScore;
+
+      // 3. BUDGET RANGE SCORING (18%) - STRICT BUT FAIR
+      const budgetScore = (() => {
+        if (!profile.budgetRange) return 55; // Neutral default
+        
+        const propertyPrice = parsePrice(listing.price);
+        const budgetRanges = {
+          '1M-3M': { min: 1000000, max: 3000000 },
+          '3M-5M': { min: 3000000, max: 5000000 },
+          '5M-10M': { min: 5000000, max: 10000000 },
+          '10M+': { min: 10000000, max: Infinity }
+        };
+        
+        const budgetRange = budgetRanges[profile.budgetRange];
+        if (!budgetRange) return 55;
+        
+        // Perfect match within range
+        if (propertyPrice >= budgetRange.min && propertyPrice <= budgetRange.max) return 100;
+        
+        // Calculate distance from range - BALANCED STRICT penalties
+        const rangeSize = budgetRange.max === Infinity ? budgetRange.min : budgetRange.max - budgetRange.min;
+        let distanceFromRange;
+        
+        if (propertyPrice < budgetRange.min) {
+          distanceFromRange = budgetRange.min - propertyPrice;
+        } else {
+          distanceFromRange = propertyPrice - budgetRange.max;
+        }
+        
+        // More balanced scoring - still strict but not unreasonably harsh
+        const distanceRatio = distanceFromRange / rangeSize;
+        
+        // Graduated penalties for budget mismatches
+        if (distanceRatio > 1.0) return 8;   // Way outside budget
+        if (distanceRatio > 0.6) return 15;  // Very outside budget
+        if (distanceRatio > 0.4) return 25;  // Significantly outside budget
+        if (distanceRatio > 0.25) return 40;  // Moderately outside budget
+        if (distanceRatio > 0.15) return 55;  // Slightly outside budget
+        if (distanceRatio > 0.05) return 75; // Just outside budget
+        
+        // Very close to range
+        return Math.max(10, 85 - (distanceRatio * 80));
+      })();
+      criteria.budget.score = budgetScore;
+
+      // 4. PROPERTY TYPE SCORING (12%) - STRICT BUT FAIR
+      const propertyTypeScore = (() => {
+        if (!profile.propertyTypes || profile.propertyTypes.length === 0) return 60; // Neutral when no preference
+        
+        const listingType = listing.type?.toLowerCase() || listing.property_type?.toLowerCase() || 'house';
+        const preferredTypes = profile.propertyTypes.map(type => type.toLowerCase());
+        
+        // Direct match
+        if (preferredTypes.includes(listingType)) return 100;
+        
+        // Related types - BALANCED strict scoring
+        const typeRelations = {
+          'house': ['townhouse', 'single-family', 'detached'],
+          'condo': ['condominium', 'apartment', 'unit'],
+          'townhouse': ['house', 'row house', 'attached'],
+          'commercial': ['office', 'retail', 'business']
+        };
+        
+        for (const preferredType of preferredTypes) {
+          const relatedTypes = typeRelations[preferredType] || [];
+          if (relatedTypes.includes(listingType)) return 65; // Related types get decent score
+        }
+        
+        return 15; // Penalty for completely different types
+      })();
+      criteria.propertyType.score = propertyTypeScore;
+
+      // 5. SIZE SCORING (10%) - BALANCED STRICT
+      const sizeScore = (() => {
+        const listingSize = parseInt(listing.floor_area_sqm) || 0;
+        if (!profile.minFloorArea && !profile.maxFloorArea) return 70; // Good default when no size preference
+        
+        const minSize = parseInt(profile.minFloorArea) || 0;
+        const maxSize = parseInt(profile.maxFloorArea) || Infinity;
+        
+        // Perfect match within range
+        if (listingSize >= minSize && listingSize <= maxSize) return 100;
+        
+        // Calculate distance from preferred range - BALANCED STRICT
+        let distance;
+        if (listingSize < minSize) {
+          distance = minSize - listingSize;
+        } else {
+          distance = listingSize - maxSize;
+        }
+        
+        // More reasonable scoring for size differences
+        const tolerance = Math.max(30, (maxSize - minSize) * 0.20); // More reasonable tolerance
+        const distanceRatio = distance / tolerance;
+        
+        // Balanced penalties for wrong sizes
+        if (distanceRatio > 2.5) return 10;  // Way too different
+        if (distanceRatio > 2) return 20;    // Very different size
+        if (distanceRatio > 1.5) return 35;  // Significantly different
+        if (distanceRatio > 1) return 50;    // Notably different
+        if (distanceRatio > 0.5) return 65;  // Moderately different
+        
+        return Math.max(20, 80 - (distanceRatio * 40));
+      })();
+      criteria.size.score = sizeScore;
+
+      // 6. AMENITIES SCORING (5%) - REALISTIC EXPECTATIONS
+      const amenitiesScore = (() => {
+        if (!profile.preferredAmenities || profile.preferredAmenities.length === 0) return 75; // Good when no preference
+        if (!listing.amenities || listing.amenities.length === 0) return 40; // Moderate penalty for no amenities
+        
+        const preferredAmenities = profile.preferredAmenities.map(a => a.toLowerCase());
+        const listingAmenities = listing.amenities.map(a => a.toLowerCase());
+        
+        const matches = preferredAmenities.filter(pref => 
+          listingAmenities.some(listed => 
+            listed.includes(pref) || pref.includes(listed)
+          )
+        ).length;
+        
+        const matchRatio = matches / preferredAmenities.length;
+        
+        // Realistic amenity scoring - amenities are nice-to-have
+        if (matchRatio >= 0.8) return 100; // 80%+ match = perfect
+        if (matchRatio >= 0.6) return 85;  // 60%+ match = very good
+        if (matchRatio >= 0.4) return 70;  // 40%+ match = good
+        if (matchRatio >= 0.2) return 55;  // 20%+ match = fair
+        if (matchRatio >= 0.1) return 45;  // Some match
+        return 35; // No meaningful match
+      })();
+      criteria.amenities.score = amenitiesScore;
+
+      // 7. FINANCING FEASIBILITY SCORING (8%) - BALANCED STRICT
+      const financingScore = (() => {
+        if (!profile.monthlyIncome) return 55; // Neutral when no income data
+        
+        const monthlyIncome = parseInt(profile.monthlyIncome) || 0;
+        const monthlyPayment = calculateMonthlyPayment(listing.price);
+        const dtiRatio = monthlyPayment / monthlyIncome;
+        
+        // Balanced DTI-based scoring - realistic financial expectations
+        let baseScore;
+        if (dtiRatio <= 0.20) baseScore = 100;      // Excellent - very comfortable
+        else if (dtiRatio <= 0.25) baseScore = 90;  // Very Good - comfortable
+        else if (dtiRatio <= 0.30) baseScore = 80;  // Good - reasonable
+        else if (dtiRatio <= 0.35) baseScore = 65;  // Fair - getting tight
+        else if (dtiRatio <= 0.40) baseScore = 45;  // Challenging - manageable
+        else if (dtiRatio <= 0.50) baseScore = 25;  // High Risk - difficult
+        else baseScore = 10;                        // Extremely High Risk - very difficult
+        
+        // Small bonus for pre-approval
+        if (profile.hasPreApproval) {
+          baseScore = Math.min(100, baseScore + 8); // Small bonus
+        }
+        
+        return baseScore;
+      })();
+      criteria.financing.score = financingScore;
+
+      // 8. MARKET TRENDS SCORING (2%) - MINIMAL IMPACT
+      const marketTrendsScore = (() => {
+        let score = 60; // Neutral baseline
+        
+        // Small location premium bonus
+        const premiumAreas = ['makati', 'bgc', 'ortigas', 'alabang', 'eastwood'];
+        const listingLocation = listing.location?.toLowerCase() || '';
+        if (premiumAreas.some(area => listingLocation.includes(area))) {
+          score += 20; // Small premium location bonus
+        }
+        
+        // Small bonus for new properties
+        if (listing.days_on_market === 'New' || listing.days_on_market?.includes('day')) {
+          score += 10; // Small new property bonus
+        }
+        
+        // Price per sqm reasonableness check
+        const pricePerSqm = parseInt(listing.price.replace(/[^0-9]/g, '')) / (listing.floor_area_sqm || 1);
+        if (pricePerSqm < 100000) score += 15; // Good value bonus
+        else if (pricePerSqm > 250000) score -= 10; // Small penalty for overpriced properties
+        
+        return Math.min(100, Math.max(30, score));
+      })();
+      criteria.marketTrends.score = marketTrendsScore;
+
+      // CALCULATE WEIGHTED FINAL SCORE
+      let finalScore = 0;
+      let totalWeight = 0;
       
-      // Check affordability level
-      const affordabilityLevel = getAffordabilityLevel(listing, profile);
-      const isAffordable = ['excellent', 'good'].includes(affordabilityLevel);
+      Object.values(criteria).forEach(criterion => {
+        finalScore += (criterion.score * criterion.weight);
+        totalWeight += criterion.weight;
+      });
       
-      // Bonus points for perfect matches
-      let bonusPoints = 0;
-      if (isLocationPerfectMatch) bonusPoints += 10;
-      if (isPerfectBudgetMatch) bonusPoints += 10;
-      if (isAffordable) bonusPoints += 5;
+      // Normalize to 0-100 scale
+      finalScore = (finalScore / totalWeight);
       
-      // Apply bonus and ensure we can reach 100%
-      finalScore = Math.min(100, finalScore + bonusPoints);
+      // BALANCED CRITICAL FAILURE SYSTEM - More reasonable penalties
+      const criticalCriteria = ['location', 'affordability', 'budget', 'propertyType'];
+      const majorFailures = criticalCriteria.filter(key => criteria[key].score <= 15).length; // Very low threshold for major failure
+      const significantFailures = criticalCriteria.filter(key => criteria[key].score <= 30).length; // Low threshold for significant failure
       
-      // If all criteria are perfect, ensure we get close to 100%
-      if (isLocationPerfectMatch && isPerfectBudgetMatch && isAffordable) {
-        finalScore = Math.max(95, finalScore); // Guarantee at least 95% for perfect matches
+      // Apply penalties only for truly poor matches
+      if (majorFailures >= 3) {
+        finalScore = Math.max(8, finalScore * 0.4); // 60% penalty for three major failures
+      } else if (majorFailures >= 2) {
+        finalScore = Math.max(12, finalScore * 0.6); // 40% penalty for two major failures
+      } else if (majorFailures >= 1 && significantFailures >= 3) {
+        finalScore = Math.max(15, finalScore * 0.75); // 25% penalty for one major + multiple significant failures
+      }
+      
+      // DEALBREAKER CHECKS - Only for truly unacceptable properties
+      const isCompletelyUnaffordable = criteria.affordability.score <= 10 && criteria.financing.score <= 10;
+      const isWayOverBudget = criteria.budget.score <= 10;
+      const isCompletelyWrongLocation = criteria.location.score <= 10 && profile.preferredLocation;
+      const isCompletelyWrongType = criteria.propertyType.score <= 10 && profile.propertyTypes?.length > 0;
+      
+      // Apply dealbreaker penalties only for completely unsuitable properties
+      if ((isCompletelyUnaffordable && isWayOverBudget) || 
+          (isCompletelyWrongLocation && (isWayOverBudget || isCompletelyUnaffordable)) ||
+          (isCompletelyWrongType && isCompletelyUnaffordable)) {
+        finalScore = Math.max(5, finalScore * 0.3); // 70% penalty for true dealbreakers
+      }
+      
+      // REWARD EXCELLENT MATCHES - Bonus system for high-scoring properties
+      const excellentScores = Object.values(criteria).filter(c => c.score >= 80).length;
+      const veryGoodScores = Object.values(criteria).filter(c => c.score >= 65).length;
+      const perfectScores = Object.values(criteria).filter(c => c.score >= 95).length;
+      
+      // Reward properties that excel in multiple criteria
+      if (perfectScores >= 4 && majorFailures === 0) { // 4+ perfect scores with no major failures
+        finalScore = Math.min(100, finalScore + 8); // Good bonus
+      } else if (excellentScores >= 5 && majorFailures === 0) { // 5+ excellent scores with no major failures
+        finalScore = Math.min(100, finalScore + 5); // Moderate bonus
+      } else if (veryGoodScores >= 6 && majorFailures === 0) { // 6+ very good scores with no major failures
+        finalScore = Math.min(100, finalScore + 3); // Small bonus
+      }
+      
+      // Ensure final score is reasonable
+      finalScore = Math.max(5, Math.min(100, Math.round(finalScore)));
+      
+      // Less harsh reality check - only cap extremely poor matches
+      const veryPoorScores = Object.values(criteria).filter(c => c.score <= 25).length;
+      if (veryPoorScores >= 5) {
+        finalScore = Math.min(finalScore, 20); // Cap at 20% only for properties with many very poor scores
+      } else if (veryPoorScores >= 4) {
+        finalScore = Math.min(finalScore, 30); // Cap at 30% for properties with several very poor scores
       }
 
-      console.log('Enhanced MCDA Score Result:', {
-        property: listing.title,
-        baseScore: scoredProperty.matchScore,
-        finalScore: finalScore,
-        bonusPoints: bonusPoints,
-        locationMatch: isLocationPerfectMatch,
-        budgetMatch: isPerfectBudgetMatch,
-        affordable: isAffordable,
-        detailedScores: scoredProperty.detailedScores,
-        explanation: scoredProperty.explanation
-      });
-
-      return Math.round(finalScore);
+      return finalScore;
     } catch (error) {
-      console.error('Error in recommendation scoring:', error);
-      return 50; // Increased fallback score
+      console.error('Error in MCDA algorithm:', error);
+      return 50; // Fallback score
     }
-  }, [isLocationMatch, getAffordabilityLevel]); // Make sure getAffordabilityLevel is in dependencies
+  }, [isLocationMatch, getAffordabilityLevel, calculateMonthlyPayment, parsePrice]);
 
   // Helper function to get affordability styling and display
   const getAffordabilityDisplay = useCallback((level) => {
@@ -380,8 +644,6 @@ function SmartListing({ profileData }) {
       setLoading(true);
       setError(null);
       
-      console.log('SmartListing: Fetching properties from Firebase...');
-      
       // Fetch from properties collection (public listings)
       const propertiesRef = collection(db, 'properties');
       const propertiesQuery = query(
@@ -424,15 +686,12 @@ function SmartListing({ profileData }) {
       const listingsQuery = query(listingsRef);
       
       const listingsSnapshot = await getDocs(listingsQuery);
-      console.log('SmartListing: Raw listings from Firebase:', listingsSnapshot.size);
       
       const listingsData = listingsSnapshot.docs.map(doc => {
         const data = doc.data();
-        console.log('SmartListing: Processing listing:', data);
         
         // Only include Available listings
         if (data.status !== 'Available') {
-          console.log('SmartListing: Skipping non-available listing:', data.status);
           return null;
         }
         
@@ -441,7 +700,7 @@ function SmartListing({ profileData }) {
           title: data.title,
           price: data.price,
           location: data.location,
-          type: data.type === 'House' || data.type === 'Townhouse' || data.type === 'Condo' ? 'residential' : 'commercial',
+          type: data.type,
           beds: data.bedrooms,
           baths: data.bathrooms,
           floor_area_sqm: data.floorArea,
@@ -470,14 +729,6 @@ function SmartListing({ profileData }) {
       // Assign agents to properties that don't have agent data
       const listingsWithAgents = uniqueListings.map(listing => assignAgentToProperty(listing));
 
-      console.log('SmartListing: Final results:', {
-        properties: propertiesData.length,
-        listings: listingsData.length,
-        total: listingsWithAgents.length,
-        sampleData: listingsWithAgents.slice(0, 2), // Show first 2 items for debugging
-        uniqueListings: listingsWithAgents
-      });
-
       setOriginalListings(listingsWithAgents);
       
       return listingsWithAgents;
@@ -495,10 +746,6 @@ function SmartListing({ profileData }) {
     const loadInitialData = async () => {
       const fetchedListings = await fetchListingsFromFirebase();
       
-      console.log('SmartListing: Fetched listings count:', fetchedListings.length);
-      console.log('SmartListing: Profile data:', profileData);
-      console.log('SmartListing: Sample fetched listings:', fetchedListings.slice(0, 2));
-      
       if (fetchedListings.length > 0) {
         if (profileData && profileData.buyerType) {
           // Calculate match scores based on profile
@@ -512,10 +759,6 @@ function SmartListing({ profileData }) {
             (b.matchScore || 0) - (a.matchScore || 0)
           );
           
-          console.log('SmartListing: Setting listings with scores:', {
-            total: sortedListings.length,
-            scores: sortedListings.slice(0, 5).map(l => ({ title: l.title, score: l.matchScore }))
-          });
           setListings(sortedListings);
         } else {
           // No profile data, just set the listings with default match scores
@@ -524,11 +767,9 @@ function SmartListing({ profileData }) {
             matchScore: 30 // Default score when no profile data
           }));
           
-          console.log('SmartListing: Setting listings without profile:', listingsWithDefaultScores.length);
           setListings(listingsWithDefaultScores);
         }
       } else {
-        console.log('SmartListing: No listings fetched from Firebase');
         setListings([]);
       }
     };
@@ -553,7 +794,7 @@ function SmartListing({ profileData }) {
     if (!profileData || !profileData.buyerType) {
       const listingsWithDefaultScores = originalListings.map(listing => ({
         ...listing,
-        matchScore: 50 // Default score
+        matchScore: 25 // Lower default score when no profile data
       }));
       
       setListings(listingsWithDefaultScores);
@@ -561,32 +802,20 @@ function SmartListing({ profileData }) {
       return;
     }
 
-    // Calculate match scores for ALL listings (no filtering, just scoring)
+    // Calculate match scores for ALL listings with the new strict algorithm
     const listingsWithScores = originalListings.map(listing => ({
       ...listing,
       matchScore: calculateMatchScore(listing, profileData)
     }));
 
-    // Only filter out properties with extremely low scores (less than 35%)
-    const filtered = listingsWithScores.filter(listing => listing.matchScore >= 35);
-
-    console.log('SmartListing: Listings after scoring:', {
-      total: originalListings.length,
-      afterScoring: listingsWithScores.length,
-      afterFiltering: filtered.length,
-      profileData: profileData,
-      sampleScores: listingsWithScores.slice(0, 3).map(l => ({
-        title: l.title,
-        location: l.location,
-        price: l.price,
-        score: l.matchScore
-      }))
-    });
+    // Apply balanced filtering - show properties with reasonable match scores (25% or higher)
+    // This ensures we show properties that have some meaningful alignment with the profile
+    const filtered = listingsWithScores.filter(listing => listing.matchScore >= 25);
 
     // Sort by current sort preference
     const sorted = [...filtered].sort((a, b) => {
-      const priceA = parseInt(a.price?.replace(/[₱,\s]/g, '')) || 0;
-      const priceB = parseInt(b.price?.replace(/[₱,\s]/g, '')) || 0;
+      const priceA = parsePrice(a.price);
+      const priceB = parsePrice(b.price);
       
       switch(sortBy) {
         case 'price-low': return priceA - priceB;
@@ -600,7 +829,7 @@ function SmartListing({ profileData }) {
 
     setListings(sorted);
     setCurrentPage(1); // Reset to first page when filters change
-  }, [profileData, originalListings, sortBy, calculateMatchScore, isLocationMatch]);
+  }, [profileData, originalListings, sortBy, calculateMatchScore, isLocationMatch, parsePrice]);
 
   // Add this useEffect hook to handle scrolling
   useEffect(() => {
@@ -630,10 +859,10 @@ function SmartListing({ profileData }) {
           />
           <div className="absolute top-4 left-4 flex flex-wrap gap-2 z-20">
             <div className={`badge text-white border-0 backdrop-blur-md shadow-lg text-xs ${
-              listing.matchScore >= 80 ? 'badge-success bg-green-600/90' :
+              listing.matchScore >= 75 ? 'badge-success bg-green-600/90' :
               listing.matchScore >= 60 ? 'badge-warning bg-yellow-600/90' :
               listing.matchScore >= 40 ? 'badge-info bg-blue-600/90' :
-              'badge-error bg-gray-600/90'
+              'badge-error bg-red-600/90'
             }`}>
               Profile Match: {listing.matchScore}%
             </div>
@@ -650,15 +879,15 @@ function SmartListing({ profileData }) {
             )}
             {profileData && (
               <div className={`badge text-white border-0 backdrop-blur-md shadow-lg text-xs ${
-                listing.matchScore >= 80 ? 'bg-green-500/90' :
+                listing.matchScore >= 75 ? 'bg-green-500/90' :
                 listing.matchScore >= 60 ? 'bg-yellow-500/90' :
                 listing.matchScore >= 40 ? 'bg-blue-500/90' :
-                'bg-gray-500/90'
+                'bg-red-500/90'
               }`}>
-                {listing.matchScore >= 80 ? 'Perfect' :
-                 listing.matchScore >= 60 ? 'Good' :
-                 listing.matchScore >= 40 ? 'Fair' :
-                 '📍 Basic'}
+                {listing.matchScore >= 75 ? '🎯 Excellent Match' :
+                 listing.matchScore >= 60 ? '⭐ Good Match' :
+                 listing.matchScore >= 40 ? '👍 Fair Match' :
+                 '⚠️ Poor Match'}
               </div>
             )}
             {listing.furnishing === "Semi Furnished" && (
@@ -728,7 +957,7 @@ function SmartListing({ profileData }) {
               )}
               {listing.lot_area_sqm > 0 && (
                 <p className="text-xs text-base-content/50 mt-1 whitespace-nowrap">
-                  ₱{Math.round(parseInt(listing.price.replace(/[^0-9]/g, '')) / listing.lot_area_sqm).toLocaleString()}/sqm
+                  ₱{Math.round(parsePrice(listing.price) / listing.lot_area_sqm).toLocaleString()}/sqm
                 </p>
               )}
             </div>
@@ -854,7 +1083,7 @@ function SmartListing({ profileData }) {
                   <div className="flex justify-between">
                     <span className="text-base-content/70">Price per sqm:</span>
                     <span className="font-medium text-base-content">
-                      ₱{Math.round(parseInt(selectedProperty.price.replace(/[^0-9]/g, '')) / (selectedProperty.lot_area_sqm || 1)).toLocaleString()}
+                      ₱{Math.round(parsePrice(selectedProperty.price) / (selectedProperty.lot_area_sqm || 1)).toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -863,27 +1092,73 @@ function SmartListing({ profileData }) {
               {/* MCDA Algorithm Insights */}
               {profileData && (
                 <div>
-                  <h4 className="font-semibold text-lg mb-2 text-info">🤖 AI Match Analysis</h4>
-                  <div className="space-y-2 bg-base-200 p-3 rounded-lg">
+                  <h4 className="font-semibold text-lg mb-2 text-info">🤖 AI Match Analysis (MCDA)</h4>
+                  <div className="space-y-3 bg-base-200 p-4 rounded-lg">
                     <div className="flex justify-between items-center">
                       <span className="text-base-content/70">Overall Match Score:</span>
                       <div className="flex items-center gap-2">
-                        <div className={`w-16 h-2 rounded-full ${
-                          selectedProperty.matchScore >= 80 ? 'bg-success' :
-                          selectedProperty.matchScore >= 60 ? 'bg-warning' :
-                          selectedProperty.matchScore >= 40 ? 'bg-info' :
-                          'bg-base-content/30'
-                        }`}></div>
+                        <div className="w-24 bg-base-300 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full transition-all duration-500 ${
+                              selectedProperty.matchScore >= 75 ? 'bg-success' :
+                              selectedProperty.matchScore >= 60 ? 'bg-warning' :
+                              selectedProperty.matchScore >= 40 ? 'bg-info' :
+                              'bg-error'
+                            }`}
+                            style={{ width: `${selectedProperty.matchScore || 0}%` }}
+                          ></div>
+                        </div>
                         <span className="font-bold text-lg text-base-content">
                           {selectedProperty.matchScore || calculateMatchScore(selectedProperty, profileData)}%
                         </span>
                       </div>
                     </div>
-                    <div className="text-xs text-base-content/60">
-                      {selectedProperty.matchScore >= 80 ? '🎯 Excellent match for your profile' :
-                       selectedProperty.matchScore >= 60 ? '⭐ Good match with strong compatibility' :
-                       selectedProperty.matchScore >= 40 ? '👍 Fair match with some benefits' :
-                       '📍 Basic match - consider your priorities'}
+                    
+                    {/* MCDA Criteria Breakdown */}
+                    <div className="text-xs space-y-2 border-t border-base-content/10 pt-3">
+                      <div className="font-semibold text-base-content mb-2">Multi-Criteria Analysis (Balanced Strict Scoring):</div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-base-content/60">Location Match:</span>
+                          <span className="font-medium">25%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-base-content/60">Affordability:</span>
+                          <span className="font-medium">20%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-base-content/60">Budget Range:</span>
+                          <span className="font-medium">18%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-base-content/60">Property Type:</span>
+                          <span className="font-medium">12%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-base-content/60">Size Match:</span>
+                          <span className="font-medium">10%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-base-content/60">Financing:</span>
+                          <span className="font-medium">8%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-base-content/60">Amenities:</span>
+                          <span className="font-medium">5%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-base-content/60">Market Trends:</span>
+                          <span className="font-medium">2%</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="text-xs text-base-content/60 border-t border-base-content/10 pt-2">
+                      {selectedProperty.matchScore >= 75 ? '🎯 Excellent match - This property strongly aligns with your profile requirements' :
+                       selectedProperty.matchScore >= 60 ? '⭐ Good match - Meets most of your key criteria with reasonable compromises' :
+                       selectedProperty.matchScore >= 40 ? '👍 Fair match - Some alignment but may require compromises' :
+                       selectedProperty.matchScore >= 25 ? '⚠️ Poor match - Limited alignment with your requirements' :
+                       '❌ Very poor match - Does not meet your basic requirements'}
                     </div>
                   </div>
                 </div>
@@ -910,11 +1185,11 @@ function SmartListing({ profileData }) {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-base-content/70">Down Payment (20%):</span>
-                      <span className="font-medium text-base-content">₱{Math.round(parseInt(selectedProperty.price.replace(/[^0-9]/g, '')) * 0.2).toLocaleString()}</span>
+                      <span className="font-medium text-base-content">₱{Math.round(parsePrice(selectedProperty.price) * 0.2).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-base-content/70">Loan Amount:</span>
-                      <span className="font-medium text-base-content">₱{Math.round(parseInt(selectedProperty.price.replace(/[^0-9]/g, '')) * 0.8).toLocaleString()}</span>
+                      <span className="font-medium text-base-content">₱{Math.round(parsePrice(selectedProperty.price) * 0.8).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-base-content/70">Your Monthly Income:</span>
@@ -948,7 +1223,7 @@ function SmartListing({ profileData }) {
               {/* Full Cost Details Section */}
               <CostBreakdownComponent 
                 selectedProperty={selectedProperty} 
-                isOpen={showCostBreakdown} 
+                isOpen={false}
               />
 
               {/* Agent Information Section */}
@@ -988,13 +1263,6 @@ function SmartListing({ profileData }) {
               )}
 
               <div className="space-y-3 pt-4">
-                <button 
-                  className="btn btn-primary w-full gap-2"
-                  onClick={() => setShowCostBreakdown(!showCostBreakdown)}
-                >
-                  <RiCalculatorLine className="w-5 h-5" />
-                  Full Cost Details
-                </button>
                 <button 
                   className="btn btn-outline w-full gap-2"
                   onClick={() => {
