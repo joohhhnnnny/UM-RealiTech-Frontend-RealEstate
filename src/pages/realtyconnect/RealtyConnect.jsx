@@ -5,22 +5,14 @@ import BuyerRC from './BuyerRC';
 import AgentRC from './AgentRC';
 import DeveloperRC from './DeveloperRC';
 import DashboardLayout from '../../layouts/DashboardLayout';
-import { initializeSampleData } from '../../scripts/initializeRealtyConnect';
 
-// Main RealtyConnect Component
+
+
 function RealtyConnect() {
   const location = useLocation();
   const userRole = location.state?.userRole || 'buyer';
 
-  const handleInitializeSampleData = async () => {
-    try {W
-      await initializeSampleData();
-      alert('Sample data initialized successfully!');
-    } catch (error) {
-      console.error('Error initializing sample data:', error);
-      alert('Error initializing sample data');
-    }
-  };
+  
 
   const renderContent = () => {
     switch(userRole) {
@@ -50,13 +42,6 @@ function RealtyConnect() {
                     </p>
                   </div>
                 </div>
-                <button 
-                  className="btn btn-outline btn-primary-content gap-2"
-                  onClick={handleInitializeSampleData}
-                >
-                  <RiBuildingLine className="w-4 h-4" />
-                  Initialize Sample Data
-                </button>
               </div>
             </div>
           </div>

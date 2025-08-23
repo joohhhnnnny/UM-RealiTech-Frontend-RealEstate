@@ -60,37 +60,19 @@ function DeveloperRC() {
     // Load verification status
     const loadVerificationStatus = async () => {
       try {
-        // FORCE RESET TO NOT_SUBMITTED - Developer must verify fresh each time
-        setVerificationStatus('not_submitted');
+        // Check verification status
+        const status = await VerificationService.getVerificationStatus(userId, 'developer');
+        setVerificationStatus(status.status || 'not_submitted');
         
-        // Clear any existing verification status in Firebase and wait for completion
-        await VerificationService.clearUserVerification(userId, 'developer');
-        console.log('🔄 Developer verification cleared - must submit documents fresh');
-        
-        // Small delay to ensure Firebase clear operation is complete
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Now subscribe to verification status changes (but ignore any existing verified status)
-        const statusUnsubscribe = VerificationService.subscribeToVerificationStatus(
+        // Subscribe to status changes
+        const unsubscribe = VerificationService.subscribeToVerificationStatus(
           userId,
           'developer',
-          (status) => {
-            // ONLY allow progression during active verification process
-            // Ignore any pre-existing verified status
-            if (status.status === 'pending') {
-              setVerificationStatus('pending');
-              console.log('📋 Developer verification status updated to: pending (document submitted)');
-            } else if (status.status === 'verified' && status.submittedAt && 
-                      (Date.now() - new Date(status.submittedAt).getTime()) < 10000) {
-              // Only accept verified status if it was submitted in the last 10 seconds
-              setVerificationStatus('verified');
-              console.log('📋 Developer verification status updated to: verified (fresh verification)');
-            } else {
-              console.log('🚫 Ignoring old verification status:', status.status);
-            }
+          (statusUpdate) => {
+            setVerificationStatus(statusUpdate.status || 'not_submitted');
           }
         );
-        return statusUnsubscribe;
+        return unsubscribe;
       } catch (err) {
         console.error('Error loading verification status:', err);
         setVerificationStatus('not_submitted');
@@ -151,92 +133,62 @@ function DeveloperRC() {
     }
   }, [currentUser]);
 
-  // Verification handlers
   const handleStartVerification = useCallback(() => {
     setShowVerificationModal(true);
   }, []);
 
   const handleVerificationSubmitted = useCallback(async (verificationData, documents) => {
-    console.log('Starting developer verification submission with documents:', documents);
-    
-    // CHECK IF DOCUMENTS ARE ACTUALLY SUBMITTED
+    // REQUIRE DOCUMENTS
     if (!documents || documents.length === 0) {
-      alert('Please submit required documents before verification!');
+      alert('Please upload documents for verification!');
       return;
     }
+
+    const userId = currentUser?.uid || 'demo-developer-user';
     
-    console.log('Documents provided, proceeding with verification...');
-    
-    // Set to pending immediately and close modal
     setVerificationStatus('pending');
     setShowVerificationModal(false);
-    
-    // Show processing modal
     setShowProcessingModal(true);
-    
+
     try {
-      const userId = currentUser?.uid || 'demo-developer-user';
-      console.log('Creating developer profile for user:', userId);
-      
-      // Submit verification with actual documents to VerificationService
-      const verificationResult = await VerificationService.submitVerification(
+      // Submit verification
+      const result = await VerificationService.submitVerification(
         userId,
         'developer',
-        {
-          ...verificationData,
-          submittedAt: new Date().toISOString() // Add timestamp for fresh submission tracking
-        },
+        verificationData,
         documents
       );
-      
-      console.log('Developer verification submission result:', verificationResult);
-      
-      // CHECK IF VERIFICATION WAS SUCCESSFUL
-      if (!verificationResult.success) {
-        throw new Error(verificationResult.error || 'Failed to submit verification');
+
+      if (!result.success) {
+        throw new Error(result.error);
       }
-      
-      console.log(`Documents successfully processed: ${verificationResult.documentsCount} files with ID: ${verificationResult.verificationId}`);
-      
-      // Auto-verify after 3 seconds for demo purposes
+
+      // Auto-verify after 2 seconds
       setTimeout(async () => {
         try {
-          console.log('Auto-verifying developer after 3 seconds...');
-          
-          // Update verification document status in Firebase to "verified"
           await VerificationService.updateVerificationStatus(
-            verificationResult.verificationId, 
-            'verified', 
-            'system', 
-            'Auto-verified after 3 seconds - Demo mode'
+            result.verificationId,
+            'verified',
+            'system',
+            'Auto-verified'
           );
-          
-          // SET isVerified: true PERMANENTLY in Firebase
-          await VerificationService.setUserVerified(userId, 'developer', true);
-          console.log('✅ Developer isVerified set to TRUE permanently in Firebase');
-          
-          // Update local state
+
           setVerificationStatus('verified');
-          console.log('Local verification status updated to verified');
-          
-          // Close processing modal and show success modal
           setShowProcessingModal(false);
           setShowSuccessModal(true);
-          
-          console.log('🎉 Developer verification completed successfully!');
-          console.log('📄 Documents stored in Firebase with ID:', verificationResult.verificationId);
-          console.log('✅ Developer is now PERMANENTLY verified (isVerified: true)');
         } catch (error) {
-          console.error('Error during auto-verification update:', error);
+          console.error('Verification failed:', error);
           setShowProcessingModal(false);
-          setVerificationStatus('not_submitted'); // Reset on error
+          setVerificationStatus('not_submitted');
+          alert('Verification failed');
         }
-      }, 3000); // 3 second delay to simulate processing
-      
+      }, 2000);
+
     } catch (error) {
-      console.error('Error during developer verification submission:', error);
+      console.error('Submission failed:', error);
       setShowProcessingModal(false);
-      setVerificationStatus('not_submitted'); // Reset on error
+      setVerificationStatus('not_submitted');
+      alert('Failed to submit verification');
     }
   }, [currentUser]);
 
@@ -264,7 +216,7 @@ function DeveloperRC() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Verification Status */}
       <VerificationStatus 
         status={verificationStatus}
@@ -275,68 +227,69 @@ function DeveloperRC() {
       {verificationStatus === 'verified' ? (
         <>
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="stat bg-base-100 rounded-box shadow">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 px-2 sm:px-0">
+            <div className="stat bg-base-100 rounded-box shadow p-3 sm:p-4">
               <div className="stat-figure text-primary">
-                <FaBuilding className="w-6 h-6" />
+                <FaBuilding className="w-4 h-4 sm:w-6 sm:h-6" />
               </div>
-              <div className="stat-title">Active Projects</div>
-              <div className="stat-value">{stats.activeProjects}</div>
-              <div className="stat-desc">In development</div>
+              <div className="stat-title text-xs sm:text-sm">Active Projects</div>
+              <div className="stat-value text-sm sm:text-lg">{stats.activeProjects}</div>
+              <div className="stat-desc text-xs">In development</div>
             </div>
 
-            <div className="stat bg-base-100 rounded-box shadow">
+            <div className="stat bg-base-100 rounded-box shadow p-3 sm:p-4">
               <div className="stat-figure text-primary">
-                <FaMoneyBillWave className="w-6 h-6" />
+                <FaMoneyBillWave className="w-4 h-4 sm:w-6 sm:h-6" />
               </div>
-              <div className="stat-title">Contract Value</div>
-              <div className="stat-value">{stats.contractValue}</div>
-              <div className="stat-desc">Total portfolio</div>
+              <div className="stat-title text-xs sm:text-sm">Contract Value</div>
+              <div className="stat-value text-xs sm:text-sm">{stats.contractValue}</div>
+              <div className="stat-desc text-xs">Total portfolio</div>
             </div>
 
-            <div className="stat bg-base-100 rounded-box shadow">
+            <div className="stat bg-base-100 rounded-box shadow p-3 sm:p-4">
               <div className="stat-figure text-primary">
-                <FaUsers className="w-6 h-6" />
+                <FaUsers className="w-4 h-4 sm:w-6 sm:h-6" />
               </div>
-              <div className="stat-title">Active Buyers</div>
-              <div className="stat-value">{stats.activeClients}</div>
-              <div className="stat-desc">Current clients</div>
+              <div className="stat-title text-xs sm:text-sm">Active Buyers</div>
+              <div className="stat-value text-sm sm:text-lg">{stats.activeClients}</div>
+              <div className="stat-desc text-xs">Current clients</div>
             </div>
 
-            <div className="stat bg-base-100 rounded-box shadow">
+            <div className="stat bg-base-100 rounded-box shadow p-3 sm:p-4">
               <div className="stat-figure text-primary">
-                <FaChartLine className="w-6 h-6" />
+                <FaChartLine className="w-4 h-4 sm:w-6 sm:h-6" />
               </div>
-              <div className="stat-title">On-Time Delivery</div>
-              <div className="stat-value">{stats.deliveryRate}</div>
-              <div className="stat-desc">Success rate</div>
+              <div className="stat-title text-xs sm:text-sm">On-Time Delivery</div>
+              <div className="stat-value text-sm sm:text-lg">{stats.deliveryRate}</div>
+              <div className="stat-desc text-xs">Success rate</div>
             </div>
           </div>
 
           {/* Smart Contract Manager */}
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <div className="flex justify-between items-center">
+          <div className="card bg-base-100 shadow-xl mx-2 sm:mx-0">
+            <div className="card-body p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
                 <div>
-                  <h2 className="card-title">Smart Contract Manager</h2>
-                  <p className="text-sm opacity-70">Automated payment releases based on construction milestones</p>
+                  <h2 className="card-title text-lg sm:text-xl">Smart Contract Manager</h2>
+                  <p className="text-xs sm:text-sm opacity-70">Automated payment releases based on construction milestones</p>
                 </div>
                 <button 
-                  className="btn btn-primary gap-2"
+                  className="btn btn-primary gap-2 btn-sm sm:btn-md w-full sm:w-auto"
                   onClick={() => setShowAddModal(true)}
                 >
-                  <FaPlus />
-                  Add Contract
+                  <FaPlus className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Add Contract</span>
+                  <span className="sm:hidden">Add</span>
                 </button>
               </div>
 
               {contracts.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-lg opacity-70">No contracts found</p>
-                  <p className="text-sm opacity-50">Add your first contract to get started</p>
+                <div className="text-center py-6 sm:py-8">
+                  <p className="text-base sm:text-lg opacity-70">No contracts found</p>
+                  <p className="text-xs sm:text-sm opacity-50">Add your first contract to get started</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {contracts.map((contract) => (
                     <ContractCard 
                       key={contract.id} 
@@ -351,43 +304,43 @@ function DeveloperRC() {
         </>
       ) : (
         /* Restriction Message for Unverified Developers */
-        <div className="card bg-base-200 border-2 border-dashed border-primary/30">
-          <div className="card-body text-center py-16">
-            <div className="mb-6">
-              <FaBuilding className="w-16 h-16 mx-auto text-primary/50 mb-4" />
-              <h3 className="text-2xl font-bold text-base-content mb-2">
+        <div className="card bg-base-200 border-2 border-dashed border-primary/30 mx-2 sm:mx-0">
+          <div className="card-body text-center py-8 sm:py-16 px-4 sm:px-6">
+            <div className="mb-4 sm:mb-6">
+              <FaBuilding className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-primary/50 mb-3 sm:mb-4" />
+              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-base-content mb-2">
                 Verification Required
               </h3>
-              <p className="text-base-content/70 max-w-md mx-auto">
+              <p className="text-sm sm:text-base text-base-content/70 max-w-md mx-auto">
                 Submit your business documents to unlock the Smart Contract Manager and start managing your development projects.
               </p>
             </div>
             
-            <div className="bg-base-100 rounded-lg p-6 mb-6 max-w-lg mx-auto">
-              <h4 className="font-semibold text-base-content mb-3">🔓 Unlock These Features:</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-base-content/80">
+            <div className="bg-base-100 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 max-w-lg mx-auto">
+              <h4 className="font-semibold text-sm sm:text-base text-base-content mb-2 sm:mb-3">🔓 Unlock These Features:</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-base-content/80">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-primary rounded-full"></span>
+                  <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
                   Smart Contract Manager
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-primary rounded-full"></span>
+                  <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
                   Project Portfolio Tracking
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-primary rounded-full"></span>
+                  <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
                   Automated Payment Releases
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-primary rounded-full"></span>
+                  <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
                   Buyer Client Management
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-primary rounded-full"></span>
+                  <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
                   Progress Milestone Tracking
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-primary rounded-full"></span>
+                  <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
                   Analytics Dashboard
                 </div>
               </div>
@@ -395,7 +348,7 @@ function DeveloperRC() {
 
             <div className="flex gap-3 justify-center">
               <button 
-                className="btn btn-primary btn-lg gap-2"
+                className="btn btn-primary btn-sm sm:btn-md lg:btn-lg gap-2"
                 onClick={handleStartVerification}
               >
                 <FaBuilding className="w-5 h-5" />
@@ -490,33 +443,33 @@ function ContractCard({ contract, onProgressUpdate }) {
 
   return (
     <div className="card bg-base-200">
-      <div className="card-body">
-        <div className="flex justify-between items-start">
-          <div>
-            <h3 className="font-bold">{contract.project}</h3>
-            <p className="text-sm">Buyer: {contract.buyer}</p>
+      <div className="card-body p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0">
+          <div className="flex-1">
+            <h3 className="font-bold text-sm sm:text-base">{contract.project}</h3>
+            <p className="text-xs sm:text-sm">Buyer: {contract.buyer}</p>
           </div>
-          <button className={`btn btn-sm ${contract.status === 'active' ? 'btn-success' : 'btn-warning'}`}>
+          <button className={`btn btn-xs sm:btn-sm self-start sm:self-auto ${contract.status === 'active' ? 'btn-success' : 'btn-warning'}`}>
             {contract.status || 'Active'}
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-3 sm:mt-4">
           <div>
-            <p className="text-sm opacity-70">Total Amount</p>
-            <p className="font-semibold">₱{parseFloat(contract.totalAmount || 0).toLocaleString()}</p>
+            <p className="text-xs sm:text-sm opacity-70">Total Amount</p>
+            <p className="font-semibold text-sm sm:text-base">₱{parseFloat(contract.totalAmount || 0).toLocaleString()}</p>
           </div>
           <div>
-            <p className="text-sm opacity-70">Amount Paid</p>
-            <p className="font-semibold">₱{parseFloat(contract.paidAmount || 0).toLocaleString()}</p>
+            <p className="text-xs sm:text-sm opacity-70">Amount Paid</p>
+            <p className="font-semibold text-sm sm:text-base">₱{parseFloat(contract.paidAmount || 0).toLocaleString()}</p>
           </div>
           <div>
-            <p className="text-sm opacity-70">Remaining</p>
-            <p className="font-semibold">₱{remainingAmount.toLocaleString()}</p>
+            <p className="text-xs sm:text-sm opacity-70">Remaining</p>
+            <p className="font-semibold text-sm sm:text-base">₱{remainingAmount.toLocaleString()}</p>
           </div>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-3 sm:mt-4">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm">Payment Progress</span>
             <span className="text-sm font-bold">{contract.progress || 0}%</span>

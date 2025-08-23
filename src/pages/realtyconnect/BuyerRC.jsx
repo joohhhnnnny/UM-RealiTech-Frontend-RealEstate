@@ -7,10 +7,10 @@ import { db } from '../../config/Firebase';
 // Memoized Agent Card Component
 const AgentCard = memo(({ agent, onViewProfile, onContactAgent, renderStars }) => (
   <div className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow duration-300">
-    <div className="card-body">
-      <div className="flex items-center gap-4">
-        <div className="avatar">
-          <div className="w-16 h-16 rounded-full ring ring-primary ring-offset-2">
+    <div className="card-body p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+        <div className="avatar self-center sm:self-auto">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full ring ring-primary ring-offset-2">
             <img 
               src={agent.profileImage || agent.image || '/default-avatar.png'} 
               alt={agent.name || 'Agent'} 
@@ -21,14 +21,14 @@ const AgentCard = memo(({ agent, onViewProfile, onContactAgent, renderStars }) =
             />
           </div>
         </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <h2 className="card-title text-base-content">{agent.name || 'Unknown Agent'}</h2>
+        <div className="flex-1 text-center sm:text-left">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+            <h2 className="card-title text-sm sm:text-base text-base-content">{agent.name || 'Unknown Agent'}</h2>
             {agent.verified && (
-              <FaCheckCircle className="text-success w-4 h-4" title="Verified Agent" />
+              <FaCheckCircle className="text-success w-3 h-3 sm:w-4 sm:h-4 self-center sm:self-auto" title="Verified Agent" />
             )}
           </div>
-          <p className="text-sm text-base-content/70">
+          <p className="text-xs sm:text-sm text-base-content/70">
             {agent.specialization || 'General'} Specialist
           </p>
           {agent.agency && (
@@ -37,43 +37,45 @@ const AgentCard = memo(({ agent, onViewProfile, onContactAgent, renderStars }) =
         </div>
       </div>
       
-      <div className="mt-4 space-y-2">
-        <div className="flex items-center gap-2">
+      <div className="mt-3 sm:mt-4 space-y-2">
+        <div className="flex items-center justify-center sm:justify-start gap-2">
           {renderStars(agent.rating || 0)}
-          <span className="text-sm text-base-content/70">
+          <span className="text-xs sm:text-sm text-base-content/70">
             ({agent.rating?.toFixed(1) || '0.0'})
           </span>
         </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-base-content/70">
+        <div className="flex flex-col sm:flex-row sm:justify-between text-xs sm:text-sm gap-1 sm:gap-0">
+          <span className="text-base-content/70 text-center sm:text-left">
             <span className="font-semibold text-primary">{agent.dealsCompleted || agent.deals || 0}</span> deals
           </span>
           {agent.yearsExperience && (
-            <span className="text-base-content/70">
+            <span className="text-base-content/70 text-center sm:text-right">
               {agent.yearsExperience}+ years exp
             </span>
           )}
         </div>
         {agent.responseTime && (
-          <span className="badge badge-sm badge-outline">
-            Responds in {agent.responseTime}
-          </span>
+          <div className="flex justify-center sm:justify-start">
+            <span className="badge badge-xs sm:badge-sm badge-outline">
+              Responds in {agent.responseTime}
+            </span>
+          </div>
         )}
       </div>
       
-      <div className="card-actions justify-end mt-4 gap-2">
+      <div className="card-actions justify-center sm:justify-end mt-3 sm:mt-4 gap-2">
         <button 
-          className="btn btn-primary btn-sm"
+          className="btn btn-primary btn-xs sm:btn-sm flex-1 sm:flex-none"
           onClick={() => onContactAgent(agent)}
         >
           <FaEnvelope className="w-3 h-3" />
-          Contact
+          <span className="hidden sm:inline">Contact</span>
         </button>
         <button 
-          className="btn btn-outline btn-sm"
+          className="btn btn-outline btn-xs sm:btn-sm flex-1 sm:flex-none"
           onClick={() => onViewProfile(agent)}
         >
-          View Profile
+          <span className="text-xs sm:text-sm">View Profile</span>
         </button>
       </div>
     </div>
@@ -86,18 +88,18 @@ const AgentProfileModal = memo(({ selectedAgent, onClose, onScheduleMeeting, onC
 
   return (
     <dialog className="modal modal-bottom sm:modal-middle" open>
-      <div className="modal-box bg-base-100 max-w-6xl max-h-[95vh] overflow-y-auto p-0 rounded-2xl shadow-2xl">
+      <div className="modal-box bg-base-100 w-full max-w-[95vw] sm:max-w-6xl max-h-[95vh] overflow-y-auto p-0 rounded-t-2xl sm:rounded-2xl shadow-2xl">
         
         {/* Close Button - Modern floating style */}
         <button 
-          className="btn btn-sm btn-circle btn-ghost absolute right-4 top-4 z-10 hover:bg-base-200"
+          className="btn btn-sm btn-circle btn-ghost absolute right-2 sm:right-4 top-2 sm:top-4 z-10 hover:bg-base-200"
           onClick={onClose}
         >
           ✕
         </button>
 
         {/* Hero Header Section */}
-        <div className="bg-gradient-to-r from-primary/5 via-secondary/5 to-accent/5 p-8 rounded-t-2xl">
+        <div className="bg-gradient-to-r from-primary/5 via-secondary/5 to-accent/5 p-4 sm:p-6 lg:p-8 rounded-t-2xl">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
             <div className="relative">
               <div className="avatar">
@@ -724,26 +726,26 @@ function BuyerRC() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="text-center py-6">
-        <h1 className="text-3xl font-bold text-base-content mb-2">Find Your Perfect Agent</h1>
-        <p className="text-base-content/70">Connect with verified real estate professionals</p>
+      <div className="text-center py-4 sm:py-6 px-2">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-base-content mb-2">Find Your Perfect Agent</h1>
+        <p className="text-sm sm:text-base text-base-content/70">Connect with verified real estate professionals</p>
       </div>
 
       {/* Search and Filter Section */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
+      <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6 px-2 sm:px-0">
         <div className="flex-1">
           <input
             type="text"
             placeholder="Search agents by name, agency, or specialization..."
-            className="input input-bordered w-full"
+            className="input input-bordered w-full text-sm sm:text-base"
             value={searchQuery}
             onChange={handleSearchChange}
           />
         </div>
         <select
-          className="select select-bordered w-full md:w-56"
+          className="select select-bordered w-full sm:w-auto text-sm sm:text-base"
           value={selectedFilter}
           onChange={handleFilterChange}
         >
@@ -755,14 +757,14 @@ function BuyerRC() {
       </div>
 
       {/* Results Summary */}
-      <div className="flex justify-between items-center">
-        <div className="text-sm text-base-content/70">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0 px-2 sm:px-0">
+        <div className="text-xs sm:text-sm text-base-content/70 text-center sm:text-left">
           Showing <span className="font-semibold text-primary">{filteredAgents.length}</span> of{' '}
           <span className="font-semibold">{agents.length}</span> agents
         </div>
         {(searchQuery || selectedFilter !== 'all') && (
           <button 
-            className="btn btn-ghost btn-sm"
+            className="btn btn-ghost btn-xs sm:btn-sm self-center sm:self-auto"
             onClick={handleClearFilters}
           >
             Clear Filters
@@ -772,7 +774,7 @@ function BuyerRC() {
 
       {/* Agents Grid */}
       {filteredAgents.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 px-2 sm:px-0">
           {filteredAgents.map((agent) => (
             <AgentCard 
               key={agent.id} 
@@ -785,11 +787,11 @@ function BuyerRC() {
         </div>
       ) : (
         // No results state
-        <div className="text-center py-16">
+        <div className="text-center py-8 sm:py-16 px-4">
           <div className="max-w-md mx-auto">
-            <FaUserTie className="text-6xl text-base-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-base-content mb-2">No agents found</h3>
-            <p className="text-base-content/70 mb-6">
+            <FaUserTie className="text-4xl sm:text-6xl text-base-300 mx-auto mb-4" />
+            <h3 className="text-lg sm:text-xl font-semibold text-base-content mb-2">No agents found</h3>
+            <p className="text-sm sm:text-base text-base-content/70 mb-4 sm:mb-6">
               {searchQuery || selectedFilter !== 'all' 
                 ? "No agents match your current search criteria. Try adjusting your filters."
                 : "No agents are currently available. Please check back later."

@@ -95,34 +95,28 @@ function AgentRC() {
     // Load verification status
     const loadVerificationStatus = async () => {
       try {
-        // FORCE RESET TO NOT_SUBMITTED - Agent must verify fresh each time
-        setVerificationStatus('not_submitted');
+        console.log('🔍 Loading agent verification status for user:', userId);
         
-        // Clear any existing verification status in Firebase and wait for completion
-        await VerificationService.clearUserVerification(userId, 'agent');
-        console.log('🔄 Agent verification cleared - must submit documents fresh');
+        // First, check current verification status without clearing it
+        const currentStatus = await VerificationService.getVerificationStatus(userId, 'agent');
+        console.log('� Current agent verification status:', currentStatus);
         
-        // Small delay to ensure Firebase clear operation is complete
-        await new Promise(resolve => setTimeout(resolve, 500));
+        if (currentStatus.status === 'verified') {
+          setVerificationStatus('verified');
+          console.log('✅ Agent already verified, no need to verify again');
+          return () => {};
+        }
         
-        // Now subscribe to verification status changes (but ignore any existing verified status)
+        // Set initial status
+        setVerificationStatus(currentStatus.status || 'not_submitted');
+        
+        // Subscribe to verification status changes
         const statusUnsubscribe = VerificationService.subscribeToVerificationStatus(
           userId,
           'agent',
           (status) => {
-            // ONLY allow progression during active verification process
-            // Ignore any pre-existing verified status
-            if (status.status === 'pending') {
-              setVerificationStatus('pending');
-              console.log('📋 Agent verification status updated to: pending (document submitted)');
-            } else if (status.status === 'verified' && status.submittedAt && 
-                      (Date.now() - new Date(status.submittedAt).getTime()) < 10000) {
-              // Only accept verified status if it was submitted in the last 10 seconds
-              setVerificationStatus('verified');
-              console.log('📋 Agent verification status updated to: verified (fresh verification)');
-            } else {
-              console.log('🚫 Ignoring old verification status:', status.status);
-            }
+            console.log('📋 Agent verification status updated to:', status.status);
+            setVerificationStatus(status.status || 'not_submitted');
           }
         );
         return statusUnsubscribe;
@@ -222,92 +216,62 @@ function AgentRC() {
     }
   }, [currentUser]);
 
-  // Verification handlers
   const handleStartVerification = useCallback(() => {
     setShowVerificationModal(true);
   }, []);
 
   const handleVerificationSubmitted = useCallback(async (verificationData, documents) => {
-    console.log('Starting verification submission with documents:', documents);
-    
-    // CHECK IF DOCUMENTS ARE ACTUALLY SUBMITTED
+    // REQUIRE DOCUMENTS
     if (!documents || documents.length === 0) {
-      alert('Please submit required documents before verification!');
+      alert('Please upload documents for verification!');
       return;
     }
+
+    const userId = currentUser?.uid || 'demo-agent-user';
     
-    console.log('Documents provided, proceeding with verification...');
-    
-    // Set to pending immediately and close modal
     setVerificationStatus('pending');
     setShowVerificationModal(false);
-    
-    // Show processing modal
     setShowProcessingModal(true);
-    
+
     try {
-      const userId = currentUser?.uid || 'demo-agent-user';
-      console.log('Creating agent profile for user:', userId);
-      
-      // Submit verification with actual documents to VerificationService
-      const verificationResult = await VerificationService.submitVerification(
+      // Submit verification
+      const result = await VerificationService.submitVerification(
         userId,
         'agent',
-        {
-          ...verificationData,
-          submittedAt: new Date().toISOString() // Add timestamp for fresh submission tracking
-        },
+        verificationData,
         documents
       );
-      
-      console.log('Verification submission result:', verificationResult);
-      
-      // CHECK IF VERIFICATION WAS SUCCESSFUL
-      if (!verificationResult.success) {
-        throw new Error(verificationResult.error || 'Failed to submit verification');
+
+      if (!result.success) {
+        throw new Error(result.error);
       }
-      
-      console.log(`Documents successfully processed: ${verificationResult.documentsCount} files with ID: ${verificationResult.verificationId}`);
-      
-      // Auto-verify after 3 seconds for demo purposes
+
+      // Auto-verify after 2 seconds
       setTimeout(async () => {
         try {
-          console.log('Auto-verifying agent after 3 seconds...');
-          
-          // Update verification document status in Firebase to "verified"
           await VerificationService.updateVerificationStatus(
-            verificationResult.verificationId, 
-            'verified', 
-            'system', 
-            'Auto-verified after 3 seconds - Demo mode'
+            result.verificationId,
+            'verified',
+            'system',
+            'Auto-verified'
           );
-          
-          // SET isVerified: true PERMANENTLY in Firebase
-          await VerificationService.setUserVerified(userId, 'agent', true);
-          console.log('✅ Agent isVerified set to TRUE permanently in Firebase');
-          
-          // Update local state
+
           setVerificationStatus('verified');
-          console.log('Local verification status updated to verified');
-          
-          // Close processing modal and show success modal
           setShowProcessingModal(false);
           setShowSuccessModal(true);
-          
-          console.log('🎉 Agent verification completed successfully!');
-          console.log('📄 Documents stored in Firebase with ID:', verificationResult.verificationId);
-          console.log('✅ Agent is now PERMANENTLY verified (isVerified: true)');
         } catch (error) {
-          console.error('Error during auto-verification update:', error);
+          console.error('Verification failed:', error);
           setShowProcessingModal(false);
-          setVerificationStatus('not_submitted'); // Reset on error
+          setVerificationStatus('not_submitted');
+          alert('Verification failed');
         }
-      }, 3000); // 3 second delay to simulate processing
-      
+      }, 2000);
+
     } catch (error) {
-      console.error('Error during verification submission:', error);
+      console.error('Submission failed:', error);
       setShowProcessingModal(false);
-      setVerificationStatus('not_submitted'); // Reset on error
+      setVerificationStatus('not_submitted');
+      alert('Failed to submit verification');
     }
   }, [currentUser]);
 
@@ -348,7 +312,7 @@ function AgentRC() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Verification Status */}
       <VerificationStatus 
         status={verificationStatus}
@@ -357,35 +321,35 @@ function AgentRC() {
 
       {/* RESTRICTION: Show content only if agent is verified */}
       {verificationStatus !== 'verified' ? (
-        <div className="card bg-base-100 shadow-xl">
-          <div className="card-body text-center py-12">
-            <div className="mb-6">
-              <div className="w-24 h-24 mx-auto bg-warning/20 rounded-full flex items-center justify-center">
-                <FaRegClock className="w-12 h-12 text-warning" />
+        <div className="card bg-base-100 shadow-xl mx-2 sm:mx-0">
+          <div className="card-body text-center py-8 sm:py-12 px-4 sm:px-6">
+            <div className="mb-4 sm:mb-6">
+              <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto bg-warning/20 rounded-full flex items-center justify-center">
+                <FaRegClock className="w-8 h-8 sm:w-12 sm:h-12 text-warning" />
               </div>
             </div>
-            <h2 className="card-title justify-center text-2xl mb-4">
+            <h2 className="card-title justify-center text-lg sm:text-xl lg:text-2xl mb-3 sm:mb-4">
               Verification Required
             </h2>
-            <p className="text-base-content/70 mb-6 max-w-md mx-auto">
+            <p className="text-sm sm:text-base text-base-content/70 mb-4 sm:mb-6 max-w-md mx-auto">
               Please submit your verification documents to access your agent dashboard and connect with buyers.
             </p>
-            <div className="alert alert-warning mb-6">
-              <svg className="w-6 h-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+            <div className="alert alert-warning mb-4 sm:mb-6 text-left">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
               </svg>
-              <span>Agent features are disabled until verification is complete</span>
+              <span className="text-xs sm:text-sm">Agent features are disabled until verification is complete</span>
             </div>
-            <div className="space-y-3">
-              <p className="font-semibold">Required for verification:</p>
-              <ul className="text-sm text-base-content/70 space-y-1">
+            <div className="space-y-2 sm:space-y-3">
+              <p className="font-semibold text-sm sm:text-base">Required for verification:</p>
+              <ul className="text-xs sm:text-sm text-base-content/70 space-y-1">
                 <li>• PRC License</li>
                 <li>• Valid Government ID</li>
                 <li>• Professional Photo</li>
               </ul>
             </div>
             <button 
-              className="btn btn-primary mt-6"
+              className="btn btn-primary mt-4 sm:mt-6 btn-sm sm:btn-md"
               onClick={handleStartVerification}
             >
               Start Verification Process
@@ -395,93 +359,126 @@ function AgentRC() {
       ) : (
         <>
           {/* Stats Section - Only visible when verified */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="stat bg-base-100 rounded-box shadow">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 px-2 sm:px-0">
+            <div className="stat bg-base-100 rounded-box shadow p-3 sm:p-4">
               <div className="stat-figure text-primary">
-                <FaChartLine className="w-6 h-6" />
+                <FaChartLine className="w-4 h-4 sm:w-6 sm:h-6" />
               </div>
-              <div className="stat-title">Active Listings</div>
-              <div className="stat-value">{stats.activeListings}</div>
-              <div className="stat-desc text-success">In progress</div>
+              <div className="stat-title text-xs sm:text-sm">Active Listings</div>
+              <div className="stat-value text-sm sm:text-lg">{stats.activeListings}</div>
+              <div className="stat-desc text-success text-xs">In progress</div>
             </div>
             
-            <div className="stat bg-base-100 rounded-box shadow">
+            <div className="stat bg-base-100 rounded-box shadow p-3 sm:p-4">
               <div className="stat-figure text-warning">
-                <FaRegClock className="w-6 h-6" />
+                <FaRegClock className="w-4 h-4 sm:w-6 sm:h-6" />
               </div>
-              <div className="stat-title">Pending Commissions</div>
-              <div className="stat-value text-sm">{stats.pendingCommissions}</div>
-              <div className="stat-desc">Awaiting release</div>
+              <div className="stat-title text-xs sm:text-sm">Pending Commissions</div>
+              <div className="stat-value text-xs sm:text-sm">{stats.pendingCommissions}</div>
+              <div className="stat-desc text-xs">Awaiting release</div>
             </div>
             
-            <div className="stat bg-base-100 rounded-box shadow">
+            <div className="stat bg-base-100 rounded-box shadow p-3 sm:p-4">
               <div className="stat-figure text-success">
-                <FaMoneyBillWave className="w-6 h-6" />
+                <FaMoneyBillWave className="w-4 h-4 sm:w-6 sm:h-6" />
               </div>
-              <div className="stat-title">Released This Month</div>
-              <div className="stat-value text-sm">{stats.releasedThisMonth}</div>
-              <div className="stat-desc text-success">Paid out</div>
+              <div className="stat-title text-xs sm:text-sm">Released This Month</div>
+              <div className="stat-value text-xs sm:text-sm">{stats.releasedThisMonth}</div>
+              <div className="stat-desc text-success text-xs">Paid out</div>
             </div>
             
-            <div className="stat bg-base-100 rounded-box shadow">
+            <div className="stat bg-base-100 rounded-box shadow p-3 sm:p-4">
               <div className="stat-figure text-info">
-                <FaChartLine className="w-6 h-6" />
+                <FaChartLine className="w-4 h-4 sm:w-6 sm:h-6" />
               </div>
-              <div className="stat-title">Sales This Month</div>
-              <div className="stat-value">{stats.salesThisMonth}</div>
-              <div className="stat-desc">Transactions</div>
+              <div className="stat-title text-xs sm:text-sm">Sales This Month</div>
+              <div className="stat-value text-sm sm:text-lg">{stats.salesThisMonth}</div>
+              <div className="stat-desc text-xs">Transactions</div>
             </div>
           </div>
 
           {/* Commission Tracker - Only visible when verified */}
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <div className="flex justify-between items-center">
+          <div className="card bg-base-100 shadow-xl mx-2 sm:mx-0">
+            <div className="card-body p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
                 <div>
-                  <h2 className="card-title">Commission Tracker</h2>
-                  <p className="text-sm opacity-70">Track your commission payments and releases</p>
+                  <h2 className="card-title text-lg sm:text-xl">Commission Tracker</h2>
+                  <p className="text-xs sm:text-sm opacity-70">Track your commission payments and releases</p>
                 </div>
                 <button 
-                  className="btn btn-primary gap-2"
+                  className="btn btn-primary gap-2 btn-sm sm:btn-md w-full sm:w-auto"
                   onClick={() => setShowAddModal(true)}
                 >
-                  <FaPlus />
-                  Add Commission
+                  <FaPlus className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Add Commission</span>
                 </button>
               </div>
-          
-          {commissions.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-lg opacity-70">No commissions found</p>
-              <p className="text-sm opacity-50">Add your first commission to get started</p>
+
+              {commissions.length === 0 ? (
+            <div className="text-center py-6 sm:py-8">
+              <p className="text-base sm:text-lg opacity-70">No commissions found</p>
+              <p className="text-xs sm:text-sm opacity-50">Add your first commission to get started</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="table w-full">
+            <div className="space-y-3 sm:space-y-0 sm:overflow-x-auto">
+              {/* Mobile card view */}
+              <div className="block sm:hidden space-y-3">
+                {commissions.map((item) => (
+                  <div key={item.id} className="border border-base-300 rounded-lg p-3 bg-base-50">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold text-sm">{item.client}</h3>
+                          <p className="text-xs text-base-content/70">{item.project}</p>
+                        </div>
+                        <span className={getStatusBadgeClass(item.status)}>
+                          {item.status}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-base-content/60">Sale Amount:</span>
+                          <div className="font-semibold">₱{parseFloat(item.saleAmount || 0).toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <span className="text-base-content/60">Commission:</span>
+                          <div className="font-semibold">₱{parseFloat(item.commissionAmount || 0).toLocaleString()}</div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-base-content/60">
+                        Release Date: {item.releaseDate || 'TBD'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Desktop table view */}
+              <table className="hidden sm:table table w-full">
                 <thead>
                   <tr>
-                    <th>Client</th>
-                    <th>Project</th>
-                    <th>Sale Amount</th>
-                    <th>Commission</th>
-                    <th>Status</th>
-                    <th>Release Date</th>
-                    <th>Actions</th>
+                    <th className="text-xs lg:text-sm">Client</th>
+                    <th className="text-xs lg:text-sm">Project</th>
+                    <th className="text-xs lg:text-sm">Sale Amount</th>
+                    <th className="text-xs lg:text-sm">Commission</th>
+                    <th className="text-xs lg:text-sm">Status</th>
+                    <th className="text-xs lg:text-sm">Release Date</th>
+                    <th className="text-xs lg:text-sm">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {commissions.map((item) => (
                     <tr key={item.id}>
-                      <td>{item.client}</td>
-                      <td>{item.project}</td>
-                      <td>₱{parseFloat(item.saleAmount || 0).toLocaleString()}</td>
-                      <td>₱{parseFloat(item.commissionAmount || 0).toLocaleString()}</td>
+                      <td className="text-xs lg:text-sm">{item.client}</td>
+                      <td className="text-xs lg:text-sm">{item.project}</td>
+                      <td className="text-xs lg:text-sm">₱{parseFloat(item.saleAmount || 0).toLocaleString()}</td>
+                      <td className="text-xs lg:text-sm">₱{parseFloat(item.commissionAmount || 0).toLocaleString()}</td>
                       <td>
                         <span className={getStatusBadgeClass(item.status)}>
                           {item.status}
                         </span>
                       </td>
-                      <td>{item.releaseDate || 'TBD'}</td>
+                      <td className="text-xs lg:text-sm">{item.releaseDate || 'TBD'}</td>
                       <td>
                         <div className="dropdown">
                           <label tabIndex={0} className="btn btn-ghost btn-xs">
@@ -511,75 +508,109 @@ function AgentRC() {
               </table>
             </div>
           )}
-        </div>
+            </div>
           </div>
 
           {/* Buyer Connections Section - Only visible when verified */}
-          <div className="card bg-base-100 shadow-xl">
-            <div className="card-body">
-              <div className="flex justify-between items-center">
-                <h2 className="card-title">Buyer Connections</h2>
-                <div className="badge badge-info">{connections.length} total</div>
-              </div>          {connections.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-base-content/70">No buyer connections yet</p>
-              <p className="text-sm text-base-content/50">Buyers will appear here when they contact you</p>
+          <div className="card bg-base-100 shadow-xl mx-2 sm:mx-0">
+            <div className="card-body p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
+                <h2 className="card-title text-lg sm:text-xl">Buyer Connections</h2>
+                <div className="badge badge-info text-xs">{connections.length} total</div>
+              </div>
+              
+              {connections.length === 0 ? (
+                <div className="text-center py-6 sm:py-8">
+                  <p className="text-sm sm:text-base text-base-content/70">No buyer connections yet</p>
+                  <p className="text-xs sm:text-sm text-base-content/50">Buyers will appear here when they contact you</p>
+                </div>
+              ) : (
+                <div className="space-y-3 sm:space-y-0 sm:overflow-x-auto">
+                  {/* Mobile card view */}
+                  <div className="block sm:hidden space-y-3">
+                    {connections.map((connection) => (
+                      <div key={connection.id} className="border border-base-300 rounded-lg p-3 bg-base-50">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="font-semibold text-sm">{connection.buyerName}</h3>
+                              <p className="text-xs text-base-content/70">📧 {connection.buyerEmail}</p>
+                            </div>
+                            <span className={`badge ${connection.connectionType === 'meeting' ? 'badge-primary' : 'badge-secondary'} badge-sm`}>
+                              {connection.connectionType === 'meeting' ? '📅 Meeting' : '📧 Contact'}
+                            </span>
+                          </div>
+                          <div className="text-xs">
+                            <span className={`badge ${connection.status === 'initiated' ? 'badge-warning' : 'badge-info'} badge-xs mr-2`}>
+                              {connection.status}
+                            </span>
+                            {connection.createdAt?.toDate ? 
+                              connection.createdAt.toDate().toLocaleDateString() : 
+                              new Date(connection.createdAt).toLocaleDateString()
+                            }
+                          </div>
+                          <div className="text-xs text-base-content/60">
+                            {connection.message}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Desktop table view */}
+                  <table className="hidden sm:table table-zebra">
+                    <thead>
+                      <tr>
+                        <th className="text-xs lg:text-sm">Buyer</th>
+                        <th className="text-xs lg:text-sm">Contact</th>
+                        <th className="text-xs lg:text-sm">Type</th>
+                        <th className="text-xs lg:text-sm">Status</th>
+                        <th className="text-xs lg:text-sm">Date</th>
+                        <th className="text-xs lg:text-sm">Message</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {connections.map((connection) => (
+                        <tr key={connection.id}>
+                          <td>
+                            <div className="font-medium text-xs lg:text-sm">{connection.buyerName}</div>
+                          </td>
+                          <td>
+                            <div className="text-xs lg:text-sm">
+                              <div>📧 {connection.buyerEmail}</div>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`badge ${connection.connectionType === 'meeting' ? 'badge-primary' : 'badge-secondary'} badge-sm`}>
+                              {connection.connectionType === 'meeting' ? '📅 Meeting' : '📧 Contact'}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`badge ${connection.status === 'initiated' ? 'badge-warning' : 'badge-info'} badge-sm`}>
+                              {connection.status}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="text-xs lg:text-sm">
+                              {connection.createdAt?.toDate ? 
+                                connection.createdAt.toDate().toLocaleDateString() : 
+                                new Date(connection.createdAt).toLocaleDateString()
+                              }
+                            </div>
+                          </td>
+                          <td>
+                            <div className="text-xs lg:text-sm max-w-xs truncate" title={connection.message}>
+                              {connection.message}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="table table-zebra">
-                <thead>
-                  <tr>
-                    <th>Buyer</th>
-                    <th>Contact</th>
-                    <th>Type</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                    <th>Message</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {connections.map((connection) => (
-                    <tr key={connection.id}>
-                      <td>
-                        <div className="font-medium">{connection.buyerName}</div>
-                      </td>
-                      <td>
-                        <div className="text-sm">
-                          <div>📧 {connection.buyerEmail}</div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`badge ${connection.connectionType === 'meeting' ? 'badge-primary' : 'badge-secondary'}`}>
-                          {connection.connectionType === 'meeting' ? '📅 Meeting' : '📧 Contact'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`badge ${connection.status === 'initiated' ? 'badge-warning' : 'badge-info'}`}>
-                          {connection.status}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="text-sm">
-                          {connection.createdAt?.toDate ? 
-                            connection.createdAt.toDate().toLocaleDateString() : 
-                            new Date(connection.createdAt).toLocaleDateString()
-                          }
-                        </div>
-                      </td>
-                      <td>
-                        <div className="text-sm max-w-xs truncate" title={connection.message}>
-                          {connection.message}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
+          </div>
 
         {/* End of verified content */}
         </>
@@ -710,16 +741,18 @@ function AddCommissionModal({ onClose, onAdd }) {
 
   return (
     <dialog className="modal modal-bottom sm:modal-middle" open>
-      <div className="modal-box">
+      <div className="modal-box w-full max-w-lg">
         <h3 className="font-bold text-lg">Add New Commission</h3>
         
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div>
-            <label className="label">Client Name</label>
+            <label className="label">
+              <span className="label-text text-sm">Client Name</span>
+            </label>
             <input 
               type="text" 
               name="client"
-              className="input input-bordered w-full" 
+              className="input input-bordered w-full text-sm" 
               value={formData.client}
               onChange={handleChange}
               required 
@@ -727,11 +760,13 @@ function AddCommissionModal({ onClose, onAdd }) {
           </div>
           
           <div>
-            <label className="label">Project</label>
+            <label className="label">
+              <span className="label-text text-sm">Project</span>
+            </label>
             <input 
               type="text" 
               name="project"
-              className="input input-bordered w-full" 
+              className="input input-bordered w-full text-sm" 
               value={formData.project}
               onChange={handleChange}
               required 
@@ -739,11 +774,13 @@ function AddCommissionModal({ onClose, onAdd }) {
           </div>
           
           <div>
-            <label className="label">Sale Amount</label>
+            <label className="label">
+              <span className="label-text text-sm">Sale Amount</span>
+            </label>
             <input 
               type="number" 
               name="saleAmount"
-              className="input input-bordered w-full" 
+              className="input input-bordered w-full text-sm" 
               value={formData.saleAmount}
               onChange={handleChange}
               required 
@@ -751,11 +788,13 @@ function AddCommissionModal({ onClose, onAdd }) {
           </div>
           
           <div>
-            <label className="label">Commission Amount</label>
+            <label className="label">
+              <span className="label-text text-sm">Commission Amount</span>
+            </label>
             <input 
               type="number" 
               name="commissionAmount"
-              className="input input-bordered w-full" 
+              className="input input-bordered w-full text-sm" 
               value={formData.commissionAmount}
               onChange={handleChange}
               required 
@@ -763,19 +802,21 @@ function AddCommissionModal({ onClose, onAdd }) {
           </div>
           
           <div>
-            <label className="label">Expected Release Date</label>
+            <label className="label">
+              <span className="label-text text-sm">Expected Release Date</span>
+            </label>
             <input 
               type="date" 
               name="releaseDate"
-              className="input input-bordered w-full" 
+              className="input input-bordered w-full text-sm" 
               value={formData.releaseDate}
               onChange={handleChange}
             />
           </div>
           
           <div className="modal-action">
-            <button type="submit" className="btn btn-primary">Add Commission</button>
-            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary btn-sm">Add Commission</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
           </div>
         </form>
       </div>
