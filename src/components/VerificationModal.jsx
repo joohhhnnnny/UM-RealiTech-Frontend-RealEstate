@@ -32,25 +32,62 @@ const VerificationModal = ({ isOpen, onClose, userType, userId, onVerificationSu
   const fetchUserDataFromFirestore = async (userId) => {
     try {
       // Try different collections based on userType or try all
-      const collections = userType === 'agent' ? ['agents'] : ['buyers', 'agents', 'developers'];
+      const collections = userType === 'agent' ? ['agents'] : 
+                         userType === 'developer' ? ['developers'] : 
+                         ['buyers', 'agents', 'developers'];
       
       for (const collectionName of collections) {
-        const userDocRef = doc(db, collectionName, userId);
-        const userDoc = await getDoc(userDocRef);
-        
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          console.log(`Found user data in ${collectionName}:`, userData);
-          return {
-            fullName: userData.fullName || `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
-            email: userData.email || currentUser?.email || '',
-            firstName: userData.firstName || '',
-            lastName: userData.lastName || ''
-          };
+        try {
+          const userDocRef = doc(db, collectionName, userId);
+          const userDoc = await getDoc(userDocRef);
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            console.log(`Found user data in ${collectionName}:`, userData);
+            
+            // Helper function to check if a name looks like a real name (not username/email)
+            const isRealName = (name) => {
+              if (!name || !name.trim()) return false;
+              const trimmedName = name.trim();
+              
+              // Filter out obvious usernames and email-like names
+              return !trimmedName.includes('@') && 
+                     !trimmedName.includes('.') && 
+                     !trimmedName.match(/^[a-zA-Z0-9_]+\d+$/) && // username with numbers at end
+                     trimmedName.includes(' ') && // real names usually have spaces
+                     trimmedName.length > 3; // reasonable length
+            };
+            
+            // Extract full name with improved filtering
+            let fullName = '';
+            
+            if (userData.fullName && isRealName(userData.fullName)) {
+              fullName = userData.fullName;
+            } else if (userData.firstName && userData.lastName) {
+              fullName = `${userData.firstName} ${userData.lastName}`;
+            } else if (userData.name && isRealName(userData.name)) {
+              fullName = userData.name;
+            } else if (userData.displayName && isRealName(userData.displayName)) {
+              fullName = userData.displayName;
+            }
+            // If no good name found, leave empty so user can enter their real name
+            
+            return {
+              fullName: fullName.trim(),
+              email: userData.email || currentUser?.email || '',
+              firstName: userData.firstName || '',
+              lastName: userData.lastName || '',
+              phone: userData.phone || userData.contactNumber || '',
+              role: userData.role || userType
+            };
+          }
+        } catch (collectionError) {
+          console.warn(`Error checking ${collectionName} collection:`, collectionError);
+          continue; // Try next collection
         }
       }
       
-      console.log('User document not found in any collection');
+      console.log('User document not found in any collection for userId:', userId);
       return null;
     } catch (error) {
       console.error('Error fetching user data from Firestore:', error);
@@ -73,23 +110,29 @@ const VerificationModal = ({ isOpen, onClose, userType, userId, onVerificationSu
         // First try to get data from Firestore
         const firestoreData = await fetchUserDataFromFirestore(user.uid);
         
-        if (firestoreData) {
+        if (firestoreData && firestoreData.fullName) {
           console.log('Using Firestore data:', firestoreData);
           setFormData(prev => ({
             ...prev,
             fullName: firestoreData.fullName,
-            email: firestoreData.email
+            email: firestoreData.email,
+            contactNumber: firestoreData.phone || prev.contactNumber
           }));
         } else {
-          // Fallback to Firebase Auth data
-          const userName = user.displayName || user.email?.split('@')[0] || 'User';
-          const userEmail = user.email || '';
+          // Improved fallback logic - provide placeholder that encourages user to enter real name
+          console.log('Firestore data not found or incomplete, using fallback');
           
-          console.log('Using Firebase Auth data - Name:', userName, 'Email:', userEmail);
+          // Create a better placeholder that doesn't use username
+          const userEmail = user.email || '';
+          const fallbackName = user.displayName && user.displayName !== user.email?.split('@')[0] 
+            ? user.displayName 
+            : ''; // Empty string if displayName is just the email username
+          
+          console.log('Using fallback data - Name:', fallbackName, 'Email:', userEmail);
           
           setFormData(prev => ({
             ...prev,
-            fullName: userName,
+            fullName: fallbackName, // This will be empty if no real name is available
             email: userEmail
           }));
         }
@@ -181,6 +224,21 @@ const VerificationModal = ({ isOpen, onClose, userType, userId, onVerificationSu
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Validate full name (should contain at least first and last name)
+    const fullNameTrimmed = formData.fullName.trim();
+    if (!fullNameTrimmed || fullNameTrimmed.split(' ').length < 2) {
+      alert('Please enter your full name (both first and last name)');
+      return;
+    }
+    
+    // Check if full name looks like a real name (not username)
+    if (fullNameTrimmed.includes('@') || 
+        fullNameTrimmed.includes('.') || 
+        fullNameTrimmed.match(/^[a-zA-Z0-9_]+\d+$/)) {
+      alert('Please enter your real name, not a username or email address');
+      return;
+    }
+    
     // Check if documents are uploaded
     if (documents.length < 1) {
       alert('Please upload at least 1 document for verification');
@@ -239,15 +297,17 @@ const VerificationModal = ({ isOpen, onClose, userType, userId, onVerificationSu
                 <div>
                   <label className="label">
                     <span className="label-text">Full Name</span>
+                    
                   </label>
                   <input
                     type="text"
                     name="fullName"
-                    className="input input-bordered w-full bg-base-300"
+                    className="input input-bordered w-full"
                     value={formData.fullName}
                     onChange={handleInputChange}
+                    placeholder="Enter your real full name (e.g., John Smith)"
                     required
-                    readOnly
+                    minLength="3"
                   />
                 </div>
                 <div>

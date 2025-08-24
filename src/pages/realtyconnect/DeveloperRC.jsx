@@ -161,6 +161,17 @@ function DeveloperRC() {
 
     const userId = currentUser?.uid || 'demo-developer-user';
     
+    // Debug authentication status
+    console.log('🔐 Auth Debug Info:');
+    console.log('- currentUser:', currentUser);
+    console.log('- userId:', userId);
+    console.log('- Auth status:', currentUser ? 'Authenticated' : 'Not authenticated');
+    
+    // Test Firebase connection first
+    console.log('🔍 Testing Firebase connection...');
+    const connectionTest = await VerificationService.testConnection();
+    console.log('📡 Firebase connection test result:', connectionTest);
+    
     // Set status to pending immediately when documents are submitted
     setVerificationStatus('pending');
     setShowVerificationModal(false);
@@ -176,6 +187,8 @@ function DeveloperRC() {
         verificationData,
         documents
       );
+
+      console.log('🔍 Verification result:', result);
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to submit verification');
@@ -194,6 +207,11 @@ function DeveloperRC() {
 
     } catch (error) {
       console.error('❌ Developer verification submission failed:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error
+      });
       setShowProcessingModal(false);
       setVerificationStatus('not_submitted');
       alert(`Failed to submit verification documents: ${error.message}. Please try again.`);
