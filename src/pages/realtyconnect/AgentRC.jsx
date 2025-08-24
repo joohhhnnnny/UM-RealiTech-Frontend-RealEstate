@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FaChartLine, FaMoneyBillWave, FaRegClock, FaSpinner, FaPlus } from 'react-icons/fa';
+import { FaChartLine, FaMoneyBillWave, FaRegClock, FaSpinner, FaPlus, FaExclamationTriangle, FaInfoCircle, FaTimesCircle } from 'react-icons/fa';
 import { commissionService, agentService, testFirebaseConnection } from '../../services/realtyConnectService';
 import VerificationService from '../../services/verificationService';
 import VerificationStatus from '../../components/VerificationStatus';
@@ -66,83 +66,6 @@ function AgentRC() {
     salesThisMonth: 0
   });
 
-  // Load commissions and verification status from Firebase
-  useEffect(() => {
-    // Use a default user ID for demonstration if no user is authenticated
-    const userId = currentUser?.uid || 'demo-agent-user';
-
-    const loadCommissions = async () => {
-      try {
-        setLoading(true);
-        // Subscribe to real-time updates
-        const unsubscribe = commissionService.subscribeToCommissions(
-          userId, 
-          (commissionsData) => {
-            setCommissions(commissionsData);
-            calculateStats(commissionsData);
-            setLoading(false);
-          }
-        );
-
-        return () => unsubscribe();
-      } catch (err) {
-        console.error('Error loading commissions:', err);
-        setError('Failed to load commissions');
-        setLoading(false);
-      }
-    };
-
-    // Load verification status
-    const loadVerificationStatus = async () => {
-      try {
-        console.log('🔍 Loading agent verification status for user:', userId);
-        
-        // Get current verification status without clearing it
-        // Remove the problematic clearUserVerification call that causes permission errors
-        const currentStatus = await VerificationService.getVerificationStatus(userId, 'agent');
-        console.log('📋 Current agent verification status:', currentStatus);
-        
-        // Set the status exactly as it is in the database
-        // No automatic verification logic - agents must go through proper verification process
-        setVerificationStatus(currentStatus?.status || 'not_submitted');
-        console.log('✅ Agent verification status set to:', currentStatus?.status || 'not_submitted');
-        
-        // Subscribe to verification status changes
-        const statusUnsubscribe = VerificationService.subscribeToVerificationStatus(
-          userId,
-          'agent',
-          (status) => {
-            console.log('📋 Agent verification status updated to:', status.status);
-            setVerificationStatus(status.status || 'not_submitted');
-          }
-        );
-        return statusUnsubscribe;
-      } catch (err) {
-        console.error('Error loading verification status:', err);
-        setVerificationStatus('not_submitted');
-        return () => {};
-      }
-    };
-
-    const cleanupCommissions = loadCommissions();
-    const cleanupVerification = loadVerificationStatus();
-
-    // Test Firebase connection
-    const runConnectionTest = async () => {
-      console.log('Running Firebase connection test...');
-      const isConnected = await testFirebaseConnection();
-      console.log('Firebase connection result:', isConnected ? 'SUCCESS' : 'FAILED');
-      
-      if (!isConnected) {
-        console.error('❌ Firebase connection failed! Check your Firebase configuration.');
-      } else {
-        console.log('✅ Firebase is connected and working!');
-      }
-    };
-    
-    runConnectionTest();
-  }, [currentUser]);
-
   // Calculate stats from commissions data
 
   // Load commissions and verification status from Firebase
@@ -176,20 +99,12 @@ function AgentRC() {
       try {
         console.log('🔍 Loading agent verification status for user:', userId);
         
-        // First, check current verification status without clearing it
-        const currentStatus = await VerificationService.getVerificationStatus(userId, 'agent');
-        console.log('� Current agent verification status:', currentStatus);
+        // ALWAYS START WITH VERIFICATION REQUIRED - NEVER PRESERVE VERIFIED STATUS
+        // This ensures that every time the page loads, user must go through verification flow
+        console.log('🔄 FORCING VERIFICATION FLOW - Starting with not_submitted status');
+        setVerificationStatus('not_submitted');
         
-        if (currentStatus.status === 'verified') {
-          setVerificationStatus('verified');
-          console.log('✅ Agent already verified, no need to verify again');
-          return () => {};
-        }
-        
-        // Set initial status
-        setVerificationStatus(currentStatus.status || 'not_submitted');
-        
-        // Subscribe to verification status changes
+        // Subscribe to verification status changes during this session only
         const statusUnsubscribe = VerificationService.subscribeToVerificationStatus(
           userId,
           'agent',
@@ -398,46 +313,153 @@ const handleVerificationSubmitted = useCallback(async (verificationData, documen
         onStartVerification={handleStartVerification}
       />
 
-      {/* RESTRICTION: Show content only if agent is verified */}
-      {verificationStatus !== 'verified' ? (
+      {/* VERIFICATION SECTION - Match DeveloperRC.jsx structure EXACTLY */}
+      {verificationStatus === 'not_submitted' && (
+        <div className="card bg-base-200 border-2 border-dashed border-primary/30 mx-2 sm:mx-0">
+          <div className="card-body text-center py-8 sm:py-16 px-4 sm:px-6">
+            <div className="mb-4 sm:mb-6">
+              <FaChartLine className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-primary/50 mb-3 sm:mb-4" />
+              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-base-content mb-2">
+                Verification Required
+              </h3>
+              
+              <div className="space-y-4">
+                <p className="text-sm sm:text-base text-base-content/70 max-w-md mx-auto">
+                  Submit your professional documents to unlock the Commission Tracker and start managing your real estate business.
+                  <strong> All documents are required and will be manually reviewed by our admin team.</strong>
+                </p>
+                
+                <div className="bg-base-100 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 max-w-lg mx-auto">
+                  <h4 className="font-semibold text-sm sm:text-base text-base-content mb-2 sm:mb-3">📋 Required Documents:</h4>
+                  <ul className="text-xs sm:text-sm text-base-content/70 space-y-1 text-left">
+                    <li>• <strong>PRC License</strong> - Professional Regulation Commission License</li>
+                    <li>• <strong>Valid Government ID</strong> - Driver's License, Passport, or National ID</li>
+                    <li>• <strong>Professional Photo</strong> - Recent headshot for profile</li>
+                  </ul>
+                  <p className="text-xs sm:text-sm text-base-content/60 mt-3">
+                    <strong>Note:</strong> All documents will be manually reviewed by our admin team. Verification typically takes 1-2 business days.
+                  </p>
+                </div>
+
+                <div className="bg-base-100 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 max-w-lg mx-auto">
+                  <h4 className="font-semibold text-sm sm:text-base text-base-content mb-2 sm:mb-3">🔓 Unlock These Features:</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-base-content/80">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
+                      Commission Tracker
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
+                      Client Management Tools
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
+                      RealtyConnect Network
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
+                      Full Dashboard Access
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
+                      Lead Generation Tools
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
+                      Analytics Dashboard
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  className="btn btn-primary btn-sm sm:btn-md lg:btn-lg gap-2"
+                  onClick={handleStartVerification}
+                >
+                  <FaChartLine className="w-5 h-5" />
+                  Start Verification Process
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {verificationStatus === 'pending' && (
         <div className="card bg-base-100 shadow-xl mx-2 sm:mx-0">
           <div className="card-body text-center py-8 sm:py-12 px-4 sm:px-6">
             <div className="mb-4 sm:mb-6">
-              <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto bg-warning/20 rounded-full flex items-center justify-center">
-                <FaRegClock className="w-8 h-8 sm:w-12 sm:h-12 text-warning" />
+              <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto bg-info/20 rounded-full flex items-center justify-center">
+                <FaRegClock className="w-8 h-8 sm:w-12 sm:h-12 text-info" />
               </div>
             </div>
             <h2 className="card-title justify-center text-lg sm:text-xl lg:text-2xl mb-3 sm:mb-4">
-              Verification Required
+              Verification Under Review
             </h2>
             <p className="text-sm sm:text-base text-base-content/70 mb-4 sm:mb-6 max-w-md mx-auto">
-              Please submit your verification documents to access your agent dashboard and connect with buyers.
+              Your documents have been submitted and are currently being reviewed by our team.
             </p>
-            <div className="alert alert-warning mb-4 sm:mb-6 text-left">
-              <svg className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-              </svg>
-              <span className="text-xs sm:text-sm">Agent features are disabled until verification is complete</span>
+            
+            <div className="alert alert-info mb-4 sm:mb-6">
+              <FaInfoCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-xs sm:text-sm">Review process typically takes 24-48 hours</span>
             </div>
-            <div className="space-y-2 sm:space-y-3">
-              <p className="font-semibold text-sm sm:text-base">Required for verification:</p>
+            
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-center">
+              <button 
+                className="btn btn-outline btn-sm sm:btn-md"
+                onClick={handleStartVerification}
+              >
+                Update Documents
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {verificationStatus === 'rejected' && (
+        <div className="card bg-base-100 shadow-xl mx-2 sm:mx-0">
+          <div className="card-body text-center py-8 sm:py-12 px-4 sm:px-6">
+            <div className="mb-4 sm:mb-6">
+              <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto bg-error/20 rounded-full flex items-center justify-center">
+                <FaTimesCircle className="w-8 h-8 sm:w-12 sm:h-12 text-error" />
+              </div>
+            </div>
+            <h2 className="card-title justify-center text-lg sm:text-xl lg:text-2xl mb-3 sm:mb-4">
+              Verification Rejected
+            </h2>
+            <p className="text-sm sm:text-base text-base-content/70 mb-4 sm:mb-6 max-w-md mx-auto">
+              Your submitted documents did not meet our verification requirements. Please review and resubmit.
+            </p>
+            
+            <div className="alert alert-error mb-4 sm:mb-6">
+              <FaExclamationTriangle className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-xs sm:text-sm">Please ensure all documents are clear and valid</span>
+            </div>
+            
+            <div className="space-y-2 sm:space-y-3 mb-6">
+              <p className="font-semibold text-sm sm:text-base">Common rejection reasons:</p>
               <ul className="text-xs sm:text-sm text-base-content/70 space-y-1">
-                <li>• PRC License</li>
-                <li>• Valid Government ID</li>
-                <li>• Professional Photo</li>
+                <li>• Documents are blurry or unreadable</li>
+                <li>• Missing required information</li>
+                <li>• Expired licenses or IDs</li>
+                <li>• Invalid document format</li>
               </ul>
             </div>
+            
             <button 
               className="btn btn-primary mt-4 sm:mt-6 btn-sm sm:btn-md"
               onClick={handleStartVerification}
             >
-              Start Verification Process
+              Resubmit Documents
             </button>
           </div>
         </div>
-      ) : (
+      )}
+
+      {/* Check if agent is verified before showing features - EXACT copy from DeveloperRC.jsx */}
+      {verificationStatus === 'verified' ? (
         <>
-          {/* Stats Section - Only visible when verified */}
+          {/* Stats Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 px-2 sm:px-0">
             <div className="stat bg-base-100 rounded-box shadow p-3 sm:p-4">
               <div className="stat-figure text-primary">
@@ -693,7 +715,7 @@ const handleVerificationSubmitted = useCallback(async (verificationData, documen
 
         {/* End of verified content */}
         </>
-      )}
+      ) : null}
 
       {/* Add Commission Modal */}
       {showAddModal && (
@@ -762,13 +784,23 @@ const handleVerificationSubmitted = useCallback(async (verificationData, documen
             <div className="modal-action">
               <button 
                 className="btn btn-success"
-                onClick={() => setShowSuccessModal(false)}
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  // KEEP VERIFIED STATUS - Don't reset until user navigates away
+                  console.log('✅ SUCCESS MODAL CLOSED - Keeping verified status, user can use dashboard');
+                  // Don't reset verification status here - let user enjoy verified dashboard
+                }}
               >
                 Start Using RealtyConnect
               </button>
             </div>
           </div>
-          <div className="modal-backdrop bg-black/20" onClick={() => setShowSuccessModal(false)}></div>
+          <div className="modal-backdrop bg-black/20" onClick={() => {
+            setShowSuccessModal(false);
+            // KEEP VERIFIED STATUS - Don't reset until user navigates away
+            console.log('✅ SUCCESS MODAL CLOSED - Keeping verified status, user can use dashboard');
+            // Don't reset verification status here - let user enjoy verified dashboard
+          }}></div>
         </dialog>
       )}
     </div>

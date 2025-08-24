@@ -218,6 +218,18 @@ export class VerificationService {
     try {
       console.log(`🔍 Getting ${userType} verification status for user:`, userId);
       
+      // ALWAYS RETURN NOT_SUBMITTED - FORCE VERIFICATION FLOW EVERY TIME
+      // This ensures users MUST submit documents and go through verification process
+      console.log(`🔄 FORCING VERIFICATION REQUIREMENT: ${userType} must submit documents first`);
+      
+      return { 
+        status: 'not_submitted', 
+        verificationId: null, 
+        isVerified: false,
+        reason: 'Fresh session - verification required'
+      };
+      
+      /* DISABLED - OLD LOGIC THAT WAS AUTO-VERIFYING
       // Try to ensure authentication first
       try {
         if (!auth.currentUser) {
@@ -247,17 +259,12 @@ export class VerificationService {
       
       console.log(`📋 No ${userType} profile found, returning not_submitted`);
       return { status: 'not_submitted', verificationId: null, isVerified: false };
+      */
     } catch (error) {
       console.error(`Error getting ${userType} verification status:`, error);
       
-      // Handle specific Firebase permission errors
-      if (error.code === 'permission-denied') {
-        console.log('🔒 Permission denied when getting verification status');
-        console.log('💡 This is expected in demo mode - returning default status');
-      }
-      
-      // Return default status instead of error for demo
-      console.log(`🔄 Returning default status for ${userType} due to error`);
+      // ALWAYS return not_submitted on any error to force verification
+      console.log(`� Returning not_submitted for ${userType} due to error - must verify first`);
       return { status: 'not_submitted', verificationId: null, isVerified: false };
     }
   }
@@ -267,36 +274,54 @@ export class VerificationService {
     try {
       console.log(`🔔 Setting up ${userType} verification status subscription for user:`, userId);
       
+      // IMMEDIATELY return not_submitted to force verification flow
+      console.log(`🔄 FORCING not_submitted status for fresh verification flow`);
+      callback({ status: 'not_submitted', verificationId: null, isVerified: false });
+      
+      // Set up subscription for ONLY this session's changes (not persistent Firebase data)
       const userRef = doc(db, `${userType}s`, userId);
       
       return onSnapshot(userRef, 
         (doc) => {
+          // Only respond to changes that happen DURING this session
+          // Ignore any existing verified status from previous sessions
           if (doc.exists()) {
             const data = doc.data();
-            const status = data.verificationStatus || (data.isVerified ? 'verified' : 'not_submitted');
             
-            console.log(`📋 ${userType} verification status updated to:`, status);
+            // Check if this is a fresh update from current session
+            const isCurrentSessionUpdate = data.sessionTimestamp && 
+                                         (Date.now() - new Date(data.sessionTimestamp).getTime() < 60000); // Within last minute
             
-            callback({
-              status: status,
-              verificationId: data.verificationId || null,
-              lastUpdated: data.updatedAt,
-              isVerified: data.isVerified || false
-            });
+            if (isCurrentSessionUpdate) {
+              const status = data.verificationStatus || (data.isVerified ? 'verified' : 'not_submitted');
+              console.log(`📋 ${userType} verification status updated IN CURRENT SESSION to:`, status);
+              
+              callback({
+                status: status,
+                verificationId: data.verificationId || null,
+                lastUpdated: data.updatedAt,
+                isVerified: data.isVerified || false
+              });
+            } else {
+              // Ignore old data - keep as not_submitted
+              console.log(`📋 Ignoring old ${userType} verification data - keeping not_submitted`);
+              callback({ status: 'not_submitted', verificationId: null, isVerified: false });
+            }
           } else {
-            console.log(`📋 No ${userType} profile found, returning not_submitted`);
+            console.log(`📋 No ${userType} profile found, keeping not_submitted`);
             callback({ status: 'not_submitted', verificationId: null, isVerified: false });
           }
         },
         (error) => {
           console.warn(`⚠️ ${userType} verification status subscription error:`, error);
-          // Return default status on error for demo
+          // Always return not_submitted on error to force verification
           callback({ status: 'not_submitted', verificationId: null, isVerified: false });
         }
       );
     } catch (error) {
       console.error(`Error setting up ${userType} verification subscription:`, error);
-      // Return a dummy unsubscribe function
+      // Immediately call with not_submitted and return dummy unsubscribe
+      callback({ status: 'not_submitted', verificationId: null, isVerified: false });
       return () => {};
     }
   }
