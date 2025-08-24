@@ -409,8 +409,8 @@ function PropGuard() {
     },
     {
       id: 2,
-      title: "Document Submissions",
-      description: "Submit and process property documents",
+      title: "Document Scanner",
+      description: "Upload and verify property documents",
       icon: RiFileShieldLine,
       color: "info"
     },
