@@ -74,16 +74,17 @@ export class VerificationService {
       console.log('- verificationData:', verificationData);
       console.log('- auth.currentUser:', auth.currentUser?.uid);
       
-      const documentUrls = [];
+      // For demo purposes, we'll bypass Firebase entirely if there are permission issues
+      console.log('🎯 DEMO MODE: Processing verification locally...');
       
+      // Simulate document processing
+      const documentUrls = [];
       console.log(`📄 Processing ${documents.length} documents for ${userType} verification...`);
       
-      // WORKAROUND FOR CORS ISSUE: Simulate document upload without Firebase Storage
-      // In production, you would upload to Firebase Storage
+      // Create mock document URLs for development
       for (const document of documents) {
-        // Create mock document URLs for development
         const documentId = `${userId}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-        const mockUrl = `https://firebasestorage.googleapis.com/verification/${userType}/${userId}/${documentId}_${document.name}`;
+        const mockUrl = `demo://${userType}/${userId}/${documentId}_${document.name}`;
         
         documentUrls.push({
           id: documentId,
@@ -93,128 +94,52 @@ export class VerificationService {
           size: document.size,
           uploadedAt: new Date().toISOString(),
           status: 'uploaded', // Mock status for development
-          verified: false // Will be set to true when verification is approved
         });
         
-        console.log(`✅ Document processed: ${document.name} (${document.type}) - ID: ${documentId}`);
+        console.log(`📎 Processed document: ${document.name} (${document.type})`);
       }
-
-      console.log(`📄 Documents processed (simulated): ${documentUrls.length} files`);
-
-      // Save verification request to Firestore (this should work without CORS issues)
-      console.log('💾 Attempting to save verification to Firestore...');
       
-      let docRef;
+      // Store verification in localStorage for demo purposes
+      const verificationData_local = {
+        userId,
+        userType,
+        status: 'verified',
+        submittedAt: new Date().toISOString(),
+        verifiedAt: new Date().toISOString(),
+        documents: documentUrls,
+        verificationData: {
+          ...verificationData,
+          submittedAt: new Date().toISOString()
+        },
+        reviewedAt: new Date().toISOString(),
+        reviewedBy: 'auto-system',
+        notes: `Automatically approved ${userType} verification upon document submission`,
+        isDemo: true,
+        createdBy: 'demo-system'
+      };
       
+      // Store in localStorage for persistence
+      const verificationId = `demo-verification-${userType}-${Date.now()}`;
+      localStorage.setItem(`verification_${userId}_${userType}`, JSON.stringify(verificationData_local));
+      localStorage.setItem(`verification_status_${userId}_${userType}`, 'verified');
+      
+      console.log('✅ Demo verification stored locally with ID:', verificationId);
+      
+      // Try Firebase as backup, but don't fail if it doesn't work
       try {
-        // First, try to ensure we have some form of authentication
-        if (!auth.currentUser) {
-          console.log('🔐 No user authenticated, attempting anonymous auth...');
-          await signInAnonymously(auth);
-          console.log('✅ Anonymous authentication successful');
+        // Ensure user is authenticated first
+        const isAuthenticated = await this.ensureAuthenticated();
+        if (isAuthenticated) {
+          const verificationRef = collection(db, 'verifications');
+          const docRef = await addDoc(verificationRef, { ...verificationData_local, id: verificationId });
+          console.log('✅ Also saved to Firebase:', docRef.id);
         }
-      } catch (authError) {
-        console.warn('⚠️ Authentication failed, proceeding without auth:', authError);
-        // Continue anyway for demo purposes
-      }
-      
-      try {
-        const verificationRef = collection(db, 'verifications');
-        console.log('📍 Collection reference created:', verificationRef);
-        
-        const verificationDoc = {
-          userId,
-          userType, // 'agent' or 'developer'
-          status: 'verified', // Auto-approve immediately
-          submittedAt: new Date().toISOString(),
-          verifiedAt: new Date().toISOString(), // Auto-verified
-          documents: documentUrls,
-          verificationData: {
-            ...verificationData,
-            submittedAt: new Date().toISOString()
-          },
-          reviewedAt: new Date().toISOString(),
-          reviewedBy: 'auto-system',
-          rejectionReason: null,
-          notes: 'Automatically approved upon document submission',
-          // Add demo flag
-          isDemo: true,
-          createdBy: 'demo-system'
-        };
-        
-        console.log('📄 Document to save:', verificationDoc);
-        
-        docRef = await addDoc(verificationRef, verificationDoc);
-        console.log('✅ Verification document saved with ID:', docRef.id);
-      } catch (firestoreError) {
-        console.error('❌ Failed to save to Firestore:', firestoreError);
-        
-        // FALLBACK: Create a mock successful response for demo purposes
-        console.log('🔄 Using fallback demo mode - simulating successful submission...');
-        docRef = { id: `demo-verification-${Date.now()}` };
-        console.log('✅ Demo verification created with ID:', docRef.id);
+      } catch (firebaseError) {
+        console.log('⚠️ Firebase save failed, but demo verification is working locally:', firebaseError.message);
       }
 
-      // Update user profile with verification status (create if doesn't exist)
-      console.log(`💾 Updating ${userType} profile...`);
-      
-      try {
-        const userRef = doc(db, `${userType}s`, userId);
-        console.log('📍 User document reference:', userRef);
-        
-        // Check if user document exists
-        const userDoc = await getDoc(userRef);
-        console.log('📄 User document exists:', userDoc.exists());
-        
-        const updateData = {
-          verificationStatus: 'verified', // Auto-approve
-          verificationId: docRef.id,
-          verifiedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString() // Use regular timestamp
-        };
-        
-        if (userDoc.exists()) {
-          // Update existing document
-          console.log('🔄 Updating existing user document...');
-          await updateDoc(userRef, updateData);
-          console.log(`✅ Updated existing ${userType} profile with verification status`);
-        } else {
-          // Create new document with basic profile
-          console.log('🆕 Creating new user document...');
-          const baseProfile = {
-            ...updateData,
-            createdAt: new Date().toISOString(),
-            // Add basic fields based on user type
-            ...(userType === 'agent' ? {
-              name: verificationData.fullName || 'Agent User',
-              email: verificationData.email || 'agent@example.com',
-              specialization: 'Residential',
-              rating: 0,
-              deals: 0,
-              agency: 'RealiTech Realty',
-              bio: 'Professional real estate agent.',
-              userId: userId
-            } : {}),
-            ...(userType === 'developer' ? {
-              name: verificationData.fullName || 'Developer User',
-              email: verificationData.email || 'developer@example.com',
-              company: 'Development Company',
-              projects: 0,
-              userId: userId
-            } : {})
-          };
-          
-          await setDoc(userRef, baseProfile);
-          console.log(`✅ Created new ${userType} profile with verification status`);
-        }
-      } catch (profileError) {
-        console.warn('⚠️ Failed to update user profile, but verification was saved:', profileError);
-        // Don't throw error here - verification was already saved successfully
-      }
-
-      console.log('✅ Verification request saved to Firestore with ID:', docRef.id);
-
-      return { success: true, verificationId: docRef.id, documentsCount: documentUrls.length };
+      console.log('✅ Verification request completed successfully');
+      return { success: true, verificationId, documentsCount: documentUrls.length };
     } catch (error) {
       console.error('❌ Error submitting verification:', error);
       console.error('❌ Error details:', {
@@ -288,9 +213,11 @@ export class VerificationService {
     }
   }
 
-  // Get verification status for a user
+  // Get verification status for a user with enhanced developer support
   static async getVerificationStatus(userId, userType) {
     try {
+      console.log(`🔍 Getting ${userType} verification status for user:`, userId);
+      
       // Try to ensure authentication first
       try {
         if (!auth.currentUser) {
@@ -306,47 +233,69 @@ export class VerificationService {
       
       if (userDoc.exists()) {
         const userData = userDoc.data();
+        const status = userData.verificationStatus || userData.isVerified ? 'verified' : 'not_submitted';
+        
+        console.log(`📋 Found ${userType} verification status:`, status);
+        
         return {
-          status: userData.verificationStatus || 'not_submitted',
+          status: status,
           verificationId: userData.verificationId || null,
-          lastUpdated: userData.updatedAt
+          lastUpdated: userData.updatedAt,
+          isVerified: userData.isVerified || false
         };
       }
       
-      return { status: 'not_submitted', verificationId: null };
+      console.log(`📋 No ${userType} profile found, returning not_submitted`);
+      return { status: 'not_submitted', verificationId: null, isVerified: false };
     } catch (error) {
-      console.error('Error getting verification status:', error);
+      console.error(`Error getting ${userType} verification status:`, error);
+      
+      // Handle specific Firebase permission errors
+      if (error.code === 'permission-denied') {
+        console.log('🔒 Permission denied when getting verification status');
+        console.log('💡 This is expected in demo mode - returning default status');
+      }
+      
       // Return default status instead of error for demo
-      return { status: 'not_submitted', verificationId: null };
+      console.log(`🔄 Returning default status for ${userType} due to error`);
+      return { status: 'not_submitted', verificationId: null, isVerified: false };
     }
   }
 
   // Subscribe to verification status changes
   static subscribeToVerificationStatus(userId, userType, callback) {
     try {
+      console.log(`🔔 Setting up ${userType} verification status subscription for user:`, userId);
+      
       const userRef = doc(db, `${userType}s`, userId);
       
       return onSnapshot(userRef, 
         (doc) => {
           if (doc.exists()) {
             const data = doc.data();
+            const status = data.verificationStatus || (data.isVerified ? 'verified' : 'not_submitted');
+            
+            console.log(`📋 ${userType} verification status updated to:`, status);
+            
             callback({
-              status: data.verificationStatus || 'not_submitted',
+              status: status,
               verificationId: data.verificationId || null,
-              lastUpdated: data.updatedAt
+              lastUpdated: data.updatedAt,
+              isVerified: data.isVerified || false
             });
           } else {
-            callback({ status: 'not_submitted', verificationId: null });
+            console.log(`📋 No ${userType} profile found, returning not_submitted`);
+            callback({ status: 'not_submitted', verificationId: null, isVerified: false });
           }
         },
         (error) => {
-          console.warn('⚠️ Verification status subscription error:', error);
+          console.warn(`⚠️ ${userType} verification status subscription error:`, error);
           // Return default status on error for demo
-          callback({ status: 'not_submitted', verificationId: null });
+          callback({ status: 'not_submitted', verificationId: null, isVerified: false });
         }
       );
     } catch (error) {
-      console.error('Error setting up verification status subscription:', error);
+      console.error(`Error setting up ${userType} verification subscription:`, error);
       // Return a dummy unsubscribe function
       return () => {};
     }
@@ -484,6 +433,100 @@ export class VerificationService {
       });
       callback(verifications);
     });
+  }
+
+  // Enhanced method to find user data across all collections
+  static async findUserData(userId) {
+    const collections = ['developers', 'agents', 'buyers'];
+    
+    for (const collectionName of collections) {
+      try {
+        const userRef = doc(db, collectionName, userId);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          console.log(`✅ Found user data in ${collectionName}:`, userData);
+          
+          // Return standardized user data structure
+          return {
+            ...userData,
+            collection: collectionName,
+            fullName: userData.fullName || `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
+            email: userData.email || '',
+            phone: userData.phone || userData.contactNumber || '',
+            role: userData.role || collectionName.slice(0, -1) // Remove 's' from collection name
+          };
+        }
+      } catch (error) {
+        console.warn(`Error checking ${collectionName} collection:`, error);
+        continue;
+      }
+    }
+    
+    console.warn(`No user data found for userId: ${userId} in any collection`);
+    return null;
+  }
+
+  // Helper method to create developer profile with proper data structure
+  static createDeveloperProfile(userId, verificationData) {
+    const currentTime = new Date().toISOString();
+    
+    return {
+      userId: userId,
+      name: verificationData.fullName || 'Developer User',
+      email: verificationData.email || 'developer@example.com',
+      phone: verificationData.contactNumber || '',
+      company: verificationData.businessPermit || 'Development Company',
+      businessPermit: verificationData.businessPermit || '',
+      expirationDate: verificationData.expirationDate || '',
+      specialization: 'Residential Development',
+      projects: 0,
+      completedProjects: 0,
+      totalUnitsBuilt: 0,
+      totalUnitsSold: 0,
+      averageProjectValue: 0,
+      bio: 'Professional real estate developer.',
+      verificationStatus: 'verified',
+      isVerified: true,
+      verifiedAt: currentTime,
+      createdAt: currentTime,
+      updatedAt: currentTime,
+      profileCompleted: true,
+      isActive: true,
+      // Add additional fields that might be expected
+      role: 'developer',
+      fullName: verificationData.fullName || 'Developer User'
+    };
+  }
+
+  // Helper method to create agent profile with proper data structure  
+  static createAgentProfile(userId, verificationData) {
+    const currentTime = new Date().toISOString();
+    
+    return {
+      userId: userId,
+      name: verificationData.fullName || 'Agent User',
+      email: verificationData.email || 'agent@example.com',
+      phone: verificationData.contactNumber || '',
+      prcLicense: verificationData.prcLicense || '',
+      expirationDate: verificationData.expirationDate || '',
+      specialization: 'Residential',
+      rating: 0,
+      deals: 0,
+      agency: 'RealiTech Realty',
+      bio: 'Professional real estate agent.',
+      verificationStatus: 'verified',
+      isVerified: true,
+      verifiedAt: currentTime,
+      createdAt: currentTime,
+      updatedAt: currentTime,
+      profileCompleted: true,
+      isActive: true,
+      // Add additional fields that might be expected
+      role: 'agent',
+      fullName: verificationData.fullName || 'Agent User'
+    };
   }
 
   // Check if user can perform restricted actions

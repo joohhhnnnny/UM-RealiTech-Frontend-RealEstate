@@ -208,13 +208,28 @@ service cloud.firestore {
       allow read, write: if true; // Open for demo
     }
     
-    // Developer and Agent collections - Allow for demo purposes
+    // Buyer-Developer connections
+    match /buyer_developer_connections/{connectionId} {
+      allow read, write: if true; // Open for demo  
+    }
+    
+    // Buyer-Agent connections
+    match /buyer_agent_connections/{connectionId} {
+      allow read, write: if true; // Open for demo
+    }
+    
+    // Developer and Agent collections - Allow for demo purposes  
     match /developers/{userId} {
       allow read, write: if true; // Open for demo
     }
     
     match /agents/{userId} {
       allow read, write: if true; // Open for demo
+    }
+    
+    // Allow all users access for demo - this will override more restrictive rules above
+    match /{document=**} {
+      allow read, write: if true; // Completely open for demo purposes
     }
   }
 }

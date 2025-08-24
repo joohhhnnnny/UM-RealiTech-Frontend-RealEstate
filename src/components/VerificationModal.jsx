@@ -12,7 +12,7 @@ try {
 
 // Additional fallback - try to get user from Firebase directly
 import { auth, db } from '../config/Firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const VerificationModal = ({ isOpen, onClose, userType, userId, onVerificationSubmitted }) => {
   const { currentUser } = useAuth(); // Get current user from auth context
@@ -31,45 +31,68 @@ const VerificationModal = ({ isOpen, onClose, userType, userId, onVerificationSu
 // Function to get user data from Firestore
 const fetchUserDataFromFirestore = async (userId) => {
   try {
+    console.log(`🔍 Fetching user data for userId: ${userId}, userType: ${userType}`);
+    
     // Try different collections based on userType or try all
     const collections = userType === 'agent' ? ['agents'] : 
                        userType === 'developer' ? ['developers'] : 
                        ['buyers', 'agents', 'developers'];
     
+    console.log(`📋 Checking collections: ${collections.join(', ')}`);
+    
     for (const collectionName of collections) {
       try {
+        console.log(`🔍 Checking ${collectionName} collection...`);
         const userDocRef = doc(db, collectionName, userId);
         const userDoc = await getDoc(userDocRef);
         
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          console.log(`Found user data in ${collectionName}:`, userData);
+          console.log(`✅ Found user data in ${collectionName}:`, userData);
           
-          // Simple: firstName + lastName = fullName
+          // Extract firstName and lastName from Firebase data
+          const firstName = userData.firstName || '';
+          const lastName = userData.lastName || '';
+          
+          // Create fullName from firstName + lastName (exactly what you want!)
           let fullName = '';
-          if (userData.firstName && userData.lastName) {
-            fullName = `${userData.firstName} ${userData.lastName}`;
+          if (firstName && lastName) {
+            fullName = `${firstName} ${lastName}`;
+            console.log(`📝 Created fullName: "${fullName}" from firstName: "${firstName}" + lastName: "${lastName}"`);
+          } else if (userData.fullName) {
+            // Fallback to existing fullName if firstName/lastName not available
+            fullName = userData.fullName;
+            console.log(`📝 Using existing fullName: "${fullName}"`);
+          } else {
+            // Last resort - try to extract from other fields
+            const displayName = userData.name || userData.displayName || '';
+            if (displayName) {
+              fullName = displayName;
+              console.log(`📝 Using display name as fullName: "${fullName}"`);
+            }
           }
           
           return {
             fullName: fullName.trim(),
             email: userData.email || currentUser?.email || '',
-            firstName: userData.firstName || '',
-            lastName: userData.lastName || '',
+            firstName: firstName,
+            lastName: lastName,
             phone: userData.phone || userData.contactNumber || '',
             role: userData.role || userType
           };
+        } else {
+          console.log(`❌ No document found in ${collectionName} for userId: ${userId}`);
         }
       } catch (collectionError) {
-        console.warn(`Error checking ${collectionName} collection:`, collectionError);
+        console.warn(`❌ Error checking ${collectionName} collection:`, collectionError);
         continue; // Try next collection
       }
     }
     
-    console.log('User document not found in any collection for userId:', userId);
+    console.log(`⚠️ No user data found in any collection for userId: ${userId}`);
     return null;
   } catch (error) {
-    console.error('Error fetching user data from Firestore:', error);
+    console.error('❌ Error fetching user data from Firestore:', error);
     return null;
   }
 };
@@ -81,11 +104,13 @@ useEffect(() => {
     const user = currentUser || auth.currentUser;
     
     if (user) {
+      console.log(`🔍 Populating user data for verification modal, userId: ${user.uid}`);
+      
       // First try to get data from Firestore
       const firestoreData = await fetchUserDataFromFirestore(user.uid);
       
       if (firestoreData && firestoreData.fullName) {
-        console.log('Using Firestore data:', firestoreData);
+        console.log('✅ Using Firestore data:', firestoreData);
         setFormData(prev => ({
           ...prev,
           fullName: firestoreData.fullName,
@@ -93,17 +118,67 @@ useEffect(() => {
           contactNumber: firestoreData.phone || prev.contactNumber
         }));
       } else {
-        // If no Firestore data, leave fullName empty so user can enter it
-        console.log('Firestore data not found, leaving name field empty');
+        // If no Firestore data, try to get from localStorage first
+        console.log('⚠️ Firestore data not found, checking localStorage...');
+        
+        try {
+          const storedUserData = localStorage.getItem('userData');
+          if (storedUserData) {
+            const userData = JSON.parse(storedUserData);
+            console.log('📦 Found userData in localStorage:', userData);
+            
+            // Create fullName from firstName + lastName if available
+            let fullName = '';
+            if (userData.firstName && userData.lastName) {
+              fullName = `${userData.firstName} ${userData.lastName}`;
+              console.log(`📝 Created fullName from localStorage: "${fullName}"`);
+            } else if (userData.fullName) {
+              fullName = userData.fullName;
+              console.log(`📝 Using fullName from localStorage: "${fullName}"`);
+            }
+            
+            if (fullName) {
+              setFormData(prev => ({
+                ...prev,
+                fullName: fullName.trim(),
+                email: userData.email || user.email || '',
+                contactNumber: userData.phone || ''
+              }));
+              return; // Exit early if we found data in localStorage
+            }
+          }
+        } catch (error) {
+          console.warn('❌ Error parsing localStorage userData:', error);
+        }
+        
+        // Last resort fallback - use auth data but try to make it more user-friendly
+        console.log('⚠️ No stored data found, using auth fallback');
+        
+        // Try to get a better name from auth or use a generic placeholder
+        let fallbackName = 'User';
+        if (user.displayName) {
+          fallbackName = user.displayName;
+        } else if (user.email) {
+          // Try to make the email username more user-friendly
+          const emailUsername = user.email.split('@')[0];
+          // Convert something like "robertdoe2" to "Robert Doe" if possible
+          const cleanUsername = emailUsername.replace(/\d+$/, ''); // Remove trailing numbers
+          if (cleanUsername.length > 2) {
+            fallbackName = cleanUsername.charAt(0).toUpperCase() + cleanUsername.slice(1);
+          }
+        }
+        
+        console.log(`📝 Using fallback name: "${fallbackName}"`);
         
         setFormData(prev => ({
           ...prev,
-          fullName: '', // Empty so user must enter their real name
-          email: user.email || ''
+          fullName: fallbackName,
+          email: user.email || '',
+          contactNumber: '' // Empty for manual entry
         }));
       }
     } else {
-      console.log('No user data available');
+      console.log('❌ No user data available');
     }
   };
   
@@ -119,27 +194,77 @@ useEffect(() => {
       const timer = setTimeout(async () => {
         const user = currentUser || auth.currentUser;
         if (user) {
+          console.log(`🔍 Delayed user data population for userId: ${user.uid}`);
+          
           const firestoreData = await fetchUserDataFromFirestore(user.uid);
           
           if (firestoreData && firestoreData.fullName) {
-            console.log('Modal opened (delayed) - Using Firestore data:', firestoreData);
+            console.log('✅ Modal opened (delayed) - Using Firestore data:', firestoreData);
             setFormData(prev => ({
               ...prev,
               fullName: firestoreData.fullName,
-              email: firestoreData.email
+              email: firestoreData.email,
+              contactNumber: firestoreData.phone
             }));
           } else {
-            // Leave fullName empty if no proper name data found
-            console.log('Modal opened (delayed) - No proper name data found');
+            // Check localStorage for user data
+            console.log('⚠️ Modal opened (delayed) - Checking localStorage...');
+            
+            try {
+              const storedUserData = localStorage.getItem('userData');
+              if (storedUserData) {
+                const userData = JSON.parse(storedUserData);
+                console.log('📦 Found userData in localStorage (delayed):', userData);
+                
+                // Create fullName from firstName + lastName if available
+                let fullName = '';
+                if (userData.firstName && userData.lastName) {
+                  fullName = `${userData.firstName} ${userData.lastName}`;
+                  console.log(`📝 Created fullName from localStorage (delayed): "${fullName}"`);
+                } else if (userData.fullName) {
+                  fullName = userData.fullName;
+                  console.log(`📝 Using fullName from localStorage (delayed): "${fullName}"`);
+                }
+                
+                if (fullName) {
+                  setFormData(prev => ({
+                    ...prev,
+                    fullName: fullName.trim(),
+                    email: userData.email || user.email || '',
+                    contactNumber: userData.phone || ''
+                  }));
+                  return; // Exit early if we found data in localStorage
+                }
+              }
+            } catch (error) {
+              console.warn('❌ Error parsing localStorage userData (delayed):', error);
+            }
+            
+            // Fallback logic - use auth data
+            console.log('⚠️ Modal opened (delayed) - Using auth fallback');
+            
+            let fallbackName = 'User';
+            if (user.displayName) {
+              fallbackName = user.displayName;
+            } else if (user.email) {
+              const emailUsername = user.email.split('@')[0];
+              const cleanUsername = emailUsername.replace(/\d+$/, '');
+              if (cleanUsername.length > 2) {
+                fallbackName = cleanUsername.charAt(0).toUpperCase() + cleanUsername.slice(1);
+              }
+            }
+            
+            console.log(`📝 Using delayed fallback name: "${fallbackName}"`);
             
             setFormData(prev => ({
               ...prev,
-              fullName: '', // Leave empty for user to fill
-              email: user.email || ''
+              fullName: fallbackName,
+              email: user.email || '',
+              contactNumber: ''
             }));
           }
         }
-      }, 100);
+      }, 500); // 500ms delay
       
       return () => clearTimeout(timer);
     }
