@@ -125,17 +125,18 @@ export class VerificationService {
         const verificationDoc = {
           userId,
           userType, // 'agent' or 'developer'
-          status: 'pending', // pending, verified, rejected
-          submittedAt: new Date().toISOString(), // Use regular timestamp for demo
+          status: 'verified', // Auto-approve immediately
+          submittedAt: new Date().toISOString(),
+          verifiedAt: new Date().toISOString(), // Auto-verified
           documents: documentUrls,
           verificationData: {
             ...verificationData,
             submittedAt: new Date().toISOString()
           },
-          reviewedAt: null,
-          reviewedBy: null,
+          reviewedAt: new Date().toISOString(),
+          reviewedBy: 'auto-system',
           rejectionReason: null,
-          notes: '',
+          notes: 'Automatically approved upon document submission',
           // Add demo flag
           isDemo: true,
           createdBy: 'demo-system'
@@ -166,8 +167,9 @@ export class VerificationService {
         console.log('📄 User document exists:', userDoc.exists());
         
         const updateData = {
-          verificationStatus: 'pending',
+          verificationStatus: 'verified', // Auto-approve
           verificationId: docRef.id,
+          verifiedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString() // Use regular timestamp
         };
         
@@ -228,6 +230,61 @@ export class VerificationService {
         errorCode: error.code || 'unknown',
         verificationId: null 
       };
+    }
+  }
+
+  // Auto-approve verification (no admin needed)
+  static async approveVerification(userId, userType, verificationId) {
+    try {
+      console.log(`🎉 Auto-approving ${userType} verification for user:`, userId);
+      
+      // Update verification document to approved status
+      if (verificationId && !verificationId.startsWith('demo-')) {
+        try {
+          const verificationRef = doc(db, 'verifications', verificationId);
+          await updateDoc(verificationRef, {
+            status: 'verified',
+            reviewedAt: new Date().toISOString(),
+            reviewedBy: 'auto-system',
+            notes: 'Automatically approved upon document submission'
+          });
+          console.log('✅ Verification document updated to approved');
+        } catch (verificationUpdateError) {
+          console.warn('⚠️ Could not update verification document:', verificationUpdateError);
+          // Continue anyway - user profile update is more important
+        }
+      }
+      
+      // Update user profile to verified status
+      try {
+        const userRef = doc(db, `${userType}s`, userId);
+        await updateDoc(userRef, {
+          verificationStatus: 'verified',
+          verifiedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+        console.log(`✅ ${userType} profile updated to verified status`);
+      } catch (profileUpdateError) {
+        console.warn('⚠️ Could not update user profile:', profileUpdateError);
+        // Try to create the profile if it doesn't exist
+        const baseProfile = {
+          verificationStatus: 'verified',
+          verificationId: verificationId,
+          verifiedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          userId: userId
+        };
+        
+        await setDoc(doc(db, `${userType}s`, userId), baseProfile);
+        console.log(`✅ Created new ${userType} profile with verified status`);
+      }
+      
+      console.log(`🎉 ${userType.toUpperCase()} VERIFICATION COMPLETE!`);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error approving verification:', error);
+      return { success: false, error: error.message };
     }
   }
 

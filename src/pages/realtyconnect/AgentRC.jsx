@@ -320,9 +320,9 @@ const handleVerificationSubmitted = useCallback(async (verificationData, documen
   setShowProcessingModal(true);
 
   try {
-    console.log('📤 Submitting verification documents for manual review...');
+    console.log('📤 Submitting verification documents with auto-approval...');
     
-    // Submit verification documents to database for manual admin review
+    // Submit verification documents to database with auto-approval
     const result = await VerificationService.submitVerification(
       userId,
       'agent',
@@ -335,15 +335,16 @@ const handleVerificationSubmitted = useCallback(async (verificationData, documen
     }
 
     setShowProcessingModal(false);
+    setVerificationStatus('verified');
     
-    // Clear notification: Documents submitted successfully, now pending manual review
-    console.log('✅ Verification documents submitted successfully');
-    console.log('⏳ Status: PENDING - Awaiting manual admin approval');
-    console.log('🔍 Admin will review documents and update status accordingly');
-    console.log('🚫 NO AUTO-VERIFICATION: Agent must wait for manual admin approval');
+    // Show success - automatically verified
+    console.log('🎉 AGENT AUTOMATICALLY VERIFIED!');
+    console.log('✅ Documents stored in Firebase');
+    console.log('✅ Verification status set to VERIFIED');
+    console.log('🔓 All features now unlocked');
     
-    // Show success message to user
-    alert('Verification documents submitted successfully! Your documents are now being reviewed by our admin team. You will be notified once the review is complete.');
+    // Show success modal
+    setShowSuccessModal(true);
 
   } catch (error) {
     console.error('❌ Agent verification submission failed:', error);
@@ -722,12 +723,12 @@ const handleVerificationSubmitted = useCallback(async (verificationData, documen
               <div className="loading loading-spinner loading-lg text-primary mb-4"></div>
               <h3 className="font-bold text-lg mb-2">Processing Verification</h3>
               <p className="text-base-content/70">
-                We're reviewing your documents and credentials...
+                Saving documents to Firebase and verifying...
               </p>
               <div className="mt-4">
                 <div className="flex items-center justify-center gap-2">
                   <span className="loading loading-dots loading-sm"></span>
-                  <span className="text-sm">This usually takes a moment</span>
+                  <span className="text-sm">Almost done...</span>
                 </div>
               </div>
             </div>
@@ -743,19 +744,18 @@ const handleVerificationSubmitted = useCallback(async (verificationData, documen
             <div className="py-8">
               <div className="text-6xl mb-4">🎉</div>
               <h3 className="font-bold text-xl text-success mb-2">
-                Verification Approved!
+                Verification Complete!
               </h3>
               <p className="text-base-content/70 mb-4">
-                Congratulations! Your agent credentials have been verified.
-                All platform features are now unlocked.
+                Your documents have been saved and you are now verified! All platform features are unlocked.
               </p>
               <div className="bg-success/10 p-4 rounded-lg mb-6">
                 <div className="text-success font-semibold mb-2">✅ What's Unlocked:</div>
                 <ul className="text-sm text-left space-y-1">
-                  <li>• Add and manage commissions</li>
-                  <li>• Access client management tools</li>
-                  <li>• Participate in RealtyConnect network</li>
-                  <li>• Full dashboard functionality</li>
+                  <li>• Commission Tracker</li>
+                  <li>• Client Management Tools</li>
+                  <li>• RealtyConnect Network</li>
+                  <li>• Full Dashboard Access</li>
                 </ul>
               </div>
             </div>

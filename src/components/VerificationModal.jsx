@@ -28,121 +28,89 @@ const VerificationModal = ({ isOpen, onClose, userType, userId, onVerificationSu
     yearsExperience: ''
   });
   
-  // Function to get user data from Firestore
-  const fetchUserDataFromFirestore = async (userId) => {
-    try {
-      // Try different collections based on userType or try all
-      const collections = userType === 'agent' ? ['agents'] : 
-                         userType === 'developer' ? ['developers'] : 
-                         ['buyers', 'agents', 'developers'];
-      
-      for (const collectionName of collections) {
-        try {
-          const userDocRef = doc(db, collectionName, userId);
-          const userDoc = await getDoc(userDocRef);
+// Function to get user data from Firestore
+const fetchUserDataFromFirestore = async (userId) => {
+  try {
+    // Try different collections based on userType or try all
+    const collections = userType === 'agent' ? ['agents'] : 
+                       userType === 'developer' ? ['developers'] : 
+                       ['buyers', 'agents', 'developers'];
+    
+    for (const collectionName of collections) {
+      try {
+        const userDocRef = doc(db, collectionName, userId);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          console.log(`Found user data in ${collectionName}:`, userData);
           
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            console.log(`Found user data in ${collectionName}:`, userData);
-            
-            // Helper function to check if a name looks like a real name (not username/email)
-            const isRealName = (name) => {
-              if (!name || !name.trim()) return false;
-              const trimmedName = name.trim();
-              
-              // Filter out obvious usernames and email-like names
-              return !trimmedName.includes('@') && 
-                     !trimmedName.includes('.') && 
-                     !trimmedName.match(/^[a-zA-Z0-9_]+\d+$/) && // username with numbers at end
-                     trimmedName.includes(' ') && // real names usually have spaces
-                     trimmedName.length > 3; // reasonable length
-            };
-            
-            // Extract full name with improved filtering
-            let fullName = '';
-            
-            if (userData.fullName && isRealName(userData.fullName)) {
-              fullName = userData.fullName;
-            } else if (userData.firstName && userData.lastName) {
-              fullName = `${userData.firstName} ${userData.lastName}`;
-            } else if (userData.name && isRealName(userData.name)) {
-              fullName = userData.name;
-            } else if (userData.displayName && isRealName(userData.displayName)) {
-              fullName = userData.displayName;
-            }
-            // If no good name found, leave empty so user can enter their real name
-            
-            return {
-              fullName: fullName.trim(),
-              email: userData.email || currentUser?.email || '',
-              firstName: userData.firstName || '',
-              lastName: userData.lastName || '',
-              phone: userData.phone || userData.contactNumber || '',
-              role: userData.role || userType
-            };
+          // Simple: firstName + lastName = fullName
+          let fullName = '';
+          if (userData.firstName && userData.lastName) {
+            fullName = `${userData.firstName} ${userData.lastName}`;
           }
-        } catch (collectionError) {
-          console.warn(`Error checking ${collectionName} collection:`, collectionError);
-          continue; // Try next collection
+          
+          return {
+            fullName: fullName.trim(),
+            email: userData.email || currentUser?.email || '',
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || '',
+            phone: userData.phone || userData.contactNumber || '',
+            role: userData.role || userType
+          };
         }
+      } catch (collectionError) {
+        console.warn(`Error checking ${collectionName} collection:`, collectionError);
+        continue; // Try next collection
       }
+    }
+    
+    console.log('User document not found in any collection for userId:', userId);
+    return null;
+  } catch (error) {
+    console.error('Error fetching user data from Firestore:', error);
+    return null;
+  }
+};
+  
+// Auto-fill user data when modal opens or currentUser changes
+useEffect(() => {
+  const populateUserData = async () => {
+    // Try multiple sources for user data
+    const user = currentUser || auth.currentUser;
+    
+    if (user) {
+      // First try to get data from Firestore
+      const firestoreData = await fetchUserDataFromFirestore(user.uid);
       
-      console.log('User document not found in any collection for userId:', userId);
-      return null;
-    } catch (error) {
-      console.error('Error fetching user data from Firestore:', error);
-      return null;
+      if (firestoreData && firestoreData.fullName) {
+        console.log('Using Firestore data:', firestoreData);
+        setFormData(prev => ({
+          ...prev,
+          fullName: firestoreData.fullName,
+          email: firestoreData.email,
+          contactNumber: firestoreData.phone || prev.contactNumber
+        }));
+      } else {
+        // If no Firestore data, leave fullName empty so user can enter it
+        console.log('Firestore data not found, leaving name field empty');
+        
+        setFormData(prev => ({
+          ...prev,
+          fullName: '', // Empty so user must enter their real name
+          email: user.email || ''
+        }));
+      }
+    } else {
+      console.log('No user data available');
     }
   };
   
-  // Auto-fill user data when modal opens or currentUser changes
-  useEffect(() => {
-    const populateUserData = async () => {
-      // Try multiple sources for user data
-      const user = currentUser || auth.currentUser;
-      
-      console.log('VerificationModal - Available user sources:');
-      console.log('- currentUser from context:', currentUser);
-      console.log('- auth.currentUser:', auth.currentUser);
-      console.log('- Selected user:', user);
-      
-      if (user) {
-        // First try to get data from Firestore
-        const firestoreData = await fetchUserDataFromFirestore(user.uid);
-        
-        if (firestoreData && firestoreData.fullName) {
-          console.log('Using Firestore data:', firestoreData);
-          setFormData(prev => ({
-            ...prev,
-            fullName: firestoreData.fullName,
-            email: firestoreData.email,
-            contactNumber: firestoreData.phone || prev.contactNumber
-          }));
-        } else {
-          // Improved fallback logic - provide placeholder that encourages user to enter real name
-          console.log('Firestore data not found or incomplete, using fallback');
-          
-          // Create a better placeholder that doesn't use username
-          const userEmail = user.email || '';
-          const fallbackName = user.displayName && user.displayName !== user.email?.split('@')[0] 
-            ? user.displayName 
-            : ''; // Empty string if displayName is just the email username
-          
-          console.log('Using fallback data - Name:', fallbackName, 'Email:', userEmail);
-          
-          setFormData(prev => ({
-            ...prev,
-            fullName: fallbackName, // This will be empty if no real name is available
-            email: userEmail
-          }));
-        }
-      } else {
-        console.log('No user data available');
-      }
-    };
-    
+  if (isOpen) {
     populateUserData();
-  }, [currentUser, isOpen, userType]);
+  }
+}, [currentUser, isOpen, userType]);
   
   // Additional effect to handle cases where currentUser loads after component mount
   useEffect(() => {
@@ -153,7 +121,7 @@ const VerificationModal = ({ isOpen, onClose, userType, userId, onVerificationSu
         if (user) {
           const firestoreData = await fetchUserDataFromFirestore(user.uid);
           
-          if (firestoreData) {
+          if (firestoreData && firestoreData.fullName) {
             console.log('Modal opened (delayed) - Using Firestore data:', firestoreData);
             setFormData(prev => ({
               ...prev,
@@ -161,15 +129,13 @@ const VerificationModal = ({ isOpen, onClose, userType, userId, onVerificationSu
               email: firestoreData.email
             }));
           } else {
-            const userName = user.displayName || user.email?.split('@')[0] || 'User';
-            const userEmail = user.email || '';
-            
-            console.log('Modal opened (delayed) - Using Auth data:', { userName, userEmail });
+            // Leave fullName empty if no proper name data found
+            console.log('Modal opened (delayed) - No proper name data found');
             
             setFormData(prev => ({
               ...prev,
-              fullName: userName,
-              email: userEmail
+              fullName: '', // Leave empty for user to fill
+              email: user.email || ''
             }));
           }
         }
@@ -307,6 +273,7 @@ const VerificationModal = ({ isOpen, onClose, userType, userId, onVerificationSu
                     onChange={handleInputChange}
                     placeholder="Enter your real full name (e.g., John Smith)"
                     required
+                    readOnly
                     minLength="3"
                   />
                 </div>
@@ -333,6 +300,7 @@ const VerificationModal = ({ isOpen, onClose, userType, userId, onVerificationSu
                     value={formData.contactNumber}
                     onChange={handleInputChange}
                     required
+                    readOnly
                   />
                 </div>
                 <div>
