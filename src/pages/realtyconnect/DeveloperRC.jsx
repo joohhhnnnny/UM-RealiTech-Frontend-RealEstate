@@ -60,19 +60,35 @@ function DeveloperRC() {
     // Load verification status
     const loadVerificationStatus = async () => {
       try {
-        // Check verification status
-        const status = await VerificationService.getVerificationStatus(userId, 'developer');
-        setVerificationStatus(status.status || 'not_submitted');
-        
-        // Subscribe to status changes
-        const unsubscribe = VerificationService.subscribeToVerificationStatus(
-          userId,
-          'developer',
-          (statusUpdate) => {
-            setVerificationStatus(statusUpdate.status || 'not_submitted');
+        // FORCE RESET DEMO USER VERIFICATION STATUS
+        if (userId === 'demo-developer-user') {
+          console.log('🚫 DEMO DEVELOPER DETECTED: Forcing verification reset to ensure manual verification');
+          try {
+            // Reset demo user verification status to not_submitted
+            await VerificationService.clearUserVerification(userId, 'developer');
+            setVerificationStatus('not_submitted');
+            console.log('✅ Demo developer verification status reset to not_submitted');
+            return () => {};
+          } catch (resetError) {
+            console.error('Failed to reset demo developer verification:', resetError);
+            setVerificationStatus('not_submitted');
+            return () => {};
           }
-        );
-        return unsubscribe;
+        } else {
+          // Check verification status for real users
+          const status = await VerificationService.getVerificationStatus(userId, 'developer');
+          setVerificationStatus(status.status || 'not_submitted');
+          
+          // Subscribe to status changes
+          const unsubscribe = VerificationService.subscribeToVerificationStatus(
+            userId,
+            'developer',
+            (statusUpdate) => {
+              setVerificationStatus(statusUpdate.status || 'not_submitted');
+            }
+          );
+          return unsubscribe;
+        }
       } catch (err) {
         console.error('Error loading verification status:', err);
         setVerificationStatus('not_submitted');
@@ -151,7 +167,7 @@ function DeveloperRC() {
     setShowProcessingModal(true);
 
     try {
-      // Submit verification
+      // Submit verification documents to database
       const result = await VerificationService.submitVerification(
         userId,
         'developer',
@@ -163,32 +179,18 @@ function DeveloperRC() {
         throw new Error(result.error);
       }
 
-      // Auto-verify after 2 seconds
-      setTimeout(async () => {
-        try {
-          await VerificationService.updateVerificationStatus(
-            result.verificationId,
-            'verified',
-            'system',
-            'Auto-verified'
-          );
-
-          setVerificationStatus('verified');
-          setShowProcessingModal(false);
-          setShowSuccessModal(true);
-        } catch (error) {
-          console.error('Verification failed:', error);
-          setShowProcessingModal(false);
-          setVerificationStatus('not_submitted');
-          alert('Verification failed');
-        }
-      }, 2000);
+      // ✅ COMPLETELY REMOVED AUTO-VERIFICATION CODE
+      // Status remains 'pending' until manual admin approval
+      // No automatic verification occurs - developers must wait for admin review
+      setShowProcessingModal(false);
+      console.log('✅ Developer verification submitted successfully. Status: PENDING - Awaiting manual admin approval.');
+      console.log('🚫 NO AUTO-VERIFICATION: Developer must wait for admin to manually approve documents.');
 
     } catch (error) {
-      console.error('Submission failed:', error);
+      console.error('❌ Developer verification submission failed:', error);
       setShowProcessingModal(false);
       setVerificationStatus('not_submitted');
-      alert('Failed to submit verification');
+      alert('Failed to submit verification. Please try again.');
     }
   }, [currentUser]);
 

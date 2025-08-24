@@ -97,6 +97,105 @@ function AgentRC() {
       try {
         console.log('🔍 Loading agent verification status for user:', userId);
         
+        // FORCE RESET DEMO USER VERIFICATION STATUS
+        if (userId === 'demo-agent-user') {
+          console.log('🚫 DEMO USER DETECTED: Forcing verification reset to ensure manual verification');
+          try {
+            // Reset demo user verification status to not_submitted
+            await VerificationService.clearUserVerification(userId, 'agent');
+            setVerificationStatus('not_submitted');
+            console.log('✅ Demo user verification status reset to not_submitted');
+          } catch (resetError) {
+            console.error('Failed to reset demo user verification:', resetError);
+            setVerificationStatus('not_submitted');
+          }
+        } else {
+          // Get current verification status from database
+          const currentStatus = await VerificationService.getVerificationStatus(userId, 'agent');
+          console.log('📋 Current agent verification status:', currentStatus);
+          
+          // REMOVED AUTO-VERIFICATION: Always check status from database, no automatic approval
+          // Set status based on what's actually in the database (pending/rejected/not_submitted only)
+          const dbStatus = currentStatus.status;
+          if (dbStatus === 'verified') {
+            // If somehow verified in DB, keep it, but this should only come from manual admin approval
+            setVerificationStatus('verified');
+            console.log('✅ Agent verified by admin');
+          } else {
+            // For all other statuses, use the database value or default to not_submitted
+            setVerificationStatus(dbStatus || 'not_submitted');
+          }
+        }
+        
+        // Subscribe to verification status changes
+        const statusUnsubscribe = VerificationService.subscribeToVerificationStatus(
+          userId,
+          'agent',
+          (status) => {
+            console.log('📋 Agent verification status updated to:', status.status);
+            setVerificationStatus(status.status || 'not_submitted');
+          }
+        );
+        return statusUnsubscribe;
+      } catch (err) {
+        console.error('Error loading verification status:', err);
+        setVerificationStatus('not_submitted');
+        return () => {};
+      }
+    };
+
+    const cleanupCommissions = loadCommissions();
+    const cleanupVerification = loadVerificationStatus();
+
+    // Test Firebase connection
+    const runConnectionTest = async () => {
+      console.log('Running Firebase connection test...');
+      const isConnected = await testFirebaseConnection();
+      console.log('Firebase connection result:', isConnected ? 'SUCCESS' : 'FAILED');
+      
+      if (!isConnected) {
+        console.error('❌ Firebase connection failed! Check your Firebase configuration.');
+      } else {
+        console.log('✅ Firebase is connected and working!');
+      }
+    };
+    
+    runConnectionTest();
+  }, [currentUser]);
+
+  // Calculate stats from commissions data
+
+  // Load commissions and verification status from Firebase
+  useEffect(() => {
+    // Use a default user ID for demonstration if no user is authenticated
+    const userId = currentUser?.uid || 'demo-agent-user';
+
+    const loadCommissions = async () => {
+      try {
+        setLoading(true);
+        // Subscribe to real-time updates
+        const unsubscribe = commissionService.subscribeToCommissions(
+          userId, 
+          (commissionsData) => {
+            setCommissions(commissionsData);
+            calculateStats(commissionsData);
+            setLoading(false);
+          }
+        );
+
+        return () => unsubscribe();
+      } catch (err) {
+        console.error('Error loading commissions:', err);
+        setError('Failed to load commissions');
+        setLoading(false);
+      }
+    };
+
+    // Load verification status
+    const loadVerificationStatus = async () => {
+      try {
+        console.log('🔍 Loading agent verification status for user:', userId);
+        
         // First, check current verification status without clearing it
         const currentStatus = await VerificationService.getVerificationStatus(userId, 'agent');
         console.log('� Current agent verification status:', currentStatus);
@@ -220,60 +319,46 @@ function AgentRC() {
     setShowVerificationModal(true);
   }, []);
 
-  const handleVerificationSubmitted = useCallback(async (verificationData, documents) => {
-    // REQUIRE DOCUMENTS
-    if (!documents || documents.length === 0) {
-      alert('Please upload documents for verification!');
-      return;
+const handleVerificationSubmitted = useCallback(async (verificationData, documents) => {
+  // REQUIRE DOCUMENTS
+  if (!documents || documents.length === 0) {
+    alert('Please upload documents for verification!');
+    return;
+  }
+
+  const userId = currentUser?.uid || 'demo-agent-user';
+  
+  setVerificationStatus('pending');
+  setShowVerificationModal(false);
+  setShowProcessingModal(true);
+
+  try {
+    // Submit verification documents to database
+    const result = await VerificationService.submitVerification(
+      userId,
+      'agent',
+      verificationData,
+      documents
+    );
+
+    if (!result.success) {
+      throw new Error(result.error);
     }
 
-    const userId = currentUser?.uid || 'demo-agent-user';
-    
-    setVerificationStatus('pending');
-    setShowVerificationModal(false);
-    setShowProcessingModal(true);
+    // ✅ COMPLETELY REMOVED AUTO-VERIFICATION CODE
+    // Status remains 'pending' until manual admin approval
+    // No automatic verification occurs - agents must wait for admin review
+    setShowProcessingModal(false);
+    console.log('✅ Verification submitted successfully. Status: PENDING - Awaiting manual admin approval.');
+    console.log('🚫 NO AUTO-VERIFICATION: Agent must wait for admin to manually approve documents.');
 
-    try {
-      // Submit verification
-      const result = await VerificationService.submitVerification(
-        userId,
-        'agent',
-        verificationData,
-        documents
-      );
-
-      if (!result.success) {
-        throw new Error(result.error);
-      }
-
-      // Auto-verify after 2 seconds
-      setTimeout(async () => {
-        try {
-          await VerificationService.updateVerificationStatus(
-            result.verificationId,
-            'verified',
-            'system',
-            'Auto-verified'
-          );
-
-          setVerificationStatus('verified');
-          setShowProcessingModal(false);
-          setShowSuccessModal(true);
-        } catch (error) {
-          console.error('Verification failed:', error);
-          setShowProcessingModal(false);
-          setVerificationStatus('not_submitted');
-          alert('Verification failed');
-        }
-      }, 2000);
-
-    } catch (error) {
-      console.error('Submission failed:', error);
-      setShowProcessingModal(false);
-      setVerificationStatus('not_submitted');
-      alert('Failed to submit verification');
-    }
-  }, [currentUser]);
+  } catch (error) {
+    console.error('❌ Verification submission failed:', error);
+    setShowProcessingModal(false);
+    setVerificationStatus('not_submitted');
+    alert('Failed to submit verification. Please try again.');
+  }
+}, [currentUser]);
 
   const getStatusBadgeClass = (status) => {
     switch (status) {

@@ -12,6 +12,7 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 import { db } from '../config/Firebase';
+import { connectionManager } from './connectionManager';
 
 // Collections
 const PROJECTS_COLLECTION = 'buildsafe_projects';
@@ -130,33 +131,51 @@ export const STATIC_GUIDELINES = {
 export const projectService = {
   // Get all projects for a developer
   async getProjects(developerId) {
-    try {
-      const q = query(
-        collection(db, PROJECTS_COLLECTION),
-        where('developerId', '==', developerId)
-      );
-      const querySnapshot = await getDocs(q);
-      const projects = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
-      // Sort projects by creation date client-side
-      projects.sort((a, b) => {
-        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
-        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
-        return dateB - dateA;
+    const cacheKey = connectionManager.generateKey('projects', { developerId });
+    
+    return await connectionManager.executeRequest(cacheKey, async () => {
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 8000);
       });
       
-      // Always include static guidelines example
-      return [STATIC_GUIDELINES.project, ...projects];
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-      if (error.code === 'permission-denied') {
-        console.warn('Firebase permissions not set up yet. Using static data only.');
+      const fetchPromise = (async () => {
+        const q = query(
+          collection(db, PROJECTS_COLLECTION),
+          where('developerId', '==', developerId)
+        );
+        const querySnapshot = await getDocs(q);
+        const projects = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // Sort projects by creation date client-side
+        projects.sort((a, b) => {
+          const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+          const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+          return dateB - dateA;
+        });
+        
+        return projects;
+      })();
+      
+      try {
+        // Race between timeout and actual fetch
+        const projects = await Promise.race([fetchPromise, timeoutPromise]);
+        
+        // Always include static guidelines example
+        return [STATIC_GUIDELINES.project, ...projects];
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        if (error.code === 'permission-denied') {
+          console.warn('Firebase permissions not set up yet. Using static data only.');
+        } else if (error.message === 'Request timeout') {
+          console.warn('Request timed out. Using static data only.');
+        }
+        return [STATIC_GUIDELINES.project]; // Return at least guidelines on error
       }
-      return [STATIC_GUIDELINES.project]; // Return at least guidelines on error
-    }
+    });
   },
 
   // Get projects for a buyer
@@ -265,22 +284,34 @@ export const notificationService = {
   // Get notifications for a user
   async getNotifications(userId) {
     try {
-      const q = query(
-        collection(db, NOTIFICATIONS_COLLECTION),
-        where('userId', '==', userId)
-      );
-      const querySnapshot = await getDocs(q);
-      const notifications = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
-      // Sort notifications by creation date client-side
-      notifications.sort((a, b) => {
-        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
-        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
-        return dateB - dateA;
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 8000);
       });
+      
+      const fetchPromise = (async () => {
+        const q = query(
+          collection(db, NOTIFICATIONS_COLLECTION),
+          where('userId', '==', userId)
+        );
+        const querySnapshot = await getDocs(q);
+        const notifications = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // Sort notifications by creation date client-side
+        notifications.sort((a, b) => {
+          const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+          const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+          return dateB - dateA;
+        });
+        
+        return notifications;
+      })();
+      
+      // Race between timeout and actual fetch
+      const notifications = await Promise.race([fetchPromise, timeoutPromise]);
       
       // Always include static guidelines example
       return [STATIC_GUIDELINES.notification, ...notifications];
@@ -288,6 +319,8 @@ export const notificationService = {
       console.error('Error fetching notifications:', error);
       if (error.code === 'permission-denied') {
         console.warn('Firebase permissions not set up yet. Using static data only.');
+      } else if (error.message === 'Request timeout') {
+        console.warn('Notifications request timed out. Using static data only.');
       }
       return [STATIC_GUIDELINES.notification];
     }
@@ -406,32 +439,44 @@ export const subscriptionService = {
   // Get user subscription
   async getSubscription(userId) {
     try {
-      const q = query(
-        collection(db, SUBSCRIPTIONS_COLLECTION),
-        where('userId', '==', userId)
-      );
-      const querySnapshot = await getDocs(q);
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 8000);
+      });
       
-      if (querySnapshot.empty) {
-        // Return default basic subscription
+      const fetchPromise = (async () => {
+        const q = query(
+          collection(db, SUBSCRIPTIONS_COLLECTION),
+          where('userId', '==', userId)
+        );
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+          // Return default basic subscription
+          return {
+            userId,
+            plan: 'basic',
+            projectLimit: 2,
+            features: ['Basic verification badge', 'Standard milestone tracking'],
+            status: 'active',
+            isStatic: false
+          };
+        }
+        
         return {
-          userId,
-          plan: 'basic',
-          projectLimit: 2,
-          features: ['Basic verification badge', 'Standard milestone tracking'],
-          status: 'active',
-          isStatic: false
+          id: querySnapshot.docs[0].id,
+          ...querySnapshot.docs[0].data()
         };
-      }
+      })();
       
-      return {
-        id: querySnapshot.docs[0].id,
-        ...querySnapshot.docs[0].data()
-      };
+      // Race between timeout and actual fetch
+      return await Promise.race([fetchPromise, timeoutPromise]);
     } catch (error) {
       console.error('Error fetching subscription:', error);
       if (error.code === 'permission-denied') {
         console.warn('Firebase permissions not set up yet. Using default subscription.');
+      } else if (error.message === 'Request timeout') {
+        console.warn('Subscription request timed out. Using default subscription.');
       }
       return {
         userId,
@@ -478,52 +523,120 @@ export const subscriptionService = {
 export const realtimeService = {
   // Listen to project changes
   subscribeToProjects(developerId, callback) {
-    const q = query(
-      collection(db, PROJECTS_COLLECTION),
-      where('developerId', '==', developerId)
-    );
+    const listenerKey = `projects_listener_${developerId}`;
     
-    return onSnapshot(q, (querySnapshot) => {
-      const projects = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+    // Remove existing listener if any
+    connectionManager.removeListener(listenerKey);
+    
+    try {
+      const q = query(
+        collection(db, PROJECTS_COLLECTION),
+        where('developerId', '==', developerId)
+      );
       
-      // Sort projects by creation date client-side
-      projects.sort((a, b) => {
-        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
-        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
-        return dateB - dateA;
-      });
+      const unsubscribe = onSnapshot(q, 
+        (querySnapshot) => {
+          try {
+            const projects = querySnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+            
+            // Sort projects by creation date client-side
+            projects.sort((a, b) => {
+              const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+              const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+              return dateB - dateA;
+            });
+            
+            // Always include static guidelines
+            callback([STATIC_GUIDELINES.project, ...projects]);
+            
+            // Update cache
+            const cacheKey = connectionManager.generateKey('projects', { developerId });
+            connectionManager.setCachedData(cacheKey, [STATIC_GUIDELINES.project, ...projects]);
+          } catch (processError) {
+            console.error('Error processing project snapshot:', processError);
+            // Return static data on processing error
+            callback([STATIC_GUIDELINES.project]);
+          }
+        },
+        (error) => {
+          console.error('Error in projects subscription:', error);
+          // Return static data on subscription error
+          callback([STATIC_GUIDELINES.project]);
+        }
+      );
       
-      // Always include static guidelines
-      callback([STATIC_GUIDELINES.project, ...projects]);
-    });
+      // Register the listener with connection manager
+      connectionManager.addListener(listenerKey, unsubscribe);
+      
+      return () => connectionManager.removeListener(listenerKey);
+    } catch (setupError) {
+      console.error('Error setting up projects subscription:', setupError);
+      // Return static data immediately and create a dummy unsubscribe function
+      callback([STATIC_GUIDELINES.project]);
+      return () => {}; // Dummy unsubscribe function
+    }
   },
 
   // Listen to notifications
   subscribeToNotifications(userId, callback) {
-    const q = query(
-      collection(db, NOTIFICATIONS_COLLECTION),
-      where('userId', '==', userId)
-    );
+    const listenerKey = `notifications_listener_${userId}`;
     
-    return onSnapshot(q, (querySnapshot) => {
-      const notifications = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+    // Remove existing listener if any
+    connectionManager.removeListener(listenerKey);
+    
+    try {
+      const q = query(
+        collection(db, NOTIFICATIONS_COLLECTION),
+        where('userId', '==', userId)
+      );
       
-      // Sort notifications by creation date client-side
-      notifications.sort((a, b) => {
-        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
-        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
-        return dateB - dateA;
-      });
+      const unsubscribe = onSnapshot(q, 
+        (querySnapshot) => {
+          try {
+            const notifications = querySnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+            
+            // Sort notifications by creation date client-side
+            notifications.sort((a, b) => {
+              const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+              const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+              return dateB - dateA;
+            });
+            
+            // Always include static guidelines
+            callback([STATIC_GUIDELINES.notification, ...notifications]);
+            
+            // Update cache
+            const cacheKey = connectionManager.generateKey('notifications', { userId });
+            connectionManager.setCachedData(cacheKey, [STATIC_GUIDELINES.notification, ...notifications]);
+          } catch (processError) {
+            console.error('Error processing notifications snapshot:', processError);
+            // Return static data on processing error
+            callback([STATIC_GUIDELINES.notification]);
+          }
+        },
+        (error) => {
+          console.error('Error in notifications subscription:', error);
+          // Return static data on subscription error
+          callback([STATIC_GUIDELINES.notification]);
+        }
+      );
       
-      // Always include static guidelines
-      callback([STATIC_GUIDELINES.notification, ...notifications]);
-    });
+      // Register the listener with connection manager
+      connectionManager.addListener(listenerKey, unsubscribe);
+      
+      return () => connectionManager.removeListener(listenerKey);
+    } catch (setupError) {
+      console.error('Error setting up notifications subscription:', setupError);
+      // Return static data immediately and create a dummy unsubscribe function
+      callback([STATIC_GUIDELINES.notification]);
+      return () => {}; // Dummy unsubscribe function
+    }
   }
 };
 

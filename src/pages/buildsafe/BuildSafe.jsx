@@ -4,6 +4,7 @@ import BuyerBuildSafe from './BuyerBuildSafe';
 import AgentBuildSafe from './AgentBuildSafe';
 import DeveloperBuildSafe from './DeveloperBuildSafe';
 import DashboardLayout from '../../layouts/DashboardLayout';
+import BuildSafeErrorBoundary from './BuildSafeErrorBoundary';
 
 // Main BuildSafe Component
 function BuildSafe() {
@@ -42,8 +43,10 @@ function BuildSafe() {
             </div>
           </div>
 
-          {/* Dynamic Component */}
-          {renderContent()}
+          {/* Dynamic Component wrapped in Error Boundary */}
+          <BuildSafeErrorBoundary>
+            {renderContent()}
+          </BuildSafeErrorBoundary>
         </div>
       </div>
     </DashboardLayout>

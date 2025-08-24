@@ -18,7 +18,7 @@ export const initializeSampleData = async () => {
         agency: 'RealiTech Realty',
         image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&backgroundColor=b6e3f4',
         bio: 'Professional real estate agent with proven expertise in residential properties. Successfully closed 32 deals, maintaining a 4.8/5 client satisfaction rating.',
-        verificationStatus: 'verified'
+        verificationStatus: 'not_submitted' // REMOVED AUTO-VERIFICATION: Demo agents must also verify manually
       },
       {
         userId: 'sample-agent-2',
@@ -30,7 +30,7 @@ export const initializeSampleData = async () => {
         agency: 'RealiTech Realty',
         image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a',
         bio: 'Commercial real estate specialist with extensive experience in office buildings and retail spaces.',
-        verificationStatus: 'verified'
+        verificationStatus: 'not_submitted' // REMOVED AUTO-VERIFICATION: Demo agents must also verify manually
       },
       {
         userId: 'sample-agent-3',
@@ -42,7 +42,7 @@ export const initializeSampleData = async () => {
         agency: 'RealiTech Realty',
         image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2',
         bio: 'Industrial property expert specializing in warehouses and manufacturing facilities.',
-        verificationStatus: 'verified'
+        verificationStatus: 'not_submitted' // REMOVED AUTO-VERIFICATION: Demo agents must also verify manually
       },
       {
         userId: 'sample-agent-4',

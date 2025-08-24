@@ -181,32 +181,17 @@ export class VerificationService {
     }
   }
 
-  // Auto-verify based on document analysis (simplified version)
+  // DISABLED AUTO-VERIFICATION: All verification must be done manually by admin
   static async autoVerifyDocuments(verificationId) {
-    try {
-      const verificationDetails = await this.getVerificationDetails(verificationId);
-      if (!verificationDetails) return false;
-
-      // Simple auto-verification logic
-      const hasRequiredDocs = verificationDetails.documents.length >= 2;
-      const hasValidData = verificationDetails.verificationData?.prcLicense || 
-                          verificationDetails.verificationData?.businessPermit;
-
-      if (hasRequiredDocs && hasValidData) {
-        // Auto-approve
-        await this.updateVerificationStatus(verificationId, 'verified', 'system', 'Auto-verified based on document validation');
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      console.error('Error in auto-verification:', error);
-      return false;
-    }
+    // ✅ AUTO-VERIFICATION COMPLETELY DISABLED
+    // This method now does nothing - all verification must be manual
+    console.log('🚫 AUTO-VERIFICATION DISABLED: Verification must be approved manually by admin');
+    console.log(`Verification ID ${verificationId} remains pending until admin review`);
+    return false; // Never auto-approve
   }
 
-  // Update verification status (for admin or auto-verification)
-  static async updateVerificationStatus(verificationId, status, reviewedBy = 'system', notes = '') {
+  // Update verification status (for manual admin verification only)
+  static async updateVerificationStatus(verificationId, status, reviewedBy = 'admin', notes = '') {
     try {
       console.log(`🔄 Updating verification ${verificationId} to status: ${status}`);
       

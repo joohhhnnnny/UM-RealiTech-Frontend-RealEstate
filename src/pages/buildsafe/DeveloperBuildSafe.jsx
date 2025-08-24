@@ -31,12 +31,14 @@ import SubscriptionManager from './devportal/SubscriptionManager.jsx';
 import TimelineTracker from './devportal/TimelineTracker';
 import EscrowManagement from './devportal/EscrowManagement';
 import DocumentManagement from './devportal/DocumentManagement';
+import BuildSafeLoadingScreen from './BuildSafeLoadingScreen';
 import { 
   projectService, 
   notificationService, 
   subscriptionService,
   realtimeService 
 } from '../../services/buildsafeService.js';
+import { connectionManager } from '../../services/connectionManager.js';
 
 function DeveloperBuildSafe() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -71,43 +73,94 @@ function DeveloperBuildSafe() {
 
   // Load initial data
   useEffect(() => {
+    let isMounted = true;
+    
     const loadData = async () => {
       try {
         setLoading(true);
+        setError(null);
         
-        // Load projects
-        const projectsData = await projectService.getProjects(developerId);
-        setProjects(projectsData);
+        // Check if services are available
+        if (!projectService || !notificationService || !subscriptionService) {
+          throw new Error('BuildSafe services not properly loaded');
+        }
         
-        // Load notifications
-        const notificationsData = await notificationService.getNotifications(developerId);
-        setNotifications(notificationsData);
+        // Add timeout to prevent hanging
+        const timeoutId = setTimeout(() => {
+          if (isMounted) {
+            setError('Connection timeout. Please check your internet connection.');
+            setLoading(false);
+          }
+        }, 10000);
         
-        // Load subscription
-        const subscriptionData = await subscriptionService.getSubscription(developerId);
-        setSubscription(subscriptionData);
+        // Load data sequentially to avoid overwhelming Firestore
+        let projectsData = [];
+        let notificationsData = [];
+        let subscriptionData = null;
+        
+        try {
+          projectsData = await projectService.getProjects(developerId);
+          if (isMounted) setProjects(projectsData);
+        } catch (projErr) {
+          console.warn('Projects failed to load, using static data:', projErr);
+          if (isMounted) setProjects([]);
+        }
+        
+        try {
+          notificationsData = await notificationService.getNotifications(developerId);
+          if (isMounted) setNotifications(notificationsData);
+        } catch (notifErr) {
+          console.warn('Notifications failed to load:', notifErr);
+          if (isMounted) setNotifications([]);
+        }
+        
+        try {
+          subscriptionData = await subscriptionService.getSubscription(developerId);
+          if (isMounted) setSubscription(subscriptionData);
+        } catch (subErr) {
+          console.warn('Subscription failed to load:', subErr);
+          if (isMounted) setSubscription(null);
+        }
         
         // Initialize BuildSafe data structures
-        initializeBuildSafeData();
+        if (isMounted) {
+          initializeBuildSafeData();
+        }
         
-        setError(null);
+        clearTimeout(timeoutId);
+        if (isMounted) {
+          setError(null);
+        }
       } catch (err) {
         console.error('Error loading data:', err);
-        setError('Failed to load data. Please try again.');
-        
-        // Set empty arrays instead of static fallback
-        setProjects([]);
-        setNotifications([]);
-        setSubscription(null);
-        
-        // Still initialize BuildSafe data for demo
-        initializeBuildSafeData();
+        if (isMounted) {
+          if (err.message.includes('services not properly loaded')) {
+            setError('BuildSafe services are not available. Please refresh the page.');
+          } else {
+            setError('Failed to load data. Please try again.');
+          }
+          
+          // Set empty arrays as fallback
+          setProjects([]);
+          setNotifications([]);
+          setSubscription(null);
+          
+          // Still initialize BuildSafe data for demo
+          initializeBuildSafeData();
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadData();
+    
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
   }, [developerId]);
 
   // Initialize BuildSafe specific data
@@ -170,24 +223,65 @@ function DeveloperBuildSafe() {
   useEffect(() => {
     let unsubscribeProjects;
     let unsubscribeNotifications;
+    let isActive = true;
 
-    if (!loading && !error) {
-      // Listen to projects changes
-      unsubscribeProjects = realtimeService.subscribeToProjects(developerId, (updatedProjects) => {
-        setProjects(updatedProjects);
-      });
+    if (!loading && !error && isActive) {
+      try {
+        // Add delay to prevent overwhelming Firestore
+        const setupListeners = setTimeout(() => {
+          if (isActive) {
+            try {
+              // Listen to projects changes with error handling
+              unsubscribeProjects = realtimeService.subscribeToProjects(developerId, (updatedProjects) => {
+                if (isActive) {
+                  setProjects(updatedProjects);
+                }
+              });
 
-      // Listen to notifications changes
-      unsubscribeNotifications = realtimeService.subscribeToNotifications(developerId, (updatedNotifications) => {
-        setNotifications(updatedNotifications);
-      });
+              // Listen to notifications changes with error handling
+              unsubscribeNotifications = realtimeService.subscribeToNotifications(developerId, (updatedNotifications) => {
+                if (isActive) {
+                  setNotifications(updatedNotifications);
+                }
+              });
+            } catch (listenerError) {
+              console.warn('Error setting up real-time listeners:', listenerError);
+              // Don't set error state for listener failures, just log them
+            }
+          }
+        }, 1000); // 1 second delay
+
+        return () => {
+          clearTimeout(setupListeners);
+        };
+      } catch (setupError) {
+        console.warn('Error during listener setup:', setupError);
+      }
     }
 
     return () => {
-      if (unsubscribeProjects) unsubscribeProjects();
-      if (unsubscribeNotifications) unsubscribeNotifications();
+      isActive = false;
+      try {
+        if (unsubscribeProjects) {
+          unsubscribeProjects();
+        }
+        if (unsubscribeNotifications) {
+          unsubscribeNotifications();
+        }
+      } catch (cleanupError) {
+        console.warn('Error during listener cleanup:', cleanupError);
+      }
     };
   }, [developerId, loading, error]);
+
+  // Cleanup effect - ensure all listeners and connections are properly closed
+  useEffect(() => {
+    return () => {
+      // Cleanup connection manager when component unmounts
+      console.log('DeveloperBuildSafe: Cleaning up connections...');
+      connectionManager.cleanup();
+    };
+  }, []);
 
   const handleIssueCountChange = (counts) => {
     setFlaggedIssuesCount(counts.pending);
@@ -484,14 +578,7 @@ function DeveloperBuildSafe() {
 
   // Show loading state
   if (loading) {
-    return (
-      <div className="min-h-screen bg-base-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="loading loading-spinner loading-lg text-primary"></div>
-          <p className="mt-4 text-base-content/70">Loading BuildSafe data...</p>
-        </div>
-      </div>
-    );
+    return <BuildSafeLoadingScreen message="Loading developer portal..." />;
   }
 
   // Show error state

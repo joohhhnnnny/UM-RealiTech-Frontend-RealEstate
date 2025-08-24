@@ -401,7 +401,7 @@ function AgentBuildSafe() {
     return (
       <div className="space-y-6">
         {/* Back button and view mode selector */}
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center sticky top-0 text-base-content bg-base-100 p-2 z-10">
           <button 
             onClick={() => setSelectedProject(null)}
             className="btn btn-ghost btn-sm"
