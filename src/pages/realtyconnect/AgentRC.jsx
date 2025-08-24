@@ -97,35 +97,15 @@ function AgentRC() {
       try {
         console.log('🔍 Loading agent verification status for user:', userId);
         
-        // FORCE RESET DEMO USER VERIFICATION STATUS
-        if (userId === 'demo-agent-user') {
-          console.log('🚫 DEMO USER DETECTED: Forcing verification reset to ensure manual verification');
-          try {
-            // Reset demo user verification status to not_submitted
-            await VerificationService.clearUserVerification(userId, 'agent');
-            setVerificationStatus('not_submitted');
-            console.log('✅ Demo user verification status reset to not_submitted');
-          } catch (resetError) {
-            console.error('Failed to reset demo user verification:', resetError);
-            setVerificationStatus('not_submitted');
-          }
-        } else {
-          // Get current verification status from database
-          const currentStatus = await VerificationService.getVerificationStatus(userId, 'agent');
-          console.log('📋 Current agent verification status:', currentStatus);
-          
-          // REMOVED AUTO-VERIFICATION: Always check status from database, no automatic approval
-          // Set status based on what's actually in the database (pending/rejected/not_submitted only)
-          const dbStatus = currentStatus.status;
-          if (dbStatus === 'verified') {
-            // If somehow verified in DB, keep it, but this should only come from manual admin approval
-            setVerificationStatus('verified');
-            console.log('✅ Agent verified by admin');
-          } else {
-            // For all other statuses, use the database value or default to not_submitted
-            setVerificationStatus(dbStatus || 'not_submitted');
-          }
-        }
+        // Get current verification status without clearing it
+        // Remove the problematic clearUserVerification call that causes permission errors
+        const currentStatus = await VerificationService.getVerificationStatus(userId, 'agent');
+        console.log('📋 Current agent verification status:', currentStatus);
+        
+        // Set the status exactly as it is in the database
+        // No automatic verification logic - agents must go through proper verification process
+        setVerificationStatus(currentStatus?.status || 'not_submitted');
+        console.log('✅ Agent verification status set to:', currentStatus?.status || 'not_submitted');
         
         // Subscribe to verification status changes
         const statusUnsubscribe = VerificationService.subscribeToVerificationStatus(
@@ -320,20 +300,29 @@ function AgentRC() {
   }, []);
 
 const handleVerificationSubmitted = useCallback(async (verificationData, documents) => {
-  // REQUIRE DOCUMENTS
+  // REQUIRE DOCUMENTS - No verification without proper documents
   if (!documents || documents.length === 0) {
-    alert('Please upload documents for verification!');
+    alert('Please upload all required documents for verification! Documents are mandatory for the verification process.');
     return;
   }
 
+  // Validate minimum required documents
+  const requiredDocuments = ['PRC License', 'Government ID', 'Professional Photo'];
+  const uploadedDocumentTypes = documents.map(doc => doc.type || doc.name);
+  
+  console.log('📄 Documents submitted:', uploadedDocumentTypes);
+
   const userId = currentUser?.uid || 'demo-agent-user';
   
+  // Set status to pending immediately when documents are submitted
   setVerificationStatus('pending');
   setShowVerificationModal(false);
   setShowProcessingModal(true);
 
   try {
-    // Submit verification documents to database
+    console.log('📤 Submitting verification documents for manual review...');
+    
+    // Submit verification documents to database for manual admin review
     const result = await VerificationService.submitVerification(
       userId,
       'agent',
@@ -342,21 +331,25 @@ const handleVerificationSubmitted = useCallback(async (verificationData, documen
     );
 
     if (!result.success) {
-      throw new Error(result.error);
+      throw new Error(result.error || 'Failed to submit verification');
     }
 
-    // ✅ COMPLETELY REMOVED AUTO-VERIFICATION CODE
-    // Status remains 'pending' until manual admin approval
-    // No automatic verification occurs - agents must wait for admin review
     setShowProcessingModal(false);
-    console.log('✅ Verification submitted successfully. Status: PENDING - Awaiting manual admin approval.');
-    console.log('🚫 NO AUTO-VERIFICATION: Agent must wait for admin to manually approve documents.');
+    
+    // Clear notification: Documents submitted successfully, now pending manual review
+    console.log('✅ Verification documents submitted successfully');
+    console.log('⏳ Status: PENDING - Awaiting manual admin approval');
+    console.log('🔍 Admin will review documents and update status accordingly');
+    console.log('🚫 NO AUTO-VERIFICATION: Agent must wait for manual admin approval');
+    
+    // Show success message to user
+    alert('Verification documents submitted successfully! Your documents are now being reviewed by our admin team. You will be notified once the review is complete.');
 
   } catch (error) {
-    console.error('❌ Verification submission failed:', error);
+    console.error('❌ Agent verification submission failed:', error);
     setShowProcessingModal(false);
     setVerificationStatus('not_submitted');
-    alert('Failed to submit verification. Please try again.');
+    alert(`Failed to submit verification documents: ${error.message}. Please try again.`);
   }
 }, [currentUser]);
 

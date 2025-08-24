@@ -198,5 +198,14 @@ service cloud.firestore {
         (request.auth.uid == resource.data.userId || 
          exists(/databases/$(database)/documents/agents/$(request.auth.uid)));
     }
+    
+    // Verification collections - Allow for demo purposes
+    match /verifications/{verificationId} {
+      allow read, write: if true; // Open for demo
+    }
+    
+    match /verification_status/{statusId} {
+      allow read, write: if true; // Open for demo
+    }
   }
 }

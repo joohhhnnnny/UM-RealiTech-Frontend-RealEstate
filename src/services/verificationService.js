@@ -351,7 +351,9 @@ export class VerificationService {
     }
   }
 
-  // Clear user verification to force fresh submission
+  // DISABLED: Clear user verification method removed due to permission issues
+  // This method was causing Firebase permission errors and is not needed for demo
+  /*
   static async clearUserVerification(userId, userType) {
     try {
       const statusDocRef = doc(db, 'verification_status', `${userId}_${userType}`);
@@ -375,6 +377,7 @@ export class VerificationService {
       throw error;
     }
   }
+  */
 }
 
 export default VerificationService;

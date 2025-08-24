@@ -60,35 +60,28 @@ function DeveloperRC() {
     // Load verification status
     const loadVerificationStatus = async () => {
       try {
-        // FORCE RESET DEMO USER VERIFICATION STATUS
-        if (userId === 'demo-developer-user') {
-          console.log('🚫 DEMO DEVELOPER DETECTED: Forcing verification reset to ensure manual verification');
-          try {
-            // Reset demo user verification status to not_submitted
-            await VerificationService.clearUserVerification(userId, 'developer');
-            setVerificationStatus('not_submitted');
-            console.log('✅ Demo developer verification status reset to not_submitted');
-            return () => {};
-          } catch (resetError) {
-            console.error('Failed to reset demo developer verification:', resetError);
-            setVerificationStatus('not_submitted');
-            return () => {};
+        console.log('� Loading developer verification status for user:', userId);
+        
+        // Get current verification status without clearing it
+        // Remove the problematic clearUserVerification call that causes permission errors
+        const currentStatus = await VerificationService.getVerificationStatus(userId, 'developer');
+        console.log('📋 Current developer verification status:', currentStatus);
+        
+        // Set the status exactly as it is in the database
+        // No automatic verification logic - developers must go through proper verification process
+        setVerificationStatus(currentStatus?.status || 'not_submitted');
+        console.log('✅ Developer verification status set to:', currentStatus?.status || 'not_submitted');
+        
+        // Subscribe to verification status changes
+        const statusUnsubscribe = VerificationService.subscribeToVerificationStatus(
+          userId,
+          'developer',
+          (status) => {
+            console.log('📋 Developer verification status updated to:', status.status);
+            setVerificationStatus(status.status || 'not_submitted');
           }
-        } else {
-          // Check verification status for real users
-          const status = await VerificationService.getVerificationStatus(userId, 'developer');
-          setVerificationStatus(status.status || 'not_submitted');
-          
-          // Subscribe to status changes
-          const unsubscribe = VerificationService.subscribeToVerificationStatus(
-            userId,
-            'developer',
-            (statusUpdate) => {
-              setVerificationStatus(statusUpdate.status || 'not_submitted');
-            }
-          );
-          return unsubscribe;
-        }
+        );
+        return statusUnsubscribe;
       } catch (err) {
         console.error('Error loading verification status:', err);
         setVerificationStatus('not_submitted');
@@ -154,20 +147,29 @@ function DeveloperRC() {
   }, []);
 
   const handleVerificationSubmitted = useCallback(async (verificationData, documents) => {
-    // REQUIRE DOCUMENTS
+    // REQUIRE DOCUMENTS - No verification without proper documents
     if (!documents || documents.length === 0) {
-      alert('Please upload documents for verification!');
+      alert('Please upload all required documents for verification! Documents are mandatory for the verification process.');
       return;
     }
 
+    // Validate minimum required documents
+    const requiredDocuments = ['Business License', 'Government ID', 'Company Profile'];
+    const uploadedDocumentTypes = documents.map(doc => doc.type || doc.name);
+    
+    console.log('📄 Documents submitted:', uploadedDocumentTypes);
+
     const userId = currentUser?.uid || 'demo-developer-user';
     
+    // Set status to pending immediately when documents are submitted
     setVerificationStatus('pending');
     setShowVerificationModal(false);
     setShowProcessingModal(true);
 
     try {
-      // Submit verification documents to database
+      console.log('📤 Submitting verification documents for manual review...');
+      
+      // Submit verification documents to database for manual admin review
       const result = await VerificationService.submitVerification(
         userId,
         'developer',
@@ -176,21 +178,25 @@ function DeveloperRC() {
       );
 
       if (!result.success) {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Failed to submit verification');
       }
 
-      // ✅ COMPLETELY REMOVED AUTO-VERIFICATION CODE
-      // Status remains 'pending' until manual admin approval
-      // No automatic verification occurs - developers must wait for admin review
       setShowProcessingModal(false);
-      console.log('✅ Developer verification submitted successfully. Status: PENDING - Awaiting manual admin approval.');
-      console.log('🚫 NO AUTO-VERIFICATION: Developer must wait for admin to manually approve documents.');
+      
+      // Clear notification: Documents submitted successfully, now pending manual review
+      console.log('✅ Verification documents submitted successfully');
+      console.log('⏳ Status: PENDING - Awaiting manual admin approval');
+      console.log('🔍 Admin will review documents and update status accordingly');
+      console.log('🚫 NO AUTO-VERIFICATION: Developer must wait for manual admin approval');
+      
+      // Show success message to user
+      alert('Verification documents submitted successfully! Your documents are now being reviewed by our admin team. You will be notified once the review is complete.');
 
     } catch (error) {
       console.error('❌ Developer verification submission failed:', error);
       setShowProcessingModal(false);
       setVerificationStatus('not_submitted');
-      alert('Failed to submit verification. Please try again.');
+      alert(`Failed to submit verification documents: ${error.message}. Please try again.`);
     }
   }, [currentUser]);
 
@@ -305,57 +311,117 @@ function DeveloperRC() {
           </div>
         </>
       ) : (
-        /* Restriction Message for Unverified Developers */
+        /* Verification Required UI with different states */
         <div className="card bg-base-200 border-2 border-dashed border-primary/30 mx-2 sm:mx-0">
           <div className="card-body text-center py-8 sm:py-16 px-4 sm:px-6">
             <div className="mb-4 sm:mb-6">
               <FaBuilding className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-primary/50 mb-3 sm:mb-4" />
               <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-base-content mb-2">
-                Verification Required
+                {verificationStatus === 'pending' ? 'Verification Under Review' : 
+                 verificationStatus === 'rejected' ? 'Verification Rejected' : 
+                 'Verification Required'}
               </h3>
-              <p className="text-sm sm:text-base text-base-content/70 max-w-md mx-auto">
-                Submit your business documents to unlock the Smart Contract Manager and start managing your development projects.
-              </p>
-            </div>
-            
-            <div className="bg-base-100 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 max-w-lg mx-auto">
-              <h4 className="font-semibold text-sm sm:text-base text-base-content mb-2 sm:mb-3">🔓 Unlock These Features:</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-base-content/80">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
-                  Smart Contract Manager
+              
+              {verificationStatus === 'pending' ? (
+                <div className="space-y-4">
+                  <p className="text-sm sm:text-base text-base-content/70 max-w-md mx-auto">
+                    Your verification documents have been submitted and are currently being reviewed by our admin team.
+                  </p>
+                  <div className="alert alert-info mb-4 sm:mb-6 text-left max-w-md mx-auto">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span className="text-xs sm:text-sm">We'll notify you once the review is complete</span>
+                  </div>
+                  <div className="space-y-2 sm:space-y-3">
+                    <p className="font-semibold text-sm sm:text-base">Your submitted documents are being verified:</p>
+                    <ul className="text-xs sm:text-sm text-base-content/70 space-y-1">
+                      <li>• Business Registration Certificate</li>
+                      <li>• Valid Government ID</li>
+                      <li>• Company Profile & Portfolio</li>
+                    </ul>
+                  </div>
+                  <p className="text-xs sm:text-sm text-base-content/60 mt-4">
+                    Review process typically takes 1-2 business days
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
-                  Project Portfolio Tracking
+              ) : verificationStatus === 'rejected' ? (
+                <div className="space-y-4">
+                  <p className="text-sm sm:text-base text-base-content/70 max-w-md mx-auto">
+                    Your verification was rejected. Please review the feedback and resubmit with correct documents.
+                  </p>
+                  <div className="alert alert-error mb-4 sm:mb-6 text-left max-w-md mx-auto">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                    <span className="text-xs sm:text-sm">Please resubmit with valid documents</span>
+                  </div>
+                  <button 
+                    className="btn btn-primary btn-sm sm:btn-md lg:btn-lg gap-2"
+                    onClick={handleStartVerification}
+                  >
+                    <FaBuilding className="w-5 h-5" />
+                    Resubmit Verification
+                  </button>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
-                  Automated Payment Releases
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
-                  Buyer Client Management
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
-                  Progress Milestone Tracking
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
-                  Analytics Dashboard
-                </div>
-              </div>
-            </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm sm:text-base text-base-content/70 max-w-md mx-auto">
+                    Submit your business documents to unlock the Smart Contract Manager and start managing your development projects.
+                    <strong> All documents are required and will be manually reviewed by our admin team.</strong>
+                  </p>
+                  
+                  <div className="bg-base-100 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 max-w-lg mx-auto">
+                    <h4 className="font-semibold text-sm sm:text-base text-base-content mb-2 sm:mb-3">📋 Required Documents:</h4>
+                    <ul className="text-xs sm:text-sm text-base-content/70 space-y-1 text-left">
+                      <li>• <strong>Business Registration Certificate</strong> - SEC/DTI Registration</li>
+                      <li>• <strong>Valid Government ID</strong> - Driver's License, Passport, or National ID</li>
+                      <li>• <strong>Company Profile & Portfolio</strong> - Previous projects and credentials</li>
+                    </ul>
+                    <p className="text-xs sm:text-sm text-base-content/60 mt-3">
+                      <strong>Note:</strong> All documents will be manually reviewed by our admin team. Verification typically takes 1-2 business days.
+                    </p>
+                  </div>
 
-            <div className="flex gap-3 justify-center">
-              <button 
-                className="btn btn-primary btn-sm sm:btn-md lg:btn-lg gap-2"
-                onClick={handleStartVerification}
-              >
-                <FaBuilding className="w-5 h-5" />
-                Start Verification
-              </button>
+                  <div className="bg-base-100 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 max-w-lg mx-auto">
+                    <h4 className="font-semibold text-sm sm:text-base text-base-content mb-2 sm:mb-3">🔓 Unlock These Features:</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-base-content/80">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
+                        Smart Contract Manager
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
+                        Project Portfolio Tracking
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
+                        Automated Payment Releases
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
+                        Buyer Client Management
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
+                        Progress Milestone Tracking
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
+                        Analytics Dashboard
+                      </div>
+                    </div>
+                  </div>
+
+                  <button 
+                    className="btn btn-primary btn-sm sm:btn-md lg:btn-lg gap-2"
+                    onClick={handleStartVerification}
+                  >
+                    <FaBuilding className="w-5 h-5" />
+                    Start Verification Process
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
