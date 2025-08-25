@@ -592,39 +592,30 @@ function Properties() {
             </motion.div>
           ) : (
             <>
-              {/* Mobile-Optimized Results Grid/List - Fixed Static Layout */}
+              {/* Properties Grid/List Container */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5, duration: 0.5 }}
-                className={
-                  viewMode === "grid"
-                    ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8 lg:gap-10 xl:gap-12 w-full overflow-hidden"
-                    : "space-y-4 sm:space-y-6 lg:space-y-8 w-full overflow-hidden"
-                }
+                className="w-full"
               >
-                {currentProperties.map((property, index) => (
-                  <motion.div
-                    key={property.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 + 0.6, duration: 0.4 }}
-                    className={`group cursor-pointer w-full ${
-                      viewMode === "grid"
-                        ? "card bg-base-100 shadow-md hover:shadow-2xl border border-base-300/30 overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:border-primary/30 rounded-xl sm:rounded-2xl max-w-full sm:min-w-[280px] md:min-w-[300px] lg:min-w-[320px] xl:min-w-[380px]"
-                        : "flex flex-col sm:flex-row bg-base-100 shadow-md hover:shadow-xl border border-base-300/30 rounded-xl sm:rounded-2xl overflow-hidden transition-all duration-300 hover:border-primary/30 max-w-full"
-                    }`}
-                    onClick={() => handleViewDetails(property)}
-                  >
-                    {viewMode === "grid" ? (
-                      <>
-                        {/* Mobile-Static Grid View */}
+                {/* Grid View - Optimized for Mobile */}
+                {viewMode === "grid" && (
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-2 sm:gap-4 md:gap-6 lg:gap-8 xl:gap-10">
+                    {currentProperties.map((property, index) => (
+                      <motion.div
+                        key={property.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 + 0.6, duration: 0.4 }}
+                        className="group cursor-pointer card bg-base-100 shadow-md hover:shadow-xl border border-base-300/30 overflow-hidden transition-all duration-500 hover:-translate-y-1 md:hover:-translate-y-2 hover:border-primary/30 rounded-lg sm:rounded-xl md:rounded-2xl"
+                        onClick={() => handleViewDetails(property)}
+                      >
+                        {/* Image Container - Smaller for Mobile Grid */}
                         <div className="relative w-full">
-                          <div className="h-48 sm:h-52 md:h-56 lg:h-60 xl:h-72 relative overflow-hidden w-full">
+                          <div className="h-32 sm:h-40 md:h-48 lg:h-56 xl:h-72 2xl:h-80 relative overflow-hidden w-full">
                             <img
-                              src={
-                                getThumbnailImageUrl(property) || getDefaultImage(property)
-                              }
+                              src={getThumbnailImageUrl(property) || getDefaultImage(property)}
                               alt={property.title}
                               className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
                               onError={(e) => {
@@ -634,29 +625,27 @@ function Properties() {
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
-                            {/* Mobile-Optimized Badges - No Overflow */}
-                            <div className="absolute top-2 sm:top-3 md:top-4 left-2 sm:left-3 md:left-4 right-2 sm:right-3 md:right-4 flex justify-between items-start gap-1 flex-wrap sm:flex-nowrap">
+                            {/* Property Badges - Icon only for mobile/tablet */}
+                            <div className="absolute top-1 sm:top-2 md:top-3 left-1 sm:left-2 md:left-3 right-1 sm:right-2 md:right-3 flex justify-between items-start gap-1 sm:gap-2">
                               {property.title?.toLowerCase().includes("office") ? (
                                 <div
-                                  className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 rounded-full text-white text-xs sm:text-sm lg:text-base font-semibold shadow-lg backdrop-blur-sm flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0"
+                                  className="px-1 sm:px-2 md:px-3 py-0.5 sm:py-1 md:py-1.5 rounded-full text-white text-[10px] sm:text-xs md:text-sm font-semibold shadow-lg backdrop-blur-sm flex items-center gap-1"
                                   style={{ backgroundColor: "#F5A623" }}
                                 >
-                                  <BuildingOffice2Icon className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 flex-shrink-0" />
-                                  <span className="whitespace-nowrap hidden sm:inline">Commercial</span>
-                                  <span className="whitespace-nowrap sm:hidden">Com</span>
+                                  <BuildingOffice2Icon className="w-2 h-2 sm:w-3 sm:h-3 md:w-4 md:h-4" />
+                                  <span className="hidden xl:inline">Commercial</span>
                                 </div>
                               ) : (
                                 <div
-                                  className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 rounded-full text-white text-xs sm:text-sm lg:text-base font-semibold shadow-lg backdrop-blur-sm flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0"
+                                  className="px-1 sm:px-2 md:px-3 py-0.5 sm:py-1 md:py-1.5 rounded-full text-white text-[10px] sm:text-xs md:text-sm font-semibold shadow-lg backdrop-blur-sm flex items-center gap-1"
                                   style={{ backgroundColor: "#6EC1E4" }}
                                 >
-                                  <HomeIcon className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 flex-shrink-0" />
-                                  <span className="whitespace-nowrap hidden sm:inline">Residential</span>
-                                  <span className="whitespace-nowrap sm:hidden">Res</span>
+                                  <HomeIcon className="w-2 h-2 sm:w-3 sm:h-3 md:w-4 md:h-4" />
+                                  <span className="hidden xl:inline">Residential</span>
                                 </div>
                               )}
                               <div
-                                className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 rounded-full text-white text-xs sm:text-sm lg:text-base font-semibold shadow-lg backdrop-blur-sm transition-all duration-300 whitespace-nowrap flex-shrink-0"
+                                className="px-1 sm:px-2 md:px-3 py-0.5 sm:py-1 md:py-1.5 rounded-full text-white text-[10px] sm:text-xs md:text-sm font-semibold shadow-lg backdrop-blur-sm"
                                 style={{ backgroundColor: getStatusColor(property) }}
                               >
                                 {getPropertyStatus(property)}
@@ -665,155 +654,126 @@ function Properties() {
                           </div>
                         </div>
 
-                        {/* Mobile-Static Card Body */}
-                        <div className="card-body p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 flex flex-col h-full w-full min-w-0">
-                          <div className="flex-none mb-2 sm:mb-3 md:mb-4 w-full">
-                            <div className="text-base sm:text-lg md:text-xl lg:text-2xl xl:text-3xl font-bold text-primary truncate">
+                        {/* Card Body - Compact for Mobile Grid */}
+                        <div className="card-body p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col h-full">
+                          {/* Price - Smaller Text for Mobile Grid */}
+                          <div className="flex-none mb-1 sm:mb-2 md:mb-3">
+                            <div className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-primary line-clamp-1">
                               {formatPrice(property.price)}
                             </div>
                           </div>
 
-                          <div className="flex-none mb-3 sm:mb-4 md:mb-5 w-full min-w-0">
-                            <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-base-content line-clamp-2 mb-1.5 sm:mb-2 md:mb-3 group-hover:text-primary transition-colors duration-300 min-h-[2rem] sm:min-h-[2.5rem] md:min-h-[3.5rem] lg:min-h-[4rem]">
+                          {/* Title - More Compact for Mobile Grid */}
+                          <div className="flex-none mb-2 sm:mb-3 md:mb-4">
+                            <h2 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-base-content line-clamp-2 mb-1 sm:mb-2 group-hover:text-primary transition-colors duration-300">
                               {property.title}
                             </h2>
-
-                            <div className="flex items-start gap-1 sm:gap-2 text-base-content/60 w-full min-w-0">
-                              <MapPinIcon className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 flex-shrink-0 text-primary/70 mt-0.5" />
-                              <p className="text-xs sm:text-sm md:text-base line-clamp-2 flex-1 min-w-0">
+                            <div className="flex items-start gap-1 text-base-content/60">
+                              <MapPinIcon className="w-2 h-2 sm:w-3 sm:h-3 md:w-4 md:h-4 flex-shrink-0 text-primary/70 mt-0.5" />
+                              <p className="text-[10px] sm:text-xs md:text-sm line-clamp-1 sm:line-clamp-2 flex-1">
                                 {property.location ||
                                   getLocationFromDescription(property.description) ||
-                                  "Location details in description"}
+                                  "Location in description"}
                               </p>
                             </div>
                           </div>
 
-                          {/* Mobile-Static Property Details */}
-                          <div className="flex-none mb-4 sm:mb-5 md:mb-6 w-full">
-                            <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 mb-2 sm:mb-3 md:mb-4 w-full">
+                          {/* Property Details - Fixed Furnishing Container */}
+                          <div className="flex-none mb-2 sm:mb-3 md:mb-4">
+                            <div className="flex flex-wrap gap-1 sm:gap-2 text-[10px] sm:text-xs md:text-sm mb-1 sm:mb-2">
                               {property.beds && (
-                                <div className="flex items-center gap-1 sm:gap-2 md:gap-3 p-1.5 sm:p-2 md:p-3 lg:p-4 bg-base-200/40 rounded-lg border border-base-300/20 min-w-0 flex-1">
-                                  <HomeIcon className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-primary/70 flex-shrink-0" />
-                                  <span className="text-xs sm:text-sm md:text-base font-medium text-base-content truncate">
-                                    {property.beds} <span className="hidden sm:inline">Beds</span><span className="sm:hidden">B</span>
-                                  </span>
+                                <div className="flex items-center gap-1 bg-base-200/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded">
+                                  <HomeIcon className="w-2 h-2 sm:w-3 sm:h-3 text-primary/70" />
+                                  <span className="font-medium">{property.beds}B</span>
                                 </div>
                               )}
                               {property.floor_area_sqm && (
-                                <div className="flex items-center gap-1 sm:gap-2 md:gap-3 p-1.5 sm:p-2 md:p-3 lg:p-4 bg-base-200/40 rounded-lg border border-base-300/20 min-w-0 flex-1">
-                                  <Square2StackIcon className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-primary/70 flex-shrink-0" />
-                                  <span className="text-xs sm:text-sm md:text-base font-medium text-base-content truncate">
-                                    {property.floor_area_sqm} sqm
-                                  </span>
+                                <div className="flex items-center gap-1 bg-base-200/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded">
+                                  <Square2StackIcon className="w-2 h-2 sm:w-3 sm:h-3 text-primary/70" />
+                                  <span className="font-medium">{property.floor_area_sqm}m²</span>
                                 </div>
                               )}
                             </div>
-
                             {property.furnishing && (
-                              <div className="min-h-[1.5rem] sm:min-h-[2rem] md:min-h-[2.5rem] flex items-center w-full">
-                                <div className="badge badge-ghost text-base-content/70 bg-base-200/30 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 truncate max-w-full">
+                              <div className="w-full">
+                                <div className="inline-flex items-center bg-base-200/40 text-base-content/70 px-1 sm:px-2 md:px-3 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs md:text-sm font-medium">
                                   {property.furnishing}
                                 </div>
                               </div>
                             )}
                           </div>
 
-                          {/* Mobile-Static Button */}
-                          <div className="mt-auto flex-none w-full">
+                          {/* View Details Button - Smaller for Mobile Grid */}
+                          <div className="mt-auto">
                             <button
-                              className="btn btn-sm sm:btn-md lg:btn-lg btn-primary w-full gap-1 sm:gap-2 md:gap-3 shadow-md hover:shadow-lg group-hover:btn-secondary transition-all duration-300 text-xs sm:text-sm lg:text-base"
+                              className="btn btn-xs sm:btn-sm md:btn-md btn-primary w-full gap-1 shadow-md hover:shadow-lg transition-all duration-300 text-[10px] sm:text-xs md:text-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleViewDetails(property);
                               }}
                             >
-                              <span className="hidden sm:inline">View Details</span>
-                              <span className="sm:hidden">View</span>
-                              <ArrowRightIcon className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform duration-300" />
+                              <span>View</span>
+                              <ArrowRightIcon className="w-2 h-2 sm:w-3 sm:h-3 md:w-4 md:h-4" />
                             </button>
                           </div>
                         </div>
-                      </>
-                    ) : (
-                      <>
-                        {/* Mobile-Static List View */}
-                        <div className="w-full sm:w-72 md:w-80 lg:w-96 xl:w-[28rem] h-40 sm:h-48 md:h-56 lg:h-64 relative overflow-hidden flex-shrink-0">
-                          <img
-                            src={getThumbnailImageUrl(property) || getDefaultImage(property)}
-                            alt={property.title}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = getDefaultImage(property);
-                            }}
-                          />
-                          <div className="absolute top-2 sm:top-3 md:top-4 left-2 sm:left-3 md:left-4 max-w-[calc(100%-2rem)]">
-                            {property.title?.toLowerCase().includes("office") ? (
-                              <div
-                                className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 rounded-full text-white text-xs sm:text-sm lg:text-base font-semibold shadow-lg backdrop-blur-sm flex items-center gap-1 sm:gap-2 md:gap-3 max-w-full"
-                                style={{ backgroundColor: "#F5A623" }}
-                              >
-                                <BuildingOffice2Icon className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 flex-shrink-0" />
-                                <span className="whitespace-nowrap truncate">Commercial</span>
-                              </div>
-                            ) : (
-                              <div
-                                className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 rounded-full text-white text-xs sm:text-sm lg:text-base font-semibold shadow-lg backdrop-blur-sm flex items-center gap-1 sm:gap-2 md:gap-3 max-w-full"
-                                style={{ backgroundColor: "#6EC1E4" }}
-                              >
-                                <HomeIcon className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 flex-shrink-0" />
-                                <span className="whitespace-nowrap truncate">Residential</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
 
-                        {/* Mobile-Static List Content */}
-                        <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 flex flex-col justify-between min-w-0 w-full">
-                          <div className="w-full min-w-0">
-                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2 sm:mb-3 md:mb-4 gap-1 sm:gap-2 w-full min-w-0">
-                              <h2 className="text-sm sm:text-base md:text-xl lg:text-2xl xl:text-3xl font-bold text-base-content line-clamp-2 group-hover:text-primary transition-colors duration-300 flex-1 min-w-0">
-                                {property.title}
-                              </h2>
-                              <div className="text-base sm:text-lg md:text-xl lg:text-2xl xl:text-3xl font-bold text-primary whitespace-nowrap flex-shrink-0">
-                                {formatPrice(property.price)}
-                              </div>
+                {/* List View - Full Width Cards */}
+                {viewMode === "list" && (
+                  <div className="space-y-3 sm:space-y-4 md:space-y-6">
+                    {currentProperties.map((property, index) => (
+                      <motion.div
+                        key={property.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 + 0.6, duration: 0.4 }}
+                        className="group cursor-pointer bg-base-100 shadow-md hover:shadow-xl border border-base-300/30 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden transition-all duration-300 hover:border-primary/30"
+                        onClick={() => handleViewDetails(property)}
+                      >
+                        {/* Mobile List Layout - Horizontal Card Style */}
+                        <div className="flex">
+                          {/* Image Container - Smaller on Mobile List */}
+                          <div className="relative w-24 sm:w-32 md:w-48 lg:w-64 xl:w-80 h-24 sm:h-32 md:h-40 lg:h-48 flex-shrink-0">
+                            <img
+                              src={getThumbnailImageUrl(property) || getDefaultImage(property)}
+                              alt={property.title}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = getDefaultImage(property);
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                            {/* Property Type Badge - Icon only for mobile/tablet */}
+                            <div className="absolute top-1 sm:top-2 left-1 sm:left-2">
+                              {property.title?.toLowerCase().includes("office") ? (
+                                <div
+                                  className="px-1 sm:px-2 py-0.5 sm:py-1 rounded-full text-white text-[10px] sm:text-xs font-semibold shadow-lg backdrop-blur-sm flex items-center gap-1"
+                                  style={{ backgroundColor: "#F5A623" }}
+                                >
+                                  <BuildingOffice2Icon className="w-2 h-2 sm:w-3 sm:h-3" />
+                                  <span className="hidden xl:inline">Commercial</span>
+                                </div>
+                              ) : (
+                                <div
+                                  className="px-1 sm:px-2 py-0.5 sm:py-1 rounded-full text-white text-[10px] sm:text-xs font-semibold shadow-lg backdrop-blur-sm flex items-center gap-1"
+                                  style={{ backgroundColor: "#6EC1E4" }}
+                                >
+                                  <HomeIcon className="w-2 h-2 sm:w-3 sm:h-3" />
+                                  <span className="hidden xl:inline">Residential</span>
+                                </div>
+                              )}
                             </div>
 
-                            <div className="flex items-start gap-1 sm:gap-2 text-base-content/60 mb-3 sm:mb-4 md:mb-6 w-full min-w-0">
-                              <MapPinIcon className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 flex-shrink-0 text-primary/70 mt-0.5" />
-                              <p className="text-xs sm:text-sm md:text-base lg:text-lg line-clamp-2 flex-1 min-w-0">
-                                {property.location ||
-                                  getLocationFromDescription(property.description) ||
-                                  "Location details in description"}
-                              </p>
-                            </div>
-
-                            {/* Mobile-Static List Details */}
-                            <div className="flex flex-wrap items-center gap-2 sm:gap-4 md:gap-6 lg:gap-8 mb-3 sm:mb-4 md:mb-6 w-full">
-                              {property.beds && (
-                                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                                  <HomeIcon className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-primary/70" />
-                                  <span className="text-xs sm:text-sm md:text-base lg:text-lg font-medium text-base-content whitespace-nowrap">
-                                    {property.beds} <span className="hidden sm:inline">Beds</span><span className="sm:hidden">B</span>
-                                  </span>
-                                </div>
-                              )}
-                              {property.floor_area_sqm && (
-                                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                                  <Square2StackIcon className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-primary/70" />
-                                  <span className="text-xs sm:text-sm md:text-base lg:text-lg font-medium text-base-content whitespace-nowrap">
-                                    {property.floor_area_sqm} sqm
-                                  </span>
-                                </div>
-                              )}
-                              {property.furnishing && (
-                                <div className="badge badge-ghost text-base-content/70 bg-base-200/30 text-xs sm:text-sm lg:text-base px-2 sm:px-3 py-1 sm:py-2 truncate max-w-full flex-shrink-0">
-                                  {property.furnishing}
-                                </div>
-                              )}
+                            {/* Status Badge */}
+                            <div className="absolute bottom-1 sm:bottom-2 left-1 sm:left-2">
                               <div
-                                className="px-2 sm:px-3 py-1 sm:py-2 rounded-full text-white text-xs sm:text-sm lg:text-base font-medium transition-all duration-300 whitespace-nowrap flex-shrink-0"
+                                className="px-1 sm:px-2 py-0.5 sm:py-1 rounded-full text-white text-[10px] sm:text-xs font-semibold shadow-lg backdrop-blur-sm"
                                 style={{ backgroundColor: getStatusColor(property) }}
                               >
                                 {getPropertyStatus(property)}
@@ -821,27 +781,73 @@ function Properties() {
                             </div>
                           </div>
 
-                          {/* Mobile-Static List Button */}
-                          <div className="flex justify-end w-full">
-                            <button
-                              className="btn btn-sm sm:btn-md lg:btn-lg btn-primary gap-1 sm:gap-2 md:gap-3 shadow-md hover:shadow-lg text-xs sm:text-sm lg:text-base"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewDetails(property);
-                              }}
-                            >
-                              <span className="hidden sm:inline">View Details</span>
-                              <span className="sm:hidden">View</span>
-                              <ArrowRightIcon className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6" />
-                            </button>
+                          {/* Content Container - Optimized Layout */}
+                          <div className="flex-1 p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-center">
+                            {/* Title and Price Row */}
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 mb-2 sm:mb-3">
+                              <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-base-content line-clamp-1 sm:line-clamp-2 group-hover:text-primary transition-colors duration-300 flex-1">
+                                {property.title}
+                              </h2>
+                              <div className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-primary whitespace-nowrap">
+                                {formatPrice(property.price)}
+                              </div>
+                            </div>
+
+                            {/* Location */}
+                            <div className="flex items-start gap-1 text-base-content/60 mb-2 sm:mb-3">
+                              <MapPinIcon className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 text-primary/70 mt-0.5" />
+                              <p className="text-xs sm:text-sm md:text-base line-clamp-1 sm:line-clamp-2 flex-1">
+                                {property.location ||
+                                  getLocationFromDescription(property.description) ||
+                                  "Location in description"}
+                              </p>
+                            </div>
+
+                            {/* Property Details and View Button Row */}
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4">
+                              {/* Property Details */}
+                              <div className="flex flex-wrap items-center gap-1 sm:gap-2 md:gap-3">
+                                {property.beds && (
+                                  <div className="flex items-center gap-1 bg-base-200/40 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm">
+                                    <HomeIcon className="w-3 h-3 sm:w-4 sm:h-4 text-primary/70" />
+                                    <span className="font-medium">{property.beds} Beds</span>
+                                  </div>
+                                )}
+                                {property.floor_area_sqm && (
+                                  <div className="flex items-center gap-1 bg-base-200/40 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm">
+                                    <Square2StackIcon className="w-3 h-3 sm:w-4 sm:h-4 text-primary/70" />
+                                    <span className="font-medium">{property.floor_area_sqm} sqm</span>
+                                  </div>
+                                )}
+                                {property.furnishing && (
+                                  <div className="flex items-center gap-1 bg-base-200/40 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm">
+                                    <span className="font-medium text-base-content/80 whitespace-nowrap">{property.furnishing}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* View Details Button - Made longer */}
+                              <div className="flex-shrink-0">
+                                <button
+                                  className="btn btn-xs sm:btn-sm md:btn-md btn-primary gap-2 sm:gap-3 shadow-md hover:shadow-lg transition-all duration-300 text-xs sm:text-sm w-full sm:w-auto min-w-[120px] sm:min-w-[140px] md:min-w-[160px] px-4 sm:px-6 md:px-8"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewDetails(property);
+                                  }}
+                                >
+                                  <span>View Details</span>
+                                  <ArrowRightIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </>
-                    )}
-                  </motion.div>
-                ))}
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
 
-                {/* Mobile-Optimized Pagination */}
+                {/* Pagination */}
                 {filteredProperties.length > propertiesPerPage && (
                   <motion.div
                     initial={{ opacity: 0 }}
@@ -849,11 +855,11 @@ function Properties() {
                     transition={{ delay: 0.7, duration: 0.5 }}
                     className="flex justify-center mt-12 sm:mt-16 lg:mt-20"
                   >
-                    <div className="join shadow-lg bg-base-100 rounded-xl sm:rounded-2xl overflow-hidden">
+                    <div className="join shadow-lg bg-base-100 rounded-xl overflow-hidden">
                       <button
                         onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
                         disabled={currentPage === 1}
-                        className="join-item btn btn-sm sm:btn-md lg:btn-lg hover:btn-primary transition-all duration-300"
+                        className="join-item btn btn-sm sm:btn-md hover:btn-primary transition-all duration-300 disabled:opacity-50"
                       >
                         «
                       </button>
@@ -868,9 +874,9 @@ function Properties() {
                           <button
                             key={pageNum}
                             onClick={() => handlePageChange(pageNum)}
-                            className={`join-item btn btn-sm sm:btn-md lg:btn-lg transition-all duration-300 ${
+                            className={`join-item btn btn-sm sm:btn-md transition-all duration-300 ${
                               currentPage === pageNum
-                                ? "btn-primary shadow-md"
+                                ? "btn-primary"
                                 : "hover:btn-primary/20"
                             }`}
                           >
@@ -883,7 +889,7 @@ function Properties() {
                           handlePageChange(Math.min(currentPage + 1, totalPages))
                         }
                         disabled={currentPage === totalPages}
-                        className="join-item btn btn-sm sm:btn-md lg:btn-lg hover:btn-primary transition-all duration-300"
+                        className="join-item btn btn-sm sm:btn-md hover:btn-primary transition-all duration-300 disabled:opacity-50"
                       >
                         »
                       </button>
@@ -891,7 +897,7 @@ function Properties() {
                   </motion.div>
                 )}
 
-                {/* Mobile-Optimized No Results */}
+                {/* No Results */}
                 {filteredProperties.length === 0 && !loading && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
