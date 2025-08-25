@@ -51,7 +51,7 @@ const Signup = ({ onToggle }) => {
     email: '',
     phone: '',
     validId: '',
-    role: '',
+    role: 'buyer',
     password: '',
     confirmPassword: ''
   });
@@ -595,7 +595,7 @@ const Signup = ({ onToggle }) => {
       {/* Form Container */}
       <div className="flex-1 overflow-hidden">
         <div 
-          className="h-full overflow-y-auto scrollbar-hide p-6"
+          className="h-full overflow-y-auto scrollbar-hide px-3 sm:px-6 md:px-4 lg:px-6 py-3 sm:py-6"
           style={{
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
@@ -609,12 +609,12 @@ const Signup = ({ onToggle }) => {
             `
           }} />
           
-          <form onSubmit={handleSignupSubmit} className="space-y-4 pb-6">
+          <form onSubmit={handleSignupSubmit} className="space-y-3 sm:space-y-4 md:space-y-3 lg:space-y-4 pb-6 max-w-xs sm:max-w-sm md:max-w-sm lg:max-w-md mx-auto">
             {/* Name Fields */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-3 lg:gap-4">
               <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-medium text-base-content">First Name</span>
+                <label className="label pb-1 sm:pb-2">
+                  <span className="label-text text-sm sm:text-base md:text-sm lg:text-base font-medium text-base-content">First Name</span>
                 </label>
                 <div className="relative">
                   <input
@@ -624,16 +624,16 @@ const Signup = ({ onToggle }) => {
                     onChange={handleSignupChange}
                     onBlur={handleNameBlur}
                     placeholder="First name"
-                    className="input input-bordered w-full pl-10 focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50"
+                    className="input input-bordered w-full pl-8 sm:pl-10 md:pl-8 lg:pl-10 text-sm sm:text-base md:text-sm lg:text-base focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50 h-9 sm:h-12 md:h-10 lg:h-12"
                     required
                     disabled={isLoading}
                   />
-                  <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-base-content/60" />
+                  <UserIcon className="absolute left-2 sm:left-3 md:left-2 lg:left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 md:w-3 md:h-3 lg:w-4 lg:h-4 text-base-content/60" />
                 </div>
               </div>
               <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-medium text-base-content">Last Name</span>
+                <label className="label pb-1 sm:pb-2">
+                  <span className="label-text text-sm sm:text-base md:text-sm lg:text-base font-medium text-base-content">Last Name</span>
                 </label>
                 <div className="relative">
                   <input
@@ -643,19 +643,19 @@ const Signup = ({ onToggle }) => {
                     onChange={handleSignupChange}
                     onBlur={handleNameBlur}
                     placeholder="Last name"
-                    className="input input-bordered w-full pl-10 focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50"
+                    className="input input-bordered w-full pl-8 sm:pl-10 md:pl-8 lg:pl-10 text-sm sm:text-base md:text-sm lg:text-base focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50 h-9 sm:h-12 md:h-10 lg:h-12"
                     required
                     disabled={isLoading}
                   />
-                  <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-base-content/60" />
+                  <UserIcon className="absolute left-2 sm:left-3 md:left-2 lg:left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 md:w-3 md:h-3 lg:w-4 lg:h-4 text-base-content/60" />
                 </div>
               </div>
             </div>
 
             {/* Email Field */}
             <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium text-base-content">Email</span>
+              <label className="label pb-1 sm:pb-2">
+                <span className="label-text text-sm sm:text-base md:text-sm lg:text-base font-medium text-base-content">Email</span>
               </label>
               <div className="relative">
                 <input
@@ -665,18 +665,18 @@ const Signup = ({ onToggle }) => {
                   onChange={handleSignupChange}
                   onBlur={handleEmailBlur}
                   placeholder="Enter your email"
-                  className="input input-bordered w-full pl-12 focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50"
+                  className="input input-bordered w-full pl-10 sm:pl-12 md:pl-10 lg:pl-12 text-sm sm:text-base md:text-sm lg:text-base focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50 h-10 sm:h-12 md:h-10 lg:h-12"
                   required
                   disabled={isLoading}
                 />
-                <EnvelopeIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-base-content/60" />
+                <EnvelopeIcon className="absolute left-3 sm:left-4 md:left-3 lg:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5 text-base-content/60" />
               </div>
             </div>
 
             {/* Phone Field */}
             <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium text-base-content">Phone</span>
+              <label className="label pb-1 sm:pb-2">
+                <span className="label-text text-sm sm:text-base md:text-sm lg:text-base font-medium text-base-content">Phone</span>
               </label>
               <div className="relative">
                 <input
@@ -685,18 +685,18 @@ const Signup = ({ onToggle }) => {
                   value={signupData.phone}
                   onChange={handleSignupChange}
                   placeholder="09123456789"
-                  className="input input-bordered w-full pl-12 focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50"
+                  className="input input-bordered w-full pl-10 sm:pl-12 md:pl-10 lg:pl-12 text-sm sm:text-base md:text-sm lg:text-base focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50 h-10 sm:h-12 md:h-10 lg:h-12"
                   required
                   disabled={isLoading}
                 />
-                <PhoneIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-base-content/60" />
+                <PhoneIcon className="absolute left-3 sm:left-4 md:left-3 lg:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5 text-base-content/60" />
               </div>
             </div>
 
             {/* Valid ID Field */}
             <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium text-base-content">Valid ID Number</span>
+              <label className="label pb-1 sm:pb-2">
+                <span className="label-text text-sm sm:text-base md:text-sm lg:text-base font-medium text-base-content">Valid ID Number</span>
               </label>
               <div className="relative">
                 <input
@@ -705,25 +705,25 @@ const Signup = ({ onToggle }) => {
                   value={signupData.validId}
                   onChange={handleSignupChange}
                   placeholder="Enter valid ID number"
-                  className="input input-bordered w-full pl-12 focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50"
+                  className="input input-bordered w-full pl-10 sm:pl-12 md:pl-10 lg:pl-12 text-sm sm:text-base md:text-sm lg:text-base focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50 h-10 sm:h-12 md:h-10 lg:h-12"
                   required
                   disabled={isLoading}
                 />
-                <IdentificationIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-base-content/60" />
+                <IdentificationIcon className="absolute left-3 sm:left-4 md:left-3 lg:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5 text-base-content/60" />
               </div>
             </div>
 
-            {/* Role Dropdown */}
+            {/* Role Dropdown
             <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium text-base-content">Role</span>
+              <label className="label pb-1 sm:pb-2">
+                <span className="label-text text-sm sm:text-base md:text-sm lg:text-base font-medium text-base-content">Role</span>
               </label>
               <div className="relative">
                 <select
                   name="role"
                   value={signupData.role}
                   onChange={handleSignupChange}
-                  className="select select-bordered w-full pl-12 focus:select-primary transition-colors duration-300 bg-base-200 text-base-content"
+                  className="select select-bordered w-full pl-10 sm:pl-12 md:pl-10 lg:pl-12 text-sm sm:text-base md:text-sm lg:text-base focus:select-primary transition-colors duration-300 bg-base-200 text-base-content h-10 sm:h-12 md:h-10 lg:h-12"
                   required
                   disabled={isLoading}
                 >
@@ -734,15 +734,15 @@ const Signup = ({ onToggle }) => {
                     </option>
                   ))}
                 </select>
-                <UserIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-base-content/60 pointer-events-none" />
+                <UserIcon className="absolute left-3 sm:left-4 md:left-3 lg:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5 text-base-content/60 pointer-events-none" />
               </div>
-            </div>
+            </div> */}
 
             {/* Password Fields */}
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4 md:space-y-3 lg:space-y-4">
               <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-medium text-base-content">Password</span>
+                <label className="label pb-1 sm:pb-2">
+                  <span className="label-text text-sm sm:text-base md:text-sm lg:text-base font-medium text-base-content">Password</span>
                 </label>
                 <div className="relative">
                   <input
@@ -751,29 +751,29 @@ const Signup = ({ onToggle }) => {
                     value={signupData.password}
                     onChange={handleSignupChange}
                     placeholder="Create password"
-                    className="input input-bordered w-full pl-12 pr-12 focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50"
+                    className="input input-bordered w-full pl-10 sm:pl-12 md:pl-10 lg:pl-12 pr-10 sm:pr-12 md:pr-10 lg:pr-12 text-sm sm:text-base md:text-sm lg:text-base focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50 h-10 sm:h-12 md:h-10 lg:h-12"
                     required
                     disabled={isLoading}
                   />
-                  <LockClosedIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-base-content/60" />
+                  <LockClosedIcon className="absolute left-3 sm:left-4 md:left-3 lg:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5 text-base-content/60" />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-base-content/60 hover:text-base-content transition-colors"
+                    className="absolute right-3 sm:right-4 md:right-3 lg:right-4 top-1/2 transform -translate-y-1/2 text-base-content/60 hover:text-base-content transition-colors"
                     disabled={isLoading}
                   >
                     {showPassword ? (
-                      <EyeSlashIcon className="w-5 h-5" />
+                      <EyeSlashIcon className="w-4 h-4 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5" />
                     ) : (
-                      <EyeIcon className="w-5 h-5" />
+                      <EyeIcon className="w-4 h-4 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5" />
                     )}
                   </button>
                 </div>
               </div>
 
               <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-medium text-base-content">Confirm Password</span>
+                <label className="label pb-1 sm:pb-2">
+                  <span className="label-text text-sm sm:text-base md:text-sm lg:text-base font-medium text-base-content">Confirm Password</span>
                 </label>
                 <div className="relative">
                   <input
@@ -782,21 +782,21 @@ const Signup = ({ onToggle }) => {
                     value={signupData.confirmPassword}
                     onChange={handleSignupChange}
                     placeholder="Confirm password"
-                    className="input input-bordered w-full pl-12 pr-12 focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50"
+                    className="input input-bordered w-full pl-10 sm:pl-12 md:pl-10 lg:pl-12 pr-10 sm:pr-12 md:pr-10 lg:pr-12 text-sm sm:text-base md:text-sm lg:text-base focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50 h-10 sm:h-12 md:h-10 lg:h-12"
                     required
                     disabled={isLoading}
                   />
-                  <LockClosedIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-base-content/60" />
+                  <LockClosedIcon className="absolute left-3 sm:left-4 md:left-3 lg:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5 text-base-content/60" />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-base-content/60 hover:text-base-content transition-colors"
+                    className="absolute right-3 sm:right-4 md:right-3 lg:right-4 top-1/2 transform -translate-y-1/2 text-base-content/60 hover:text-base-content transition-colors"
                     disabled={isLoading}
                   >
                     {showConfirmPassword ? (
-                      <EyeSlashIcon className="w-5 h-5" />
+                      <EyeSlashIcon className="w-4 h-4 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5" />
                     ) : (
-                      <EyeIcon className="w-5 h-5" />
+                      <EyeIcon className="w-4 h-4 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5" />
                     )}
                   </button>
                 </div>
@@ -805,15 +805,15 @@ const Signup = ({ onToggle }) => {
 
             {/* Terms & Conditions */}
             <div className="form-control">
-              <label className="label cursor-pointer justify-start">
+              <label className="label cursor-pointer justify-start py-2">
                 <input 
                   type="checkbox" 
-                  className="checkbox checkbox-primary checkbox-sm" 
+                  className="checkbox checkbox-primary checkbox-xs sm:checkbox-sm md:checkbox-xs lg:checkbox-sm" 
                   checked={termsAccepted}
                   onChange={(e) => setTermsAccepted(e.target.checked)}
                   disabled={isLoading} 
                 />
-                <span className="label-text ml-3 text-base-content">
+                <span className="label-text ml-2 sm:ml-3 text-xs sm:text-base md:text-sm lg:text-base text-base-content">
                   I agree to the{' '}
                   <button
                     type="button"
@@ -832,19 +832,19 @@ const Signup = ({ onToggle }) => {
               type="submit"
               whileHover={!isLoading ? { scale: 1.02 } : {}}
               whileTap={!isLoading ? { scale: 0.98 } : {}}
-              className={`btn btn-primary w-full rounded-xl font-semibold text-lg mt-6 ${isLoading ? 'loading' : ''}`}
+              className={`btn btn-primary w-full rounded-xl font-semibold text-sm sm:text-lg md:text-base lg:text-lg h-10 sm:h-12 md:h-11 lg:h-12 mt-4 sm:mt-6 ${isLoading ? 'loading' : ''}`}
               disabled={isLoading}
             >
               {isLoading ? 'Creating Account...' : 'Create Account'}
             </motion.button>
 
             {/* Login Link */}
-            <div className="text-center pt-4">
-              <span className="text-base-content/70">Already have an account? </span>
+            <div className="text-center pt-3 sm:pt-4">
+              <span className="text-base-content/70 text-xs sm:text-base md:text-sm lg:text-base">Already have an account? </span>
               <button
                 type="button"
                 onClick={() => onToggle(true)}
-                className="text-primary hover:text-primary/80 font-semibold transition-colors"
+                className="text-primary hover:text-primary/80 font-semibold text-xs sm:text-base md:text-sm lg:text-base transition-colors"
                 disabled={isLoading}
               >
                 Sign in

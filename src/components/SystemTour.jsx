@@ -523,7 +523,7 @@ const SystemTour = ({ userRole = 'buyer', onComplete }) => {
         {/* Overlay - Transparent background */}
         <div
           className="absolute inset-0 bg-black"
-          style={{ opacity: 0.2 }}
+          style={{ opacity: 0 }}
         />
         
         {/* Highlight spotlight */}

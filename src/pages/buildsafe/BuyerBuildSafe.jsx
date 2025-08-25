@@ -1546,22 +1546,22 @@ function BuyerBuildSafe() {
     <div className="space-y-8">
       {/* My Properties Dashboard */}
       <div>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">My Property Applications</h2>
-          <div className="stats shadow bg-gradient-to-r from-blue-900 to-blue-800/90 text-primary-content">
-            <div className="stat">
-              <div className="stat-title text-primary-content/80">Total Applications</div>
-              <div className="stat-value">{myProperties.length}</div>
+        <div className="flex flex-col items-center justify-center mb-6 gap-4">
+          <h2 className="text-xl sm:text-2xl font-bold text-center">My Property Applications</h2>
+          <div className="stats shadow bg-gradient-to-r from-blue-900 to-blue-800/90 text-primary-content stats-horizontal scale-90 sm:scale-100">
+            <div className="stat px-2 py-2 min-w-0">
+              <div className="stat-title text-primary-content/80 text-xs text-center">Total Applications</div>
+              <div className="stat-value text-lg sm:text-2xl text-center">{myProperties.length}</div>
             </div>
-            <div className="stat">
-              <div className="stat-title text-primary-content/80">Approved</div>
-              <div className="stat-value text-success">
+            <div className="stat px-2 py-2 min-w-0">
+              <div className="stat-title text-primary-content/80 text-xs text-center">Approved</div>
+              <div className="stat-value text-success text-lg sm:text-2xl text-center">
                 {myProperties.filter(p => p.status === 'approved').length}
               </div>
             </div>
-            <div className="stat">
-              <div className="stat-title text-primary-content/80">In Review</div>
-              <div className="stat-value text-info">
+            <div className="stat px-2 py-2 min-w-0">
+              <div className="stat-title text-primary-content/80 text-xs text-center">In Review</div>
+              <div className="stat-value text-info text-lg sm:text-2xl text-center">
                 {myProperties.filter(p => p.status === 'submitted').length}
               </div>
             </div>

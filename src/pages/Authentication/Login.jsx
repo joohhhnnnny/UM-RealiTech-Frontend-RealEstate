@@ -372,30 +372,30 @@ const Login = ({ onToggle }) => {
         isLogin={true}
       />
 
-      {/* Error Message */}
+      {/* Error Message - Responsive */}
       {error && (
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-error/10 border border-error/20 text-error px-4 py-3 mx-6 mt-4 rounded-lg text-sm"
+          className="bg-error/10 border border-error/20 text-error px-3 py-2 sm:px-4 sm:py-3 mx-3 sm:mx-6 mt-3 sm:mt-4 rounded-lg text-xs sm:text-sm"
         >
           {error}
         </motion.div>
       )}
 
-      {/* Form Container */}
-      <div className="flex-1 p-6 flex items-center justify-center">
+      {/* Form Container - Responsive with minimal top spacing */}
+      <div className="flex-1 px-3 sm:px-6 md:px-6 lg:px-8 py-1 sm:py-3 md:py-4 overflow-y-auto">
         <motion.form 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           onSubmit={handleLoginSubmit} 
-          className="space-y-4 w-full max-w-sm"
+          className="space-y-3 sm:space-y-4 md:space-y-4 lg:space-y-5 w-full max-w-xs sm:max-w-sm md:max-w-sm lg:max-w-md mx-auto pt-2 sm:pt-4"
         >
-          {/* Email Field */}
+          {/* Email Field - Responsive */}
           <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium text-base-content">Email</span>
+            <label className="label pb-1 sm:pb-2 pt-0">
+              <span className="label-text text-sm sm:text-base md:text-sm lg:text-base font-medium text-base-content">Email</span>
             </label>
             <div className="relative">
               <input
@@ -404,18 +404,18 @@ const Login = ({ onToggle }) => {
                 value={loginData.email}
                 onChange={handleLoginChange}
                 placeholder="Enter your email"
-                className="input input-bordered w-full pl-12 focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50"
+                className="input input-bordered w-full pl-10 sm:pl-12 md:pl-10 lg:pl-12 text-sm sm:text-base md:text-sm lg:text-base focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50 h-10 sm:h-12 md:h-10 lg:h-12"
                 required
                 disabled={isLoading}
               />
-              <EnvelopeIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-base-content/60" />
+              <EnvelopeIcon className="absolute left-3 sm:left-4 md:left-3 lg:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5 text-base-content/60" />
             </div>
           </div>
 
-          {/* Password Field */}
+          {/* Password Field - Responsive */}
           <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium text-base-content">Password</span>
+            <label className="label pb-1 sm:pb-2">
+              <span className="label-text text-sm sm:text-base md:text-sm lg:text-base font-medium text-base-content">Password</span>
             </label>
             <div className="relative">
               <input
@@ -424,61 +424,61 @@ const Login = ({ onToggle }) => {
                 value={loginData.password}
                 onChange={handleLoginChange}
                 placeholder="Enter your password"
-                className="input input-bordered w-full pl-12 pr-12 focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50"
+                className="input input-bordered w-full pl-10 sm:pl-12 md:pl-10 lg:pl-12 pr-10 sm:pr-12 md:pr-10 lg:pr-12 text-sm sm:text-base md:text-sm lg:text-base focus:input-primary transition-colors duration-300 bg-base-200 text-base-content placeholder-base-content/50 h-10 sm:h-12 md:h-10 lg:h-12"
                 required
                 disabled={isLoading}
               />
-              <LockClosedIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-base-content/60" />
+              <LockClosedIcon className="absolute left-3 sm:left-4 md:left-3 lg:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5 text-base-content/60" />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-base-content/60 hover:text-base-content transition-colors"
+                className="absolute right-3 sm:right-4 md:right-3 lg:right-4 top-1/2 transform -translate-y-1/2 text-base-content/60 hover:text-base-content transition-colors"
                 disabled={isLoading}
               >
                 {showPassword ? (
-                  <EyeSlashIcon className="w-5 h-5" />
+                  <EyeSlashIcon className="w-4 h-4 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5" />
                 ) : (
-                  <EyeIcon className="w-5 h-5" />
+                  <EyeIcon className="w-4 h-4 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5" />
                 )}
               </button>
             </div>
           </div>
 
-          {/* Remember Me & Forgot Password */}
-          <div className="flex items-center justify-between">
-            <label className="label cursor-pointer">
+          {/* Remember Me & Forgot Password - Fixed Mobile Alignment */}
+          <div className="flex items-center justify-between gap-2">
+            <label className="label cursor-pointer justify-start p-0 flex-shrink-0">
               <input 
                 type="checkbox" 
-                className="checkbox checkbox-primary checkbox-sm" 
+                className="checkbox checkbox-primary checkbox-xs sm:checkbox-sm md:checkbox-xs lg:checkbox-sm" 
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
                 disabled={isLoading} 
               />
-              <span className="label-text ml-2 text-base-content">Remember me</span>
+              <span className="label-text ml-2 text-xs sm:text-sm md:text-xs lg:text-sm text-base-content whitespace-nowrap">Remember me</span>
             </label>
-            <a href="#" className="text-primary hover:text-primary/80 text-sm font-medium transition-colors">
+            <a href="#" className="text-primary hover:text-primary/80 text-xs sm:text-sm md:text-xs lg:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0">
               Forgot password?
             </a>
           </div>
 
-          {/* Login Button */}
+          {/* Login Button - Responsive */}
           <motion.button
             type="submit"
             whileHover={!isLoading ? { scale: 1.02 } : {}}
             whileTap={!isLoading ? { scale: 0.98 } : {}}
-            className={`btn btn-primary w-full rounded-xl font-semibold text-lg mt-4 ${isLoading ? 'loading' : ''}`}
+            className={`btn btn-primary w-full rounded-xl font-semibold text-sm sm:text-base md:text-sm lg:text-base mt-4 sm:mt-6 h-10 sm:h-12 md:h-10 lg:h-12 ${isLoading ? 'loading' : ''}`}
             disabled={isLoading}
           >
             {isLoading ? 'Signing In...' : 'Sign In'}
           </motion.button>
 
-          {/* Signup Link */}
-          <div className="text-center pt-2">
-            <span className="text-base-content/70">Don't have an account? </span>
+          {/* Signup Link - Responsive */}
+          <div className="text-center pt-2 sm:pt-4">
+            <span className="text-base-content/70 text-xs sm:text-sm md:text-xs lg:text-sm">Don't have an account? </span>
             <button
               type="button"
               onClick={() => onToggle(false)}
-              className="text-primary hover:text-primary/80 font-semibold transition-colors"
+              className="text-primary hover:text-primary/80 font-semibold text-xs sm:text-sm md:text-xs lg:text-sm transition-colors"
               disabled={isLoading}
             >
               Sign up

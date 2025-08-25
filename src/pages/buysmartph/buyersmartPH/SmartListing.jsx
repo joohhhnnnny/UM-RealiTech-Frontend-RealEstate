@@ -1419,15 +1419,15 @@ function SmartListing({ profileData }) {
 
       {/* Filter and Sort Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-1">
-        <div className="space-y-2">
+        <div className="space-y-3">
           <h2 id="listings-heading" className="text-xl sm:text-2xl font-bold">Smart Property Recommendations</h2>
           {profileData && (
-            <div className="flex items-center gap-2">
-              <div className="badge badge-success text-white gap-1">
-                <RiRobot2Line className="w-3 h-3" />
-                MCDA Algorithm Active
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+              <div className="badge badge-success text-white gap-1 px-3 py-1">
+                <RiRobot2Line className="w-3 h-3 flex-shrink-0" />
+                <span className="whitespace-nowrap text-xs font-medium">MCDA Algorithm Active</span>
               </div>
-              <div className="text-xs text-base-content/70">
+              <div className="text-xs text-base-content/70 mt-1 sm:mt-0">
                 Personalized matching for {profileData.buyerType}s
               </div>
             </div>

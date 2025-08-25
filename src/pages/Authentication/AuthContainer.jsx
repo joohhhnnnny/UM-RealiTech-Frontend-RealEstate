@@ -50,8 +50,8 @@ const AuthContainer = () => {
   };
 
   return (
-    <div className="min-h-screen max-h-screen bg-base-100 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Pattern */}
+    <div className="min-h-screen bg-base-100 flex items-center justify-center p-2 sm:p-4 lg:p-6 relative overflow-hidden">
+      {/* Background Pattern - Responsive */}
       <div className="fixed inset-0 opacity-5">
         <svg 
           width="100%" 
@@ -77,33 +77,35 @@ const AuthContainer = () => {
         </svg>
       </div>
 
-      {/* Back Button */}
+      {/* Back Button - Responsive positioning */}
       <motion.button
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.3 }}
         onClick={() => navigate('/')}
-        className="absolute top-6 left-6 btn btn-circle btn-ghost bg-base-200/80 backdrop-blur-sm hover:bg-base-300 transition-all duration-300 z-10"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 btn btn-circle btn-sm sm:btn-md btn-ghost bg-base-200/80 backdrop-blur-sm hover:bg-base-300 transition-all duration-300 z-10"
       >
-        <ArrowLeftIcon className="w-5 h-5 text-base-content" />
+        <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5 text-base-content" />
       </motion.button>
 
-      {/* Main Container */}
+      {/* Main Container - Fully Responsive */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="w-full max-w-md mx-auto h-[90vh] max-h-[800px]"
+        className="w-full max-w-xs xs:max-w-sm sm:max-w-md md:max-w-md lg:max-w-md xl:max-w-lg mx-auto 
+                   h-[95vh] sm:h-[90vh] md:h-[85vh] lg:h-[80vh] 
+                   max-h-[600px] sm:max-h-[700px] md:max-h-[750px] lg:max-h-[800px] xl:max-h-[850px]"
       >
-        <div className="bg-base-100/90 backdrop-blur-md rounded-3xl shadow-2xl border border-base-200/50 overflow-hidden h-full flex flex-col">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-700 to-blue-400 p-6 text-center flex-shrink-0">
+        <div className="bg-base-100/90 backdrop-blur-md rounded-2xl sm:rounded-3xl shadow-xl sm:shadow-2xl border border-base-200/50 overflow-hidden h-full flex flex-col">
+          {/* Header - Responsive with reduced bottom padding on mobile */}
+          <div className="bg-gradient-to-r from-blue-700 to-blue-400 p-3 sm:p-6 md:p-8 pb-2 sm:pb-6 md:pb-8 text-center flex-shrink-0">
             <motion.h1 
               key={isLogin ? 'login' : 'signup'}
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className="text-2xl font-bold text-white"
+              className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white"
             >
               {isLogin ? 'Welcome Back' : 'Create Account'}
             </motion.h1>
@@ -112,7 +114,7 @@ const AuthContainer = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3, delay: 0.1 }}
-              className="text-white/80 mt-2"
+              className="text-white/80 mt-1 sm:mt-2 text-sm sm:text-base md:text-lg mb-0 sm:mb-0"
             >
               {isLogin ? 'Sign in to continue to RealiTech' : 'Join RealiTech today'}
             </motion.p>
@@ -161,9 +163,9 @@ const AuthContainer = () => {
         </div>
       </motion.div>
 
-      {/* Floating Elements */}
-      <div className="fixed top-1/4 left-1/6 w-20 h-20 bg-primary/5 rounded-full blur-2xl animate-pulse"></div>
-      <div className="fixed bottom-1/4 right-1/6 w-32 h-32 bg-secondary/5 rounded-full blur-2xl animate-pulse" style={{animationDelay: '1s'}}></div>
+      {/* Floating Elements - Responsive */}
+      <div className="hidden sm:block fixed top-1/4 left-1/6 w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 bg-primary/5 rounded-full blur-2xl animate-pulse"></div>
+      <div className="hidden sm:block fixed bottom-1/4 right-1/6 w-16 h-16 sm:w-24 sm:h-24 lg:w-32 lg:h-32 bg-secondary/5 rounded-full blur-2xl animate-pulse" style={{animationDelay: '1s'}}></div>
     </div>
   );
 };

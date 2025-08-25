@@ -71,19 +71,19 @@ function PropertySuccessBanner({
       variants={bannerVariants}
       initial="hidden"
       animate="visible"
-      className={`alert ${bannerContent.alertType} shadow-lg border-0 backdrop-blur-sm`}
+      className={`alert ${bannerContent.alertType} shadow-lg border-0 backdrop-blur-sm flex flex-col sm:flex-row items-center gap-3 sm:gap-4 text-center sm:text-left`}
     >
-      <motion.div variants={iconVariants}>
-        <IconComponent className="w-6 h-6 flex-shrink-0" />
+      <motion.div variants={iconVariants} className="flex-shrink-0">
+        <IconComponent className="w-6 h-6" />
       </motion.div>
       
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-base">
+      <div className="flex-1 min-w-0 w-full">
+        <div className="flex flex-col lg:flex-row items-center lg:items-center justify-center lg:justify-between gap-3 lg:gap-4 w-full">
+          <div className="flex-1 min-w-0 text-center lg:text-left max-w-none">
+            <h3 className="font-bold text-base leading-tight">
               {bannerContent.title}
             </h3>
-            <div className="text-sm opacity-90 mt-1">
+            <div className="text-sm opacity-90 mt-1 leading-relaxed">
               {bannerContent.subtitle}
             </div>
           </div>
@@ -91,11 +91,11 @@ function PropertySuccessBanner({
           {/* AI Algorithm Status Indicator */}
           {profileData && profileData.buyerType && (
             <motion.div 
-              className="badge badge-success text-white gap-1 ml-4 flex-shrink-0"
+              className="badge badge-success text-white gap-1 flex-shrink-0 px-3 py-1"
               variants={iconVariants}
             >
               <RiCheckboxCircleLine className="w-3 h-3" />
-              MCDA Algorithm Active
+              <span className="text-xs font-medium whitespace-nowrap">MCDA Algorithm Active</span>
             </motion.div>
           )}
         </div>

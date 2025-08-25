@@ -220,7 +220,7 @@ function CostCalculator() {
 
           <div className="divider">Additional Costs</div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
               { label: "Transfer Fee", name: "transferFee" },
               { label: "Documentary Stamps", name: "documentaryStamps" },

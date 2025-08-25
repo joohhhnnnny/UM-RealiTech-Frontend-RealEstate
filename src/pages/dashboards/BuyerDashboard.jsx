@@ -134,7 +134,7 @@ const BuyerDashboard = () => {
     }
   }, [user, fetchBuyerData, showSuccess, showError]);
 
-  // Function to render saved property cards
+  // Function to render saved property cards - Fully Responsive
   const renderSavedPropertyCard = (property) => (
     <motion.div
       key={property.id}
@@ -142,61 +142,163 @@ const BuyerDashboard = () => {
       animate={{ opacity: 1, y: 0 }}
       className="card bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 border border-base-300/10"
     >
-      <div className="card-body p-4">
-        <div className="flex items-start gap-4">
+      <div className="card-body p-3 sm:p-4 md:p-5 lg:p-6">
+        {/* Mobile Layout (< 640px) */}
+        <div className="block sm:hidden">
+          {/* Property Image */}
+          <div className="w-full h-40 xs:h-48 rounded-lg overflow-hidden bg-base-200 mb-4">
+            <img
+              src={property.images?.[0] || "https://via.placeholder.com/400x200?text=No+Image"}
+              alt={property.title}
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+          </div>
+          
+          {/* Property Details */}
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-sm xs:text-base leading-tight line-clamp-2 text-base-content mb-1">
+                  {property.title}
+                </h3>
+                <p className="text-xs xs:text-sm text-base-content/70 flex items-center gap-1 mb-2">
+                  <RiMapPinLine className="w-3 h-3 xs:w-4 xs:h-4 flex-shrink-0" />
+                  <span className="truncate">{property.location}</span>
+                </p>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="font-bold text-base xs:text-lg text-primary mb-1">
+                  {property.price}
+                </p>
+                {property.matchScore && (
+                  <div className={`badge badge-xs xs:badge-sm ${
+                    property.matchScore >= 80 ? 'badge-success' :
+                    property.matchScore >= 60 ? 'badge-warning' :
+                    property.matchScore >= 40 ? 'badge-info' :
+                    'badge-error'
+                  }`}>
+                    {property.matchScore}%
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Property Stats */}
+            <div className="grid grid-cols-3 gap-2 text-center">
+              {property.beds && (
+                <div className="bg-base-200 p-2 rounded">
+                  <div className="text-xs xs:text-sm font-semibold">{property.beds}</div>
+                  <div className="text-2xs xs:text-xs text-base-content/60">beds</div>
+                </div>
+              )}
+              {property.baths && (
+                <div className="bg-base-200 p-2 rounded">
+                  <div className="text-xs xs:text-sm font-semibold">{property.baths}</div>
+                  <div className="text-2xs xs:text-xs text-base-content/60">baths</div>
+                </div>
+              )}
+              {property.floor_area_sqm && (
+                <div className="bg-base-200 p-2 rounded">
+                  <div className="text-xs xs:text-sm font-semibold">{property.floor_area_sqm}</div>
+                  <div className="text-2xs xs:text-xs text-base-content/60">sqm</div>
+                </div>
+              )}
+            </div>
+            
+            {/* Actions */}
+            <div className="flex gap-2">
+              <button 
+                className="btn btn-xs xs:btn-sm btn-primary flex-1 gap-1 xs:gap-2 min-h-8 xs:min-h-10"
+                onClick={() => handleViewProperty(property)}
+              >
+                <RiEyeLine className="w-3 h-3 xs:w-4 xs:h-4" />
+                <span className="text-2xs xs:text-xs">View</span>
+              </button>
+              <button 
+                className="btn btn-xs xs:btn-sm btn-outline text-error hover:bg-error hover:text-error-content min-h-8 xs:min-h-10"
+                onClick={() => handleRemoveProperty(property)}
+                disabled={removingProperty === property.id}
+                title="Remove from saved properties"
+              >
+                {removingProperty === property.id ? (
+                  <span className="loading loading-spinner loading-xs"></span>
+                ) : (
+                  <RiHeartLine className="w-3 h-3 xs:w-4 xs:h-4" />
+                )}
+              </button>
+            </div>
+            
+            {/* Saved Date */}
+            <div className="flex items-center gap-1 text-2xs xs:text-xs text-base-content/50">
+              <RiCalendarLine className="w-3 h-3 flex-shrink-0" />
+              <span className="truncate">Saved {new Date(property.savedAt).toLocaleDateString()}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Tablet & Desktop Layout (>= 640px) */}
+        <div className="hidden sm:flex items-start gap-3 md:gap-4 lg:gap-6">
           {/* Property Image */}
           <div className="flex-shrink-0">
-            <div className="w-20 h-20 rounded-lg overflow-hidden bg-base-200">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 xl:w-32 xl:h-32 rounded-lg overflow-hidden bg-base-200">
               <img
-                src={property.images?.[0] || "https://via.placeholder.com/80x80?text=No+Image"}
+                src={property.images?.[0] || "https://via.placeholder.com/120x120?text=No+Image"}
                 alt={property.title}
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
             </div>
           </div>
           
           {/* Property Details */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h3 className="font-bold text-base mb-1 line-clamp-2 text-base-content">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-sm sm:text-base md:text-lg lg:text-xl mb-1 line-clamp-2 text-base-content">
                   {property.title}
                 </h3>
-                <p className="text-sm text-base-content/70 flex items-center gap-1 mb-2">
-                  <RiMapPinLine className="w-4 h-4 flex-shrink-0" />
+                <p className="text-xs sm:text-sm md:text-base text-base-content/70 flex items-center gap-1 mb-2">
+                  <RiMapPinLine className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                   <span className="truncate">{property.location}</span>
                 </p>
                 
                 {/* Property Stats */}
-                <div className="flex items-center gap-4 text-xs text-base-content/60">
+                <div className="flex items-center gap-2 sm:gap-3 md:gap-4 text-2xs sm:text-xs md:text-sm text-base-content/60 mb-2">
                   {property.beds && (
                     <div className="flex items-center gap-1">
-                      <RiHotelBedLine className="w-3 h-3" />
-                      {property.beds} beds
+                      <RiHotelBedLine className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="whitespace-nowrap">{property.beds} bed{property.beds > 1 ? 's' : ''}</span>
                     </div>
                   )}
                   {property.baths && (
                     <div className="flex items-center gap-1">
-                      <RiDropLine className="w-3 h-3" />
-                      {property.baths} baths
+                      <RiDropLine className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="whitespace-nowrap">{property.baths} bath{property.baths > 1 ? 's' : ''}</span>
                     </div>
                   )}
                   {property.floor_area_sqm && (
                     <div className="flex items-center gap-1">
-                      <RiHome6Line className="w-3 h-3" />
-                      {property.floor_area_sqm} sqm
+                      <RiHome6Line className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="whitespace-nowrap">{property.floor_area_sqm} sqm</span>
                     </div>
                   )}
+                </div>
+
+                {/* Saved Date */}
+                <div className="flex items-center gap-1 text-2xs sm:text-xs text-base-content/50">
+                  <RiCalendarLine className="w-3 h-3" />
+                  Saved on {new Date(property.savedAt).toLocaleDateString()}
                 </div>
               </div>
               
               {/* Price and Actions */}
               <div className="text-right flex-shrink-0">
-                <p className="font-bold text-lg text-primary mb-2">
+                <p className="font-bold text-sm sm:text-lg md:text-xl lg:text-2xl text-primary mb-2">
                   {property.price}
                 </p>
                 {property.matchScore && (
-                  <div className={`badge badge-sm mb-2 ${
+                  <div className={`badge badge-sm md:badge-md mb-3 ${
                     property.matchScore >= 80 ? 'badge-success' :
                     property.matchScore >= 60 ? 'badge-warning' :
                     property.matchScore >= 40 ? 'badge-info' :
@@ -205,16 +307,16 @@ const BuyerDashboard = () => {
                     {property.matchScore}% match
                   </div>
                 )}
-                <div className="flex gap-1">
+                <div className="flex gap-1 sm:gap-2">
                   <button 
-                    className="btn btn-xs btn-outline hover:btn-primary"
+                    className="btn btn-xs sm:btn-sm md:btn-md btn-outline hover:btn-primary"
                     onClick={() => handleViewProperty(property)}
                     title="View property details"
                   >
-                    <RiEyeLine className="w-3 h-3" />
+                    <RiEyeLine className="w-3 h-3 sm:w-4 sm:h-4" />
                   </button>
                   <button 
-                    className="btn btn-xs btn-outline text-error hover:bg-error hover:text-error-content"
+                    className="btn btn-xs sm:btn-sm md:btn-md btn-outline text-error hover:bg-error hover:text-error-content"
                     onClick={() => handleRemoveProperty(property)}
                     disabled={removingProperty === property.id}
                     title="Remove from saved properties"
@@ -222,17 +324,11 @@ const BuyerDashboard = () => {
                     {removingProperty === property.id ? (
                       <span className="loading loading-spinner loading-xs"></span>
                     ) : (
-                      <RiHeartLine className="w-3 h-3" />
+                      <RiHeartLine className="w-3 h-3 sm:w-4 sm:h-4" />
                     )}
                   </button>
                 </div>
               </div>
-            </div>
-            
-            {/* Saved Date */}
-            <div className="flex items-center gap-1 mt-2 text-xs text-base-content/50">
-              <RiCalendarLine className="w-3 h-3" />
-              Saved on {new Date(property.savedAt).toLocaleDateString()}
             </div>
           </div>
         </div>
@@ -302,34 +398,36 @@ const BuyerDashboard = () => {
         subtitle: "Upcoming property viewings",
         icon: RiHome6Line, 
         trend: viewingsTrend,
-        color: "text-cyan-500", // Changed from amber to cyan to avoid duplication
-        bgGradient: "from-cyan-500/20 to-cyan-500/5" // Changed gradient accordingly
+        color: "text-cyan-500",
+        bgGradient: "from-cyan-500/20 to-cyan-500/5"
       }
     ];
   }, [buyerData]);
 
-  // Function to render property detail modal
+  // Function to render property detail modal - Fully Responsive
   const renderPropertyModal = () => {
     if (!selectedProperty) return null;
 
     return (
       <div className={`modal ${showPropertyModal ? 'modal-open' : ''}`}>
-        <div className="modal-box w-11/12 max-w-4xl">
+        <div className="modal-box w-[95vw] max-w-6xl max-h-[95vh] overflow-y-auto m-2 sm:m-4">
           {/* Modal Header */}
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h3 className="font-bold text-2xl text-base-content mb-2">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-lg sm:text-xl md:text-2xl lg:text-3xl text-base-content mb-2 line-clamp-2">
                 {selectedProperty.title}
               </h3>
-              <p className="text-lg text-base-content/70 flex items-center gap-2">
-                <RiMapPinLine className="w-5 h-5" />
-                {selectedProperty.location}
+              <p className="text-sm sm:text-base md:text-lg text-base-content/70 flex items-center gap-2">
+                <RiMapPinLine className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                <span className="line-clamp-2 sm:line-clamp-1">{selectedProperty.location}</span>
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-3xl font-bold text-primary mb-2">{selectedProperty.price}</p>
+            <div className="text-right w-full sm:w-auto flex-shrink-0">
+              <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-primary mb-2">
+                {selectedProperty.price}
+              </p>
               {selectedProperty.matchScore && (
-                <div className={`badge ${
+                <div className={`badge badge-md sm:badge-lg ${
                   selectedProperty.matchScore >= 80 ? 'badge-success' :
                   selectedProperty.matchScore >= 60 ? 'badge-warning' :
                   selectedProperty.matchScore >= 40 ? 'badge-info' :
@@ -341,89 +439,100 @@ const BuyerDashboard = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
             {/* Property Image */}
             <div className="space-y-4">
-              <figure className="h-64 rounded-lg overflow-hidden bg-base-200">
+              <figure className="h-48 sm:h-56 md:h-64 lg:h-80 xl:h-96 rounded-lg overflow-hidden bg-base-200">
                 <img 
                   src={selectedProperty.images?.[0] || "https://via.placeholder.com/600x400?text=No+Image"}
                   alt={selectedProperty.title}
                   className="w-full h-full object-cover"
+                  loading="lazy"
                 />
               </figure>
               
               {/* Property Stats Grid */}
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="bg-base-200 p-4 rounded-lg">
-                  <div className="text-2xl font-bold text-primary">{selectedProperty.beds || '0'}</div>
-                  <div className="text-sm text-base-content/60">Bedrooms</div>
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 text-center">
+                <div className="bg-base-200 p-3 sm:p-4 md:p-5 rounded-lg">
+                  <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-primary">
+                    {selectedProperty.beds || '0'}
+                  </div>
+                  <div className="text-xs sm:text-sm md:text-base text-base-content/60">Bedrooms</div>
                 </div>
-                <div className="bg-base-200 p-4 rounded-lg">
-                  <div className="text-2xl font-bold text-primary">{selectedProperty.baths || '0'}</div>
-                  <div className="text-sm text-base-content/60">Bathrooms</div>
+                <div className="bg-base-200 p-3 sm:p-4 md:p-5 rounded-lg">
+                  <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-primary">
+                    {selectedProperty.baths || '0'}
+                  </div>
+                  <div className="text-xs sm:text-sm md:text-base text-base-content/60">Bathrooms</div>
                 </div>
-                <div className="bg-base-200 p-4 rounded-lg">
-                  <div className="text-2xl font-bold text-primary">{selectedProperty.floor_area_sqm || '0'}</div>
-                  <div className="text-sm text-base-content/60">sqm</div>
+                <div className="bg-base-200 p-3 sm:p-4 md:p-5 rounded-lg">
+                  <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-primary">
+                    {selectedProperty.floor_area_sqm || '0'}
+                  </div>
+                  <div className="text-xs sm:text-sm md:text-base text-base-content/60">sqm</div>
                 </div>
               </div>
             </div>
 
             {/* Property Details */}
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <div>
-                <h4 className="font-semibold text-lg mb-3 text-base-content">Property Information</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-base-content/70">Property Type:</span>
-                    <span className="font-medium">{selectedProperty.type || 'Residential'}</span>
+                <h4 className="font-semibold text-base sm:text-lg md:text-xl mb-3 text-base-content">
+                  Property Information
+                </h4>
+                <div className="space-y-2 sm:space-y-3 text-sm sm:text-base">
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-base-content/70 font-medium">Property Type:</span>
+                    <span className="font-medium text-right">{selectedProperty.type || 'Residential'}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-base-content/70">Floor Area:</span>
-                    <span className="font-medium">{selectedProperty.floor_area_sqm || 'N/A'} sqm</span>
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-base-content/70 font-medium">Floor Area:</span>
+                    <span className="font-medium text-right">{selectedProperty.floor_area_sqm || 'N/A'} sqm</span>
                   </div>
                   {selectedProperty.lot_area_sqm && (
-                    <div className="flex justify-between">
-                      <span className="text-base-content/70">Lot Area:</span>
-                      <span className="font-medium">{selectedProperty.lot_area_sqm} sqm</span>
+                    <div className="flex justify-between items-start gap-4">
+                      <span className="text-base-content/70 font-medium">Lot Area:</span>
+                      <span className="font-medium text-right">{selectedProperty.lot_area_sqm} sqm</span>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Save Info */}
-              <div className="bg-base-200 p-4 rounded-lg">
-                <h4 className="font-semibold mb-2 flex items-center gap-2">
-                  <RiHeartLine className="w-4 h-4 text-error" />
-                  Saved Property
+              <div className="bg-base-200 p-4 sm:p-5 rounded-lg">
+                <h4 className="font-semibold mb-2 sm:mb-3 flex items-center gap-2">
+                  <RiHeartLine className="w-4 h-4 sm:w-5 sm:h-5 text-error" />
+                  <span className="text-sm sm:text-base">Saved Property</span>
                 </h4>
-                <div className="text-sm text-base-content/70">
-                  <div className="flex items-center gap-1">
-                    <RiCalendarLine className="w-3 h-3" />
-                    Saved on {new Date(selectedProperty.savedAt).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
+                <div className="text-xs sm:text-sm md:text-base text-base-content/70">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <RiCalendarLine className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span>
+                      Saved on {new Date(selectedProperty.savedAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="space-y-3">
+              <div className="space-y-3 sm:space-y-4">
                 <button 
-                  className="btn btn-primary w-full gap-2"
+                  className="btn btn-primary w-full gap-2 min-h-12 sm:min-h-14"
                   onClick={() => {
                     setShowPropertyModal(false);
                     handleBrowseProperties();
                   }}
                 >
-                  <RiEyeLine className="w-4 h-4" />
-                  View in Smart Listings
+                  <RiEyeLine className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-sm sm:text-base">View in Smart Listings</span>
                 </button>
                 
                 <button 
-                  className="btn btn-outline btn-error w-full gap-2"
+                  className="btn btn-outline btn-error w-full gap-2 min-h-12 sm:min-h-14"
                   onClick={() => {
                     handleRemoveProperty(selectedProperty);
                     setShowPropertyModal(false);
@@ -433,12 +542,12 @@ const BuyerDashboard = () => {
                   {removingProperty === selectedProperty.id ? (
                     <>
                       <span className="loading loading-spinner loading-sm"></span>
-                      Removing...
+                      <span className="text-sm sm:text-base">Removing...</span>
                     </>
                   ) : (
                     <>
-                      <RiHeartLine className="w-4 h-4" />
-                      Remove from Saved
+                      <RiHeartLine className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="text-sm sm:text-base">Remove from Saved</span>
                     </>
                   )}
                 </button>
@@ -447,12 +556,12 @@ const BuyerDashboard = () => {
           </div>
 
           {/* Close Button */}
-          <div className="modal-action">
+          <div className="modal-action mt-6 sm:mt-8">
             <button 
-              className="btn"
+              className="btn btn-outline w-full sm:w-auto min-h-10 sm:min-h-12"
               onClick={() => setShowPropertyModal(false)}
             >
-              Close
+              <span className="text-sm sm:text-base">Close</span>
             </button>
           </div>
         </div>
@@ -464,10 +573,10 @@ const BuyerDashboard = () => {
   if (authLoading || loading) {
     return (
       <DashboardLayout userRole="buyer">
-        <div className="min-h-screen bg-base-100 p-6 flex items-center justify-center">
+        <div className="min-h-screen bg-base-100 p-4 sm:p-6 flex items-center justify-center">
           <div className="text-center">
             <span className="loading loading-spinner loading-lg text-primary"></span>
-            <p className="mt-4 text-base-content">
+            <p className="mt-4 text-sm sm:text-base text-base-content">
               {authLoading ? 'Authenticating...' : 'Loading your dashboard...'}
             </p>
           </div>
@@ -480,18 +589,18 @@ const BuyerDashboard = () => {
   if (!user) {
     return (
       <DashboardLayout userRole="buyer">
-        <div className="min-h-screen bg-base-100 p-6 flex items-center justify-center">
-          <div className="text-center">
-            <RiErrorWarningLine className="w-16 h-16 mx-auto text-error mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Authentication Required</h3>
-            <p className="text-base-content/70 mb-6">
+        <div className="min-h-screen bg-base-100 p-4 sm:p-6 flex items-center justify-center">
+          <div className="text-center max-w-sm sm:max-w-md mx-auto px-4">
+            <RiErrorWarningLine className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-error mb-4" />
+            <h3 className="text-lg sm:text-xl font-semibold mb-2">Authentication Required</h3>
+            <p className="text-sm sm:text-base text-base-content/70 mb-6">
               Please log in to access your dashboard.
             </p>
             <button 
-              className="btn btn-primary"
+              className="btn btn-primary w-full sm:w-auto min-h-12"
               onClick={() => navigate('/auth')}
             >
-              Go to Login
+              <span className="text-sm sm:text-base">Go to Login</span>
             </button>
           </div>
         </div>
@@ -504,36 +613,36 @@ const BuyerDashboard = () => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="min-h-screen bg-base-100 p-6"
+        className="min-h-screen bg-base-100"
       >
-        <div className="max-w-[1400px] mx-auto">
+        <div className="w-full max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6">
           {/* Welcome Section */}
           <motion.div 
             initial={{ y: -20 }}
             animate={{ y: 0 }}
-            className="card bg-gradient-to-r from-primary/90 to-primary shadow-lg overflow-hidden backdrop-blur-xl"
+            className="card bg-gradient-to-r from-primary/90 to-primary shadow-lg overflow-hidden backdrop-blur-xl mb-6"
           >
-            <div className="card-body p-6">
-              <div className="flex items-center justify-between">
+            <div className="card-body p-4 sm:p-6 md:p-8">
+              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 lg:gap-6">
                 <div className="space-y-2">
-                  <h2 className="text-lg font-medium text-primary-content/80">
+                  <h2 className="text-sm sm:text-base md:text-lg font-medium text-primary-content/80">
                     Welcome back, {buyerData?.fullName || user?.displayName || user?.email || 'Buyer'} 👋
                   </h2>
-                  <h1 className="text-3xl font-bold text-primary-content">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-primary-content">
                     Buyer Dashboard
                   </h1>
-                  <p className="text-sm text-primary-content/70 max-w-md">
+                  <p className="text-xs sm:text-sm md:text-base text-primary-content/70 max-w-md">
                     Browse and track your favorite properties.
                   </p>
                 </div>
-                <div className="hidden lg:block">
-                  <div className="stats bg-primary-content/10 text-primary-content">
-                    <div className="stat place-items-center">
-                      <div className="stat-title text-primary-content/80">Total</div>
-                      <div className="stat-value text-2xl">
+                <div className="w-full lg:w-auto">
+                  <div className="stats bg-primary-content/10 text-primary-content shadow-lg">
+                    <div className="stat place-items-center px-4 py-3">
+                      <div className="stat-title text-primary-content/80 text-xs sm:text-sm">Total</div>
+                      <div className="stat-value text-lg sm:text-xl md:text-2xl">
                         {buyerData?.buyerProfile?.savedProperties?.length || 0}
                       </div>
-                      <div className="stat-desc text-primary-content/60">Saved Properties</div>
+                      <div className="stat-desc text-primary-content/60 text-2xs sm:text-xs">Saved Properties</div>
                     </div>
                   </div>
                 </div>
@@ -542,7 +651,7 @@ const BuyerDashboard = () => {
           </motion.div>
 
           {/* Statistics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6">
             {stats.map((stat) => (
               <motion.div
                 key={stat.title}
@@ -552,25 +661,25 @@ const BuyerDashboard = () => {
                 transition={{ duration: 0.2 }}
                 className={`card bg-gradient-to-br ${stat.bgGradient} backdrop-blur-xl shadow-lg`}
               >
-                <div className="card-body p-6">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-base-content/70 text-sm font-medium">
+                <div className="card-body p-3 sm:p-4 md:p-5 lg:p-6">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base-content/70 text-2xs sm:text-xs md:text-sm font-medium truncate">
                         {stat.title}
                       </p>
-                      <h3 className={`text-2xl font-bold mt-2 ${stat.color}`}>
+                      <h3 className={`text-base sm:text-lg md:text-xl lg:text-2xl font-bold mt-1 sm:mt-2 ${stat.color}`}>
                         {stat.value}
                       </h3>
                     </div>
-                    <div className={`p-3 rounded-lg ${stat.bgGradient}`}>
-                      <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                    <div className={`p-2 sm:p-2.5 md:p-3 rounded-lg ${stat.bgGradient} flex-shrink-0`}>
+                      <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 ${stat.color}`} />
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <p className="text-sm text-base-content/60">
+                  <div className="mt-2 sm:mt-3 md:mt-4">
+                    <p className="text-2xs sm:text-xs md:text-sm text-base-content/60 truncate">
                       {stat.subtitle}
                     </p>
-                    <p className="text-xs text-success mt-1">
+                    <p className="text-2xs sm:text-xs text-success mt-1 truncate">
                       {stat.trend}
                     </p>
                   </div>
@@ -580,23 +689,26 @@ const BuyerDashboard = () => {
           </div>
 
           {/* My Properties Section */}
-          <div className="mt-8" data-tour="saved-properties">
-            <div className="flex justify-between items-center mb-6">
+          <div data-tour="saved-properties">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
               <div>
-                <h2 className="text-2xl font-bold">My Saved Properties</h2>
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold">My Saved Properties</h2>
+                <p className="text-xs sm:text-sm text-base-content/70 mt-1">
+                  {buyerData?.buyerProfile?.savedProperties?.length || 0} properties saved
+                </p>
               </div>
               <button 
-                className="btn btn-primary gap-2"
+                className="btn btn-primary gap-2 w-full sm:w-auto min-h-10 sm:min-h-12"
                 onClick={handleBrowseProperties}
                 data-tour="properties"
               >
                 <RiEyeLine className="w-4 h-4" />
-                Browse Properties
+                <span className="text-xs sm:text-sm md:text-base">Browse Properties</span>
               </button>
             </div>
             
             {buyerData?.buyerProfile?.savedProperties?.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {buyerData.buyerProfile.savedProperties.map((property) => 
                   renderSavedPropertyCard(property)
                 )}
@@ -604,27 +716,29 @@ const BuyerDashboard = () => {
                 {/* Show more properties if there are many */}
                 {buyerData.buyerProfile.savedProperties.length > 5 && (
                   <div className="text-center pt-4">
-                    <button className="btn btn-outline">
-                      View All {buyerData.buyerProfile.savedProperties.length} Saved Properties
+                    <button className="btn btn-outline w-full sm:w-auto min-h-10 sm:min-h-12">
+                      <span className="text-xs sm:text-sm md:text-base">
+                        View All {buyerData.buyerProfile.savedProperties.length} Saved Properties
+                      </span>
                     </button>
                   </div>
                 )}
               </div>
             ) : (
               <div className="card bg-base-100 shadow-lg">
-                <div className="card-body text-center py-12">
-                  <RiHeartLine className="w-16 h-16 mx-auto text-base-content/30 mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">No Saved Properties Yet</h3>
-                  <p className="text-base-content/70 mb-6 max-w-md mx-auto">
+                <div className="card-body text-center py-8 sm:py-12 md:py-16 px-4 sm:px-6">
+                  <RiHeartLine className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 mx-auto text-base-content/30 mb-4" />
+                  <h3 className="text-base sm:text-lg md:text-xl font-semibold mb-2">No Saved Properties Yet</h3>
+                  <p className="text-xs sm:text-sm md:text-base text-base-content/70 mb-6 max-w-md mx-auto">
                     Start browsing properties and save your favorites to see them here. 
                     Our AI will help you find the perfect match based on your preferences.
                   </p>
                   <button 
-                    className="btn btn-primary gap-2"
+                    className="btn btn-primary gap-2 w-full sm:w-auto min-h-12"
                     onClick={handleBrowseProperties}
                   >
                     <RiAddLine className="w-4 h-4" />
-                    Browse Properties Now
+                    <span className="text-sm sm:text-base">Browse Properties Now</span>
                   </button>
                 </div>
               </div>
