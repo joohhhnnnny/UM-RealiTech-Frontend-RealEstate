@@ -458,25 +458,26 @@ function DocumentVerification() {
         className="space-y-6 animate-slide-in"
         key={activeDocTab}
       >
+             
         {DOCUMENT_TYPES[activeDocTab]?.map((docType) => {
           const existingDoc = getDocumentByType(activeDocTab, docType.id);
           const verifyKey = `${activeDocTab}-${docType.id}`;
           const isVerifying = verifying[verifyKey] !== undefined;
           
           return (
-            <div key={docType.id} className="card bg-base-200/30 p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <RiFileTextLine className="w-4 h-4 text-emerald-500" />
-                    <h4 className="font-semibold">{docType.label}</h4>
+            <div key={docType.id} className="card bg-base-200/30 p-4 overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <RiFileTextLine className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                    <h4 className="font-semibold truncate">{docType.label}</h4>
                     {docType.required && (
-                      <span className="badge badge-error badge-xs">Required</span>
+                      <span className="badge badge-error badge-xs flex-shrink-0">Required</span>
                     )}
                   </div>
-                  <p className="text-sm text-base-content/70">{docType.description}</p>
+                  <p className="text-sm text-base-content/70 break-words">{docType.description}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   {getStatusBadge(existingDoc?.status, existingDoc?.verificationScore || existingDoc?.score)}
                 </div>
               </div>
@@ -485,32 +486,32 @@ function DocumentVerification() {
               {isVerifying && (
                 <div className="mb-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <RiScanLine className="w-4 h-4 text-emerald-500 animate-pulse" />
-                    <span className="text-sm">Verifying document authenticity... {Math.round(verifying[verifyKey])}%</span>
+                    <RiScanLine className="w-4 h-4 text-emerald-500 animate-pulse flex-shrink-0" />
+                    <span className="text-sm break-words">Verifying document authenticity... {Math.round(verifying[verifyKey])}%</span>
                   </div>
                   <progress 
                     className="progress progress-success w-full" 
                     value={verifying[verifyKey]} 
                     max="100"
                   ></progress>
-                  <div className="text-xs text-base-content/60 mt-1">
+                  <div className="text-xs text-base-content/60 mt-1 break-words">
                     AI analyzing document structure, authenticity, and completeness...
                   </div>
                 </div>
               )}
 
               {/* Document Actions */}
-              <div className="flex items-center gap-4 mt-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 mt-4">
                 {!existingDoc && !isVerifying && (
                   <>
                     <input 
                       type="file" 
-                      className="file-input file-input-bordered file-input-sm flex-1" 
+                      className="file-input file-input-bordered file-input-sm w-full sm:flex-1" 
                       onChange={onFileInputChange(activeDocTab, docType.id)}
                       accept=".pdf,.jpg,.jpeg,.png"
                       disabled={isVerifying}
                     />
-                    <button className="btn btn-success btn-sm">
+                    <button className="btn btn-success btn-sm w-full sm:w-auto flex-shrink-0">
                       <RiScanLine className="w-4 h-4" />
                       Verify Document
                     </button>
@@ -518,11 +519,11 @@ function DocumentVerification() {
                 )}
                 
                 {existingDoc && !isVerifying && (
-                  <div className="flex items-center gap-2 w-full">
-                    <div className="flex-1 bg-base-100 p-2 rounded border">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium truncate">{existingDoc.fileName}</span>
-                        <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row items-stretch gap-2 w-full">
+                    <div className="flex-1 bg-base-100 p-2 rounded border min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <span className="text-sm font-medium truncate flex-1 min-w-0">{existingDoc.fileName}</span>
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           {existingDoc.verificationScore && (
                             <div className="badge badge-sm badge-success">
                               {existingDoc.verificationScore}% Verified
@@ -544,15 +545,15 @@ function DocumentVerification() {
                           </button>
                         </div>
                       </div>
-                      <div className="text-xs text-base-content/60 mt-1">
+                      <div className="text-xs text-base-content/60 mt-1 break-words">
                         {existingDoc.verifiedAt ? `Verified: ${new Date(existingDoc.verifiedAt).toLocaleDateString()}` : 
-                         existingDoc.uploadedAt?.toDate ? `Uploaded: ${existingDoc.uploadedAt.toDate().toLocaleDateString()}` : 
-                         'Recently uploaded'}
+                        existingDoc.uploadedAt?.toDate ? `Uploaded: ${existingDoc.uploadedAt.toDate().toLocaleDateString()}` : 
+                        'Recently uploaded'}
                       </div>
                     </div>
                     <input 
                       type="file" 
-                      className="file-input file-input-bordered file-input-sm w-32" 
+                      className="file-input file-input-bordered file-input-sm w-full sm:w-32 flex-shrink-0" 
                       onChange={onFileInputChange(activeDocTab, docType.id)}
                       accept=".pdf,.jpg,.jpeg,.png"
                       title="Re-verify document"
@@ -563,29 +564,29 @@ function DocumentVerification() {
 
               {/* Verification Results & Feedback */}
               {existingDoc?.verificationDetails && (
-                <div className="mt-3 p-3 bg-base-100/50 rounded border">
+                <div className="mt-3 p-3 bg-base-100/50 rounded border overflow-hidden">
                   <h5 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                    <RiShieldCheckLine className="w-4 h-4 text-emerald-500" />
-                    Verification Analysis
+                    <RiShieldCheckLine className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                    <span className="truncate">Verification Analysis</span>
                   </h5>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className="flex justify-between">
                       <span className="text-base-content/60">Authenticity:</span>
-                      <span className={`ml-2 font-medium ${existingDoc.verificationDetails.authenticity === 'High' ? 'text-success' : 'text-warning'}`}>
+                      <span className={`font-medium ${existingDoc.verificationDetails.authenticity === 'High' ? 'text-success' : 'text-warning'}`}>
                         {existingDoc.verificationDetails.authenticity}
                       </span>
                     </div>
-                    <div>
+                    <div className="flex justify-between">
                       <span className="text-base-content/60">Legibility:</span>
-                      <span className="ml-2 font-medium text-info">{existingDoc.verificationDetails.legibility}%</span>
+                      <span className="font-medium text-info">{existingDoc.verificationDetails.legibility}%</span>
                     </div>
-                    <div>
+                    <div className="flex justify-between">
                       <span className="text-base-content/60">Completeness:</span>
-                      <span className="ml-2 font-medium text-success">{existingDoc.verificationDetails.completeness}%</span>
+                      <span className="font-medium text-success">{existingDoc.verificationDetails.completeness}%</span>
                     </div>
-                    <div>
+                    <div className="flex justify-between">
                       <span className="text-base-content/60">Format:</span>
-                      <span className="ml-2 font-medium text-success">{existingDoc.verificationDetails.format}</span>
+                      <span className="font-medium text-success">{existingDoc.verificationDetails.format}</span>
                     </div>
                   </div>
                 </div>
@@ -593,15 +594,15 @@ function DocumentVerification() {
 
               {/* Document Feedback */}
               {existingDoc?.feedback && existingDoc.feedback.length > 0 && (
-                <div className={`mt-3 text-sm ${
+                <div className={`mt-3 text-sm overflow-hidden ${
                   existingDoc.status === 'verified' ? 'text-success' : 
                   existingDoc.status === 'rejected' ? 'text-error' : 
                   'text-warning'
                 }`}>
                   {existingDoc.feedback.map((item, index) => (
-                    <div key={index} className="flex items-center gap-1">
-                      <span className="text-xs">•</span>
-                      <span>{item}</span>
+                    <div key={index} className="flex items-start gap-1">
+                      <span className="text-xs flex-shrink-0 mt-1">•</span>
+                      <span className="break-words">{item}</span>
                     </div>
                   ))}
                 </div>
@@ -643,9 +644,9 @@ function DocumentVerification() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-4">
+        <div className="flex flex-col md:flex-row gap-3 md:gap-4 w-full">
           <button 
-            className="btn btn-success flex-1"
+            className="btn btn-success"
             disabled={userDocuments.length === 0}
           >
             <RiShieldCheckLine className="w-5 h-5 mr-2" />

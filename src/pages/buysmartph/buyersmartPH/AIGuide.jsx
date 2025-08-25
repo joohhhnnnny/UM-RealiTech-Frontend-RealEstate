@@ -511,16 +511,16 @@ function AIGuide({ profileData, setProfileData, onComplete, isEditMode = false }
           {step === 3 && renderLocationBudget()}
           {step === 4 && renderSummary()}
           
-          <div className="flex justify-between mt-8">
+          <div className="flex flex-col md:flex-row md:justify-between gap-3 md:gap-4 mt-8">
             <button 
-              className="btn btn-outline" 
+              className="btn btn-outline w-full md:w-auto order-2 md:order-1" 
               onClick={handlePrevious}
               disabled={step === 1 || saveStatus === 'saving'}
             >
               Previous
             </button>
             <button 
-              className="btn btn-primary gap-2" 
+              className="btn btn-primary gap-2 w-full md:w-auto order-1 md:order-2 md:text-sm text-xs" 
               onClick={step === 4 ? handleComplete : handleNext}
               disabled={saveStatus === 'saving'}
             >

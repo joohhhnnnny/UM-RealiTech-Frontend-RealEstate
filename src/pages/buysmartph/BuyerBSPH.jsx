@@ -12,7 +12,7 @@ import {
 import AIGuide from './buyersmartPH/AIGuide.jsx';
 import LoanCalculator from './buyersmartPH/LoanCalculator';
 import CostCalculator from './buyersmartPH/CostCalculator';
-import DocumentSubmission from './buyersmartPH/DocumentSubmission';
+import DocumentVerification from './buyersmartPH/DocumentVerification';
 import SmartListing from './buyersmartPH/SmartListing';
 import ProfileStatus from '../../components/ProfileStatus';
 import { userProfileService } from '../../services/UserProfileService';
@@ -133,7 +133,7 @@ function BuyerBSPH() {
        />,
     2: <LoanCalculator />,
     3: <CostCalculator />,
-    4: <DocumentSubmission />,
+    4: <DocumentVerification />,
     5: profileComplete ? (
       <div className="space-y-6">
         <ProfileStatus 
