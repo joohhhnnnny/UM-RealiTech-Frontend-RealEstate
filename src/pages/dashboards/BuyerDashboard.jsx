@@ -623,7 +623,7 @@ const BuyerDashboard = () => {
             className="card bg-gradient-to-r from-primary/90 to-primary shadow-lg overflow-hidden backdrop-blur-xl mb-6"
           >
             <div className="card-body p-4 sm:p-6 md:p-8">
-              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 lg:gap-6">
+              <div className="flex flex-col lg:flex-row items-center lg:items-center justify-center lg:justify-between gap-4 lg:gap-6 text-center lg:text-left">
                 <div className="space-y-2">
                   <h2 className="text-sm sm:text-base md:text-lg font-medium text-primary-content/80">
                     Welcome back, {buyerData?.fullName || user?.displayName || user?.email || 'Buyer'} 👋
@@ -631,11 +631,11 @@ const BuyerDashboard = () => {
                   <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-primary-content">
                     Buyer Dashboard
                   </h1>
-                  <p className="text-xs sm:text-sm md:text-base text-primary-content/70 max-w-md">
+                  <p className="text-xs sm:text-sm md:text-base text-primary-content/70 max-w-md mx-auto lg:mx-0">
                     Browse and track your favorite properties.
                   </p>
                 </div>
-                <div className="w-full lg:w-auto">
+                <div className="w-full lg:w-auto flex justify-center">
                   <div className="stats bg-primary-content/10 text-primary-content shadow-lg">
                     <div className="stat place-items-center px-4 py-3">
                       <div className="stat-title text-primary-content/80 text-xs sm:text-sm">Total</div>

@@ -225,6 +225,7 @@ const Settings = () => {
 
   const systemTabs = [
     { id: 'manual', label: 'Manual', icon: RiBookOpenLine },
+    { id: 'system-tour', label: 'System Tour', icon: RiNotificationLine },
   ];
 
   // System Manual Content
@@ -1083,6 +1084,255 @@ const Settings = () => {
                           ))}
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {activeTab === 'system-tour' && (
+                    <div className="space-y-6">
+                      <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                        <RiNotificationLine className="w-8 h-8 text-primary" />
+                        System Tour
+                      </h3>
+                      
+                      <div className="grid gap-6">
+                        {/* Tour Overview */}
+                        <div className="alert alert-info">
+                          <RiNotificationLine className="w-5 h-5" />
+                          <div>
+                            <p className="font-medium">Interactive Platform Guide</p>
+                            <p className="text-sm">Take a guided tour to learn about all the features and functionalities available to you as a {currentUserRole}.</p>
+                          </div>
+                        </div>
+
+                        {/* Tour Options */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Desktop Tour */}
+                          <div className="card bg-base-100 border border-base-200 shadow-sm">
+                            <div className="card-body">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                                  <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-lg">Desktop Tour</h4>
+                                  <p className="text-sm text-base-content/70">Comprehensive desktop experience</p>
+                                </div>
+                              </div>
+                              <p className="text-sm text-base-content/80 mb-4">
+                                Complete walkthrough of all features including navigation menu, property browsing, BuySmartPH, RealtyConnect, PropGuard, and saved properties management.
+                              </p>
+                              <div className="flex items-center gap-2 text-xs text-base-content/60 mb-4">
+                                <span className="badge badge-outline badge-sm">7 Steps</span>
+                                <span className="badge badge-outline badge-sm">~3-5 minutes</span>
+                                <span className="badge badge-outline badge-sm">All Features</span>
+                              </div>
+                              <button
+                                className="btn btn-primary btn-sm w-full"
+                                onClick={() => {
+                                  if (currentUser) {
+                                    const tourKey = `tour_completed_${currentUser.uid}`;
+                                    localStorage.removeItem(tourKey);
+                                    window.location.reload();
+                                  }
+                                }}
+                              >
+                                <RiNotificationLine className="w-4 h-4" />
+                                Start Desktop Tour
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Mobile Tour */}
+                          <div className="card bg-base-100 border border-base-200 shadow-sm">
+                            <div className="card-body">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className="w-12 h-12 bg-secondary/10 rounded-xl flex items-center justify-center">
+                                  <svg className="w-6 h-6 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a1 1 0 001-1V4a1 1 0 00-1-1H8a1 1 0 00-1 1v16a1 1 0 001 1z" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-lg">Mobile Tour</h4>
+                                  <p className="text-sm text-base-content/70">Optimized for mobile devices</p>
+                                </div>
+                              </div>
+                              <p className="text-sm text-base-content/80 mb-4">
+                                Mobile-focused tour covering essential features like navigation menu, property browsing, and saved properties - optimized for touch interaction.
+                              </p>
+                              <div className="flex items-center gap-2 text-xs text-base-content/60 mb-4">
+                                <span className="badge badge-outline badge-sm">4 Steps</span>
+                                <span className="badge badge-outline badge-sm">~2-3 minutes</span>
+                                <span className="badge badge-outline badge-sm">Mobile Optimized</span>
+                              </div>
+                              <button
+                                className="btn btn-secondary btn-sm w-full"
+                                onClick={() => {
+                                  if (currentUser) {
+                                    const tourKey = `mobile_tour_completed_${currentUser.uid}`;
+                                    localStorage.removeItem(tourKey);
+                                    window.location.reload();
+                                  }
+                                }}
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a1 1 0 001-1V4a1 1 0 00-1-1H8a1 1 0 00-1 1v16a1 1 0 001 1z" />
+                                </svg>
+                                Start Mobile Tour
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Tour Features */}
+                        <div className="card bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20">
+                          <div className="card-body">
+                            <h4 className="card-title text-primary mb-4">What You'll Learn</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                    </svg>
+                                  </div>
+                                  <span className="text-sm font-medium">Navigation & Menu System</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                  </div>
+                                  <span className="text-sm font-medium">Property Search & Browsing</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                    </svg>
+                                  </div>
+                                  <span className="text-sm font-medium">Saving Favorite Properties</span>
+                                </div>
+                              </div>
+                              <div className="space-y-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 bg-secondary/10 rounded-lg flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                    </svg>
+                                  </div>
+                                  <span className="text-sm font-medium">BuySmartPH Analytics</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 bg-secondary/10 rounded-lg flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                  </div>
+                                  <span className="text-sm font-medium">RealtyConnect Network</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 bg-secondary/10 rounded-lg flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                    </svg>
+                                  </div>
+                                  <span className="text-sm font-medium">PropGuard Protection</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Tour Status */}
+                        <div className="card bg-base-100 border border-base-200 shadow-sm">
+                          <div className="card-body">
+                            <h4 className="card-title mb-4">Tour Status</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="flex items-center justify-between p-3 bg-base-200 rounded-lg">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-3 h-3 rounded-full ${
+                                    currentUser && localStorage.getItem(`tour_completed_${currentUser.uid}`) 
+                                      ? 'bg-success' 
+                                      : 'bg-warning'
+                                  }`}></div>
+                                  <span className="text-sm font-medium">Desktop Tour</span>
+                                </div>
+                                <span className={`badge badge-sm ${
+                                  currentUser && localStorage.getItem(`tour_completed_${currentUser.uid}`) 
+                                    ? 'badge-success' 
+                                    : 'badge-warning'
+                                }`}>
+                                  {currentUser && localStorage.getItem(`tour_completed_${currentUser.uid}`) 
+                                    ? 'Completed' 
+                                    : 'Not Started'
+                                  }
+                                </span>
+                              </div>
+                              
+                              <div className="flex items-center justify-between p-3 bg-base-200 rounded-lg">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-3 h-3 rounded-full ${
+                                    currentUser && localStorage.getItem(`mobile_tour_completed_${currentUser.uid}`) 
+                                      ? 'bg-success' 
+                                      : 'bg-warning'
+                                  }`}></div>
+                                  <span className="text-sm font-medium">Mobile Tour</span>
+                                </div>
+                                <span className={`badge badge-sm ${
+                                  currentUser && localStorage.getItem(`mobile_tour_completed_${currentUser.uid}`) 
+                                    ? 'badge-success' 
+                                    : 'badge-warning'
+                                }`}>
+                                  {currentUser && localStorage.getItem(`mobile_tour_completed_${currentUser.uid}`) 
+                                    ? 'Completed' 
+                                    : 'Not Started'
+                                  }
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Reset All Tours */}
+                            <div className="mt-4 pt-4 border-t border-base-300">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-medium text-sm">Reset All Tours</p>
+                                  <p className="text-xs text-base-content/60">Clear completion status for all tours</p>
+                                </div>
+                                <button
+                                  className="btn btn-outline btn-error btn-sm"
+                                  onClick={() => {
+                                    if (currentUser && confirm('Are you sure you want to reset all tour progress? This will allow you to take the tours again.')) {
+                                      localStorage.removeItem(`tour_completed_${currentUser.uid}`);
+                                      localStorage.removeItem(`mobile_tour_completed_${currentUser.uid}`);
+                                      // Refresh to update the status indicators
+                                      window.location.reload();
+                                    }
+                                  }}
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                  </svg>
+                                  Reset Tours
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Help & Support */}
+                        <div className="alert alert-warning">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <div>
+                            <p className="font-medium">Need Additional Help?</p>
+                            <p className="text-sm">If you need more detailed information, check out the Manual section or contact our support team.</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
 
