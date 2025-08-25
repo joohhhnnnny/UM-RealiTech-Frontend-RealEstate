@@ -279,7 +279,7 @@ function Homepage() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
-                className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 text-base-content leading-tight"
+                className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6 text-base-content leading-tight"
               >
                 Rebuilding Trust in{' '}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-blue-400">
@@ -292,7 +292,7 @@ function Homepage() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-                className="text-md md:text-xl lg:text-1xl text-base-content/80 mb-3 max-w-4xl mx-auto leading-relaxed"
+                className="text-sm sm:text-base md:text-lg lg:text-xl text-base-content/80 mb-3 max-w-4xl mx-auto leading-relaxed"
               >
                 Protecting buyers. Empowering agents. Regulating developers.
             Together, we make every real estate journey transparent, fair, and safe.
@@ -337,12 +337,12 @@ function Homepage() {
                 >
                   <button
                     onClick={() => navigate('/properties')}
-                    className="btn btn-primary btn-lg rounded-2xl font-semibold px-10 py-4 text-lg shadow-xl 
-                               transition-all duration-300 flex items-center gap-3 relative
+                    className="btn btn-primary btn-sm sm:btn-md lg:btn-lg rounded-2xl font-semibold px-6 sm:px-8 lg:px-10 py-3 sm:py-4 text-base sm:text-lg shadow-xl 
+                               transition-all duration-300 flex items-center gap-2 sm:gap-3 relative
                                border-2 border-transparent group-hover:shadow-2xl"
                   >
                     <span>View All Properties</span>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
                   </button>
@@ -365,7 +365,7 @@ function Homepage() {
                                     group-hover:w-full group-hover:h-full group-hover:border-blue-500/80"></div>
                     <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-blue-500/80 rounded-bl-2xl
                                     transition-all duration-500 ease-out
-                                    group-hover:w-full group_hover:h-full group-hover:border-blue-500/80"></div>
+                                    group-hover:w-full group-hover:h-full group-hover:border-blue-500/80"></div>
                   </div>
                 </motion.div>
 
@@ -407,14 +407,14 @@ const SearchInput = React.memo(({
         onChange={(e) => handleSearch(e.target.value)}
         onFocus={() => setIsSearchFocused(true)}
         placeholder={isSearchFocused ? `Search ${listingsCount} properties...` : searchPlaceholder}
-        className="input input-lg w-full px-6 py-5 text-lg rounded-2xl transition-all duration-300 pl-16 bg-base-200/90 backdrop-blur-sm border-2 border-base-300 focus:border-primary focus:outline-none shadow-xl hover:shadow-2xl placeholder-base-content/50 text-base-content"
+        className="input input-lg w-full px-4 sm:px-6 py-4 sm:py-5 text-base sm:text-lg rounded-2xl transition-all duration-300 pl-12 sm:pl-16 bg-base-200/90 backdrop-blur-sm border-2 border-base-300 focus:border-primary focus:outline-none shadow-xl hover:shadow-2xl placeholder-base-content/50 text-base-content"
         disabled={loading}
       />
-      <MagnifyingGlassIcon className="absolute left-5 top-1/2 transform -translate-y-1/2 w-6 h-6 pointer-events-none text-base-content/60" />
+      <MagnifyingGlassIcon className="absolute left-3 sm:left-5 top-1/2 transform -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 pointer-events-none text-base-content/60" />
       
       {/* Loading indicator */}
       {loading && (
-        <div className="absolute right-5 top-1/2 transform -translate-y-1/2">
+        <div className="absolute right-3 sm:right-5 top-1/2 transform -translate-y-1/2">
           <div className="loading loading-spinner loading-sm text-primary"></div>
         </div>
       )}
@@ -462,19 +462,19 @@ const SearchInput = React.memo(({
 
 const ScrollIndicator = React.memo(({ scrollToSolutions }) => (
   <motion.div
-    className="flex flex-col items-center gap-3 cursor-pointer group"
+    className="flex flex-col items-center gap-2 sm:gap-3 cursor-pointer group"
     onClick={scrollToSolutions}
     animate={{ y: [0, -8, 0] }}
     transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
   >
-    <span className="text-sm text-base-content/70 font-medium group-hover:text-base-content transition-colors duration-300">
+    <span className="text-xs sm:text-sm text-base-content/70 font-medium group-hover:text-base-content transition-colors duration-300">
       Scroll to explore
     </span>
     <motion.div 
-      className="p-2 rounded-full bg-primary/10 backdrop-blur-sm group-hover:bg-primary/20 transition-all duration-300"
+      className="p-1.5 sm:p-2 rounded-full bg-primary/10 backdrop-blur-sm group-hover:bg-primary/20 transition-all duration-300"
       whileHover={{ scale: 1.1 }}
     >
-      <ChevronDownIcon className="w-5 h-5 text-primary" aria-label="Scroll to solutions" />
+      <ChevronDownIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" aria-label="Scroll to solutions" />
     </motion.div>
   </motion.div>
 ));
